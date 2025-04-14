@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+scripts/setup_git_auth.sh
+scripts/release.js
+
+# Test coverage
+coverage/
+
+# Environment variables and secrets
+.env
+.env.*
+*.pem
+.npmrc
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor/IDE specific
+.idea/
+.vscode/
+*.sublime-*
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+~*
+*~
+.cache/
+tmp/
+temp/
+
+# Environment specific
+.replit
+replit.nix
+.config/
+.local/
+.cache/
+.upm/
+.vercel
+.netlify
+.now
+
+# Local development files
+local/
+*.local
+
+# Temporary assets and uploads
+attached_assets/
+
+# Repository-specific temporary files
+combined_leonardo_code.txt
+combine_files.sh
+fixes.txt

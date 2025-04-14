@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "sourceMap": true,
+    // isolatedModules is disabled to maintain compatibility with n8n's const enums
+    // This is required because n8n uses NodeConnectionType.Main and other const enums
+    // For more details, see docs/DEVELOPMENT_GUIDELINES.md
+    // "isolatedModules": true,
+    "lib": ["es2019", "ES2020.Promise"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "attached_assets/**",
+    "__tests__/**"
+  ]
+}

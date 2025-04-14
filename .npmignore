@@ -1,0 +1,41 @@
+# Replit-specific files
+.replit
+replit.nix
+.config/
+
+# Development configurations
+.eslintrc
+.prettierrc
+.github/
+.vscode/
+.idea/
+.git/
+
+# Test files
+__tests__/
+test/
+coverage/
+jest.config.js
+*.spec.ts
+*.test.ts
+tsconfig.test.json
+
+# Development scripts
+*.sh
+
+# Documentation
+docs/
+attached_assets/
+
+# Build files
+tsconfig.json
+*.tsbuildinfo
+
+# Temporary files
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
