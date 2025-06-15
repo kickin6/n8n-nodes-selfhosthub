@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>JSON2Video Icon</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient">
+            <stop stop-color="#3498db" offset="0%"></stop>
+            <stop stop-color="#2980b9" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Background" fill="url(#linearGradient)" x="2" y="4" width="20" height="16" rx="2"></rect>
+        <polygon id="PlayButton" fill="#FFFFFF" points="10 8 16 12 10 16"></polygon>
+        <path d="M6,8 L8,8 L8,16 L6,16 L6,8 Z" id="TextJ" fill="#FFFFFF"></path>
+        <path d="M18,17 C17.4477153,17 17,16.5522847 17,16 L17,14 L19,14 L19,15 L20,15 L20,16 C20,16.5522847 19.5522847,17 19,17 L18,17 Z" id="Code" fill="#FFFFFF"></path>
+    </g>
+</svg>
