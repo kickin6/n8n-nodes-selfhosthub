@@ -1,0 +1,165 @@
+{
+  "operation": {
+    "description": "The operation to perform",
+    "options": [
+      "createMovie",
+      "mergeVideoAudio",
+      "mergeVideos",
+      "checkStatus"
+    ]
+  },
+  "quality": {
+    "description": "Overall video quality",
+    "options": [
+      "low",
+      "medium",
+      "high"
+    ]
+  },
+  "horizontal_position": {
+    "description": "Position video frame horizontally when crop=true",
+    "options": [
+      "left",
+      "center_left",
+      "center",
+      "center_right",
+      "right"
+    ]
+  },
+  "vertical_position": {
+    "description": "Position video frame vertically when crop=true",
+    "options": [
+      "top",
+      "middle_top",
+      "middle",
+      "middle_bottom",
+      "bottom"
+    ]
+  },
+  "language": {
+    "description": "The language abbreviation for the subtitles",
+    "options": [
+      "en",
+      "bg",
+      "ca",
+      "cs",
+      "da",
+      "nl",
+      "et",
+      "fr",
+      "fi",
+      "de",
+      "el",
+      "hi",
+      "hu",
+      "id",
+      "it",
+      "ja",
+      "ko",
+      "lv",
+      "lt",
+      "ms",
+      "no",
+      "pl",
+      "pt",
+      "ro",
+      "ru",
+      "sk",
+      "es",
+      "sv",
+      "th",
+      "tr",
+      "uk",
+      "vi",
+      "zh"
+    ]
+  },
+  "position": {
+    "description": "The position of the subtitles in the output video",
+    "options": [
+      "top-left",
+      "top-center",
+      "top-right",
+      "center-left",
+      "center-center",
+      "center-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+      "mid-bottom-center",
+      "mid-top-center"
+    ]
+  },
+  "fontFamily": {
+    "description": "The font family for the subtitles",
+    "options": [
+      "Arial",
+      "Verdana",
+      "Helvetica",
+      "Times New Roman",
+      "Courier New",
+      "Roboto",
+      "Open Sans"
+    ]
+  },
+  "booleanParams": {
+    "description": "Boolean parameters that can be set to true or false",
+    "options": [
+      "crop",
+      "subtitles",
+      "allCaps",
+      "advancedMode"
+    ]
+  },
+  "numericParams": {
+    "description": "Parameters that accept numeric values",
+    "options": [
+      "output_width",
+      "output_height",
+      "zoom",
+      "smoothness",
+      "duration",
+      "framerate",
+      "fontSize",
+      "x",
+      "y",
+      "width",
+      "height",
+      "font-size",
+      "start",
+      "volume"
+    ]
+  },
+  "stringParams": {
+    "description": "Parameters that accept string values",
+    "options": [
+      "recordId",
+      "jobId",
+      "audio",
+      "video",
+      "videos",
+      "webhookUrl",
+      "filename",
+      "padding_color",
+      "jsonTemplate",
+      "src",
+      "text",
+      "color",
+      "font-family",
+      "voice",
+      "language",
+      "elementsJson"
+    ]
+  },
+  "elementTypes": {
+    "description": "Types of elements that can be added to a video",
+    "options": [
+      "image",
+      "video",
+      "text",
+      "audio",
+      "voice",
+      "subtitles"
+    ]
+  }
+}
