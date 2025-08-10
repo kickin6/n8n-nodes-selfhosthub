@@ -1,0 +1,19 @@
+{
+  "fps": 25,
+  "width": 1024,
+  "height": 768,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "image",
+          "src": "https://example.com/image.jpg",
+          "start": 0,
+          "duration": 5,
+          "position": "center-center"
+        }
+      ]
+    }
+  ]
+}

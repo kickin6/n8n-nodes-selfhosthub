@@ -37,7 +37,7 @@ Each scene can have the following properties:
 ```json
 {
   "background-color": "string", // Background color (e.g., "#000000")
-  "duration": number,          // Duration in seconds
+  "duration": number,          // Duration in seconds (-1 for auto-calculation)
   "transition": {              // Optional transition effect
     "style": "string",         // Transition style (e.g., "fade", "wiperight")
     "duration": number         // Transition duration in seconds
@@ -55,7 +55,7 @@ Each element in a scene must have a `type` property defining its type. Elements 
 {
   "type": "element-type",
   "start": number,           // Start time in seconds
-  "duration": number,        // Duration in seconds
+  "duration": number,        // Duration in seconds (see Duration Values section)
   "extra-time": number,      // Additional time after duration
   "position": "string",      // Position on screen (see positioning section)
   "x": number,               // X-coordinate (used when position is "custom")
@@ -64,7 +64,46 @@ Each element in a scene must have a `type` property defining its type. Elements 
 }
 ```
 
-### Element Positioning
+## Duration Values
+
+The JSON2Video API supports several duration value types:
+
+### Positive Numbers
+Explicit duration in seconds:
+```json
+{
+  "duration": 5.5    // Element lasts exactly 5.5 seconds
+}
+```
+
+### Special Duration Values
+
+- **`-1`**: Automatically set duration based on the intrinsic length of the asset file
+  ```json
+  {
+    "type": "video",
+    "src": "https://example.com/video.mp4", 
+    "duration": -1    // Uses the actual video file duration
+  }
+  ```
+
+- **`-2`**: Set duration to match the parent container (scene or movie)
+  ```json
+  {
+    "type": "audio",
+    "src": "https://example.com/audio.mp3",
+    "duration": -2    // Matches the scene/movie duration
+  }
+  ```
+
+### Duration Best Practices
+
+1. **Use `-1` for media files**: When you want to use the full duration of video/audio files
+2. **Use `-2` for background elements**: When you want audio/video to match the container duration
+3. **Use positive values for control**: When you need exact timing
+4. **Omit duration for auto-detection**: Let the API determine the best duration
+
+## Element Positioning
 
 The `position` property determines how an element is positioned:
 
@@ -75,10 +114,14 @@ The `position` property determines how an element is positioned:
 Valid position values:
 
 - `top-left`: Positions the element at the top-left corner
+- `top-center`: Positions the element at the top-center
 - `top-right`: Positions the element at the top-right corner
-- `bottom-right`: Positions the element at the bottom-right corner
-- `bottom-left`: Positions the element at the bottom-left corner
+- `center-left`: Positions the element at the center-left
 - `center-center`: Centers the element both horizontally and vertically
+- `center-right`: Positions the element at the center-right
+- `bottom-left`: Positions the element at the bottom-left corner
+- `bottom-center`: Positions the element at the bottom-center
+- `bottom-right`: Positions the element at the bottom-right corner
 - `custom`: Uses the exact coordinates specified in `x` and `y` properties
 
 > When using a named position value (anything other than "custom"), the `x` and `y` coordinates are ignored, and the element is automatically positioned according to the named position. The default is "custom" if not specified.
@@ -91,9 +134,9 @@ Valid position values:
   "src": "https://example.com/image.jpg",
   "start": 0,
   "duration": 5,
-  "position": "center-center", // Or "custom" to use x/y coordinates
-  "x": 0, // Used when position is "custom"
-  "y": 0, // Used when position is "custom"
+  "position": "center-center",
+  "x": 0,
+  "y": 0,
   "scale": {
     "width": 0,
     "height": 0
@@ -114,13 +157,13 @@ Valid position values:
   "type": "video",
   "src": "https://example.com/video.mp4",
   "start": 0,
-  "duration": -2, // -2 means use entire video duration
-  "position": "center-center", // Or "custom" to use x/y coordinates
-  "x": 0, // Used when position is "custom"
-  "y": 0, // Used when position is "custom"
+  "duration": -1,              // Use video's actual duration
+  "position": "center-center",
+  "x": 0,
+  "y": 0,
   "volume": 1.0,
   "muted": false,
-  "loop": false,
+  "loop": -1,                  // -1 = infinite loop, positive number = loop count
   "crop": false,
   "fit": "cover",
   "zoom": 0
@@ -135,16 +178,16 @@ Valid position values:
   "text": "Your text content",
   "start": 0,
   "duration": 5,
-  "position": "center-center", // Or "custom" to use x/y coordinates
-  "x": 960, // Used when position is "custom"
-  "y": 540, // Used when position is "custom"
+  "position": "center-center",
+  "x": 960,
+  "y": 540,
   "font-family": "Arial",
   "font-size": 32,
   "color": "white",
   "background-color": "transparent",
   "text-align": "center",
   "opacity": 1.0,
-  "style": "001" // Predefined animation style
+  "style": "001"              // Predefined animation style
 }
 ```
 
@@ -155,7 +198,7 @@ Valid position values:
   "type": "audio",
   "src": "https://example.com/audio.mp3",
   "start": 0,
-  "duration": -2, // -2 means use entire audio duration
+  "duration": -1,              // Use audio's actual duration
   "volume": 0.8,
   "loop": false,
   "fade-in": 1.0,
@@ -194,6 +237,46 @@ Valid position values:
 }
 ```
 
+## Video Merging Structure
+
+When merging videos, each video should be placed in a separate scene:
+
+```json
+{
+  "fps": 30,
+  "width": 1024,
+  "height": 768,
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video1.mp4",
+          "start": 0,
+          "duration": -1
+        }
+      ]
+    },
+    {
+      "transition": {
+        "style": "fade",
+        "duration": 1
+      },
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video2.mp4", 
+          "start": 0,
+          "duration": -1
+        }
+      ]
+    }
+  ]
+}
+```
+
+> **Important**: Do not use a `videos` array at the movie level - this is not supported by the API.
+
 ## Override Parameters
 
 In Advanced Mode, several parameters can override values in the JSON template:
@@ -228,5 +311,25 @@ This allows you to maintain a complex JSON template with detailed scene configur
 3. Use override parameters for values that might change frequently between runs
 4. For element positioning, use named positions like "center-center" instead of coordinates when possible
 5. If precise positioning is needed, set `position: "custom"` and specify x/y coordinates
-6. Avoid using properties like `padding_color` or `horizontal_position` at the top level of the movie object
-7. When referencing data from previous nodes, use expressions in the JSON template
+6. Use appropriate duration values:
+   - `-1` for using media file's actual duration
+   - `-2` for matching container duration  
+   - Positive numbers for explicit control
+7. Avoid using properties like `padding_color` or `horizontal_position` at the top level of the movie object
+8. When referencing data from previous nodes, use expressions in the JSON template
+9. For video merging, create separate scenes rather than using a `videos` array
+10. Test with publicly accessible media URLs to avoid duration detection issues
+
+## Troubleshooting Duration Issues
+
+If you encounter "Movie duration cannot be zero" errors:
+
+1. **Use explicit durations**: Instead of `-1` or `-2`, use positive values (e.g., `"duration": 10`)
+2. **Check media accessibility**: Ensure video/audio URLs are publicly accessible
+3. **Verify file formats**: Use standard formats (MP4, H.264 for video; MP3, WAV for audio)
+4. **Test different hosting**: Some CDNs work better with JSON2Video's duration detection
+5. **Omit duration property**: Let the API determine duration automatically
+
+## API Documentation
+
+For the complete and most up-to-date API reference, see the [official JSON2Video API documentation](https://json2video.com/docs/v2/).

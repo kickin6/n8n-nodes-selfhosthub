@@ -2,7 +2,7 @@
   "node": "n8n-nodes-base.createJ2vMovie",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
-  "categories": ["Media"],
+  "categories": ["Video Generation"],
   "resources": {
     "primaryDocumentation": [
       {
@@ -11,7 +11,7 @@
     ]
   },
   "subcategories": {
-    "Media": ["Video"]
+    "Self-Host Hub": ["Video"]
   },
-  "alias": ["Video", "Movie", "J2V"]
+  "alias": ["Video", "Movie", "J2V", "JSON2Video"]
 }

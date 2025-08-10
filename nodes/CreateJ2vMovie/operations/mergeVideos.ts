@@ -1,39 +1,21 @@
 import { INodeProperties } from 'n8n-workflow';
+import { completeElementFields } from './shared/elements';
+import {
+        advancedModeParameters,
+        jsonTemplateParameters,
+        createAdvancedModeOverrides,
+        createBasicModeParams
+} from './shared/commonParams';
 
 /**
- * Basic mode parameters for the mergeVideos operation, organized alphabetically
+ * Basic mode parameters for the mergeVideos operation
+ * Now using shared definitions to eliminate duplication
  */
 export const mergeVideosParameters: INodeProperties[] = [
-        // Keep recordId and webhookUrl at the top
-        {
-                displayName: 'Record ID',
-                name: 'recordId',
-                type: 'string',
-                required: true,
-                default: '=',
-                description: 'The Record ID to associate with this video',
-                displayOptions: {
-                        show: {
-                                operation: ['mergeVideos'],
-                                advancedModeMergeVideos: [false],
-                        },
-                },
-        },
-        {
-                displayName: 'Webhook URL',
-                name: 'webhookUrl',
-                type: 'string',
-                default: '=',
-                required: true,
-                description: 'The webhook URL for status updates',
-                displayOptions: {
-                        show: {
-                                operation: ['mergeVideos'],
-                                advancedModeMergeVideos: [false],
-                        },
-                },
-        },
-        // Video Elements
+        // Basic mode common parameters
+        ...createBasicModeParams('mergeVideos', 'advancedModeMergeVideos'),
+
+        // Video Elements Collection - specific to merging multiple videos
         {
                 displayName: 'Video Elements',
                 name: 'videoElements',
@@ -58,7 +40,7 @@ export const mergeVideosParameters: INodeProperties[] = [
                                                 displayName: 'Source URL',
                                                 name: 'src',
                                                 type: 'string',
-                                                default: '=',
+                                                default: '',
                                                 description: 'URL of the video file',
                                                 required: true,
                                         },
@@ -100,7 +82,8 @@ export const mergeVideosParameters: INodeProperties[] = [
                 ],
                 description: 'Add videos to merge in sequence',
         },
-        // Transition settings
+
+        // Transition Settings - specific to merging videos
         {
                 displayName: 'Transition',
                 name: 'transition',
@@ -137,7 +120,8 @@ export const mergeVideosParameters: INodeProperties[] = [
                         },
                 },
         },
-        // Output Settings
+
+        // Output Settings Configuration
         {
                 displayName: 'Output Settings',
                 name: 'outputSettings',
@@ -219,38 +203,21 @@ export const mergeVideosParameters: INodeProperties[] = [
 
 /**
  * Advanced mode parameter for the mergeVideos operation
+ * Now using shared definition
  */
-export const mergeVideosAdvancedModeParameter: INodeProperties = {
-        displayName: 'Advanced Mode',
-        name: 'advancedModeMergeVideos',
-        type: 'boolean',
-        default: true,
-        description: 'Whether to use advanced mode with direct JSON template input',
-        displayOptions: {
-                show: {
-                        operation: ['mergeVideos'],
-                },
-        },
-};
+export const mergeVideosAdvancedModeParameter: INodeProperties = advancedModeParameters.mergeVideos;
 
 /**
  * JSON Template parameter for advanced mode
+ * Now using shared definition
  */
-export const mergeVideosJsonTemplateParameter: INodeProperties = {
-        displayName: 'JSON Template',
-        name: 'jsonTemplateMergeVideos',
-        type: 'json',
-        default: '=',
-        description: '<pre>Schema:\n{\n  "videos": [\n    "https://example.com/video1.mp4",\n    "https://example.com/video2.mp4"\n  ],\n  "fps": 25,\n  "width": 1024,\n  "height": 768\n}</pre>',
-        displayOptions: {
-                show: {
-                        operation: ['mergeVideos'],
-                        advancedModeMergeVideos: [true],
-                },
-        },
-};
+export const mergeVideosJsonTemplateParameter: INodeProperties = jsonTemplateParameters.mergeVideos;
 
 /**
- * Parameters for advanced mode
+ * Advanced mode override parameters for mergeVideos operation
+ * Now using shared definitions with proper display options
  */
-export const mergeVideosAdvancedParameters: INodeProperties[] = [];
+export const mergeVideosAdvancedParameters: INodeProperties[] = createAdvancedModeOverrides(
+        'mergeVideos',
+        'advancedModeMergeVideos'
+);
