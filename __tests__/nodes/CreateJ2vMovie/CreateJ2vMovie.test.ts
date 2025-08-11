@@ -198,10 +198,10 @@ describe('CreateJ2vMovie', () => {
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       console.log('Actual mergeVideoAudio request:', JSON.stringify(requestCall, null, 2));
 
-      // Per JSON2Video API docs, parameters are passed as query params
+      // Per JSON2Video API docs, all operations use the same endpoint with query params
       expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\/merge-audio/),
+          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\?id=test-record-123&webhook=/),
           method: 'POST',
           headers: expect.objectContaining({
             'x-api-key': 'test-api-key'
@@ -243,10 +243,10 @@ describe('CreateJ2vMovie', () => {
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       console.log('Actual mergeVideos request:', JSON.stringify(requestCall, null, 2));
 
-      // Per JSON2Video API docs, parameters are passed as query params
+      // Per JSON2Video API docs, all operations use the same endpoint with query params
       expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\/merge/),
+          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\?id=test-record-123&webhook=/),
           method: 'POST',
           headers: expect.objectContaining({
             'x-api-key': 'test-api-key'
@@ -881,7 +881,7 @@ describe('CreateJ2vMovie', () => {
 
       expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\/merge-audio/),
+          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\?id=test-record-123&webhook=/),
           method: 'POST',
           headers: expect.objectContaining({
             'x-api-key': 'test-api-key'
@@ -930,7 +930,7 @@ describe('CreateJ2vMovie', () => {
 
       expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\/merge/),
+          url: expect.stringMatching(/https:\/\/api\.json2video\.com\/v2\/movies\?id=test-record-123&webhook=/),
           method: 'POST',
           headers: expect.objectContaining({
             'x-api-key': 'test-api-key'

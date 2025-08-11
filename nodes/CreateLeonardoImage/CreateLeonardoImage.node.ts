@@ -19,7 +19,7 @@ export class CreateLeonardoImage implements INodeType {
     displayName: 'Self-Host Hub (Leonardo)',
     name: 'createLeonardoImage',
     icon: 'file:createLeonardoImage.png',
-    group: [],
+    group: ['selfhosthub'],
     version: 1,
     subtitle: '={{$parameter["operation"]}}',
     description:
