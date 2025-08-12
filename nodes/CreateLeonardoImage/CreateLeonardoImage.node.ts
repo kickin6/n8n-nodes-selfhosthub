@@ -1503,8 +1503,6 @@ export class CreateLeonardoImage implements INodeType {
     const credentials = await this.getCredentials('createLeonardoImageCredentials');
     const apiKey = credentials.apiKey as string;
     const apiUrl = 'https://cloud.leonardo.ai/api/rest/v1';
-    // If you're having trouble with the API, you might try the alternative endpoints:
-    // const apiUrl = "https://api.leonardo.ai/v1"
 
     for (let i = 0; i < items.length; i++) {
       try {
@@ -1514,13 +1512,7 @@ export class CreateLeonardoImage implements INodeType {
           throw new Error(`Unsupported operation: ${operation}`);
         }
 
-        // console.log('Operation: createLeonardoImage');
-
-        // Build request body using the new utility function - this handles all parameters
         const body = buildRequestBody.call(this, i);
-
-        // console.log('Request body:', body);
-
         const response = await this.helpers.request({
           method: 'POST',
           url: `${apiUrl}/generations`,
@@ -1531,8 +1523,6 @@ export class CreateLeonardoImage implements INodeType {
           },
         });
 
-        // console.log('Response from Leonardo AI:', response);
-
         const parsedResponse = typeof response === 'string' ? JSON.parse(response) : response;
 
         if (!parsedResponse.sdGenerationJob || !parsedResponse.sdGenerationJob.generationId) {
@@ -1541,25 +1531,21 @@ export class CreateLeonardoImage implements INodeType {
 
         const generationId = parsedResponse.sdGenerationJob.generationId;
 
-        // console.log('Generation ID:', generationId);
-
         // Polling for image generation completion
         let generationStatus;
         let attempts = 0;
         const timeoutSeconds = this.getNodeParameter('generationTimeout', i, 30) as number;
-        const maxAttempts = Math.ceil(timeoutSeconds / 2); // Poll every 2 seconds
-        const pollWaitTime = 2000; // 2 seconds
+        const maxAttempts = Math.ceil(timeoutSeconds / 2);
+        const pollWaitTime = 2000;
 
         let finalResponse;
-        // Initial wait before first status check
         await new Promise(resolve =>
-          setTimeout(resolve, pollWaitTime)  // Use actual wait time, not 1ms
+          setTimeout(resolve, pollWaitTime)
         );
 
         do {
-          // Wait between polling attempts
           await new Promise(resolve =>
-            setTimeout(resolve, pollWaitTime)  // Use actual wait time, not 1ms
+            setTimeout(resolve, pollWaitTime)
           );
 
           const statusResponse = await this.helpers.request({
@@ -1572,25 +1558,18 @@ export class CreateLeonardoImage implements INodeType {
           finalResponse =
             typeof statusResponse === 'string' ? JSON.parse(statusResponse) : statusResponse;
 
-          // Log the status response to debug
-          // console.log('Status response from Leonardo AI:', finalResponse);
-
           if (!finalResponse.generations_by_pk || !finalResponse.generations_by_pk.status) {
             throw new Error("Status response does not contain the expected 'status' field.");
           }
 
           generationStatus = finalResponse.generations_by_pk.status;
-          // console.log('Generation Status:', generationStatus);
+
           attempts++;
 
           if (generationStatus === 'COMPLETE') {
-            // console.log('Image generation completed.');
-
-            // Process the response to create a more user-friendly output format
             const generationData = finalResponse.generations_by_pk;
             const generatedImages = generationData.generated_images || [];
 
-            // Format the output to make the important data easily accessible
             const formattedOutput = {
               success: true,  // Ensure this is explicitly set to true for test compatibility
               generationId: generationData.id,
@@ -1602,12 +1581,11 @@ export class CreateLeonardoImage implements INodeType {
                 id: img.id,
                 url: img.url,
                 nsfw: img.nsfw || false,
-                width: generationData.imageWidth || generationData.width || 1024,  // Use imageWidth from the response
-                height: generationData.imageHeight || generationData.height || 576, // Use imageHeight from the response
+                width: generationData.imageWidth || generationData.width || 1024,
+                height: generationData.imageHeight || generationData.height || 576,
               })),
-              // Also add an imageUrl field for simpler access
+
               imageUrl: generatedImages.length > 0 ? generatedImages[0].url : null,
-              // Include the full response for advanced users
               rawResponse: JSON.parse(JSON.stringify(finalResponse)),
             };
 
