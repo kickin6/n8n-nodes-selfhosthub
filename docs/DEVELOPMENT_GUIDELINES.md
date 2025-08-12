@@ -42,8 +42,11 @@ This document outlines the standards and best practices for developing and maint
   ```
   nodes/
     ├── CreateLeonardoImage/
-    │   ├── CreateLeonardoImage.node.ts
-    │   └── models.ts
+    |   ├── CreateLeonardoImage.node.json
+    |   ├── CreateLeonardoImage.node.ts
+    |   ├── createLeonardoImage.png
+    |   ├── models.ts
+    |   └── parameterUtils.ts
     ├── CreateJ2vMovie/
     │   ├── CreateJ2vMovie.node.ts
     │   └── operations/
@@ -57,7 +60,8 @@ This document outlines the standards and best practices for developing and maint
   credentials/
     ├── CreateLeonardoImageCredentials.credentials.ts
     ├── CreateJ2vMovieCredentials.credentials.ts
-    ├── OtherServiceCredentials.credentials.ts
+    ├── LeonardoAiApi.credentials.ts
+    └── OtherServiceCredentials.credentials.ts
   ```
 
 - Update `index.ts` to export all nodes and credentials
@@ -71,6 +75,7 @@ This document outlines the standards and best practices for developing and maint
   export const credentials = [
     new CreateLeonardoImageCredentials(),
     new CreateJ2vMovieCredentials(),
+    new LeonardoAiApi(),
     new OtherServiceCredentials(),
   ];
   ```
@@ -145,6 +150,24 @@ This document outlines the standards and best practices for developing and maint
   - Credential tests: `__tests__/credentials/`
   - Utility tests: `__tests__/src/`
   - Manual tests: `__tests__/manual/`
+
+- Test structure for comprehensive coverage:
+  ```
+  __tests__/
+    ├── credentials/
+    │   ├── CreateLeonardoImageCredentials.credentials.test.ts
+    │   └── LeonardoAiApi.credentials.test.ts
+    ├── nodes/
+    │   └── CreateLeonardoImage/
+    │       ├── CreateLeonardoImage.advanced.test.ts
+    │       ├── CreateLeonardoImage.basic.test.ts
+    │       ├── CreateLeonardoImage.parameters.test.ts
+    │       ├── CreateLeonardoImage.unit.test.ts
+    │       └── CreateLeonardoImage.utils.test.ts
+    └── shared/
+        ├── helpers.ts
+        └── leonardo-helpers.ts
+  ```
 
 - Ensure test files are excluded from production builds:
   ```json

@@ -2,20 +2,20 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.ts'],
-  testTimeout: 60000,
+  testTimeout: 10000, // Reduced from 60000 since we're using fake timers
   collectCoverage: true,
   coverageReporters: ['text', 'lcov', 'html'],
   coverageDirectory: 'coverage',
-  // Disable fake timers - we're using 1ms real timeouts instead for better compatibility
+  
+  // Configure fake timers properly
   fakeTimers: {
-    enableGlobally: false,
+    enableGlobally: false, // Don't enable globally, let tests control it
+    doNotFake: ['nextTick'], // Don't fake nextTick to avoid issues with promises
   },
+  
   // Set test environment variables
-  globals: {
-    'process.env': {
-      NODE_ENV: 'test',
-    },
-  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'], // Optional setup file
+  
   collectCoverageFrom: [
     'credentials/**/*.ts',
     'nodes/**/*.ts',
@@ -23,6 +23,7 @@ module.exports = {
     '!**/dist/**',
     '!**/*.d.ts',
   ],
+  
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -31,6 +32,7 @@ module.exports = {
       },
     ],
   },
+  
   moduleFileExtensions: ['ts', 'js', 'json'],
   testPathIgnorePatterns: [
     '/node_modules/',

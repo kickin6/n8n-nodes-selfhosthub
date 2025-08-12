@@ -7,10 +7,8 @@ import {
   NodeConnectionType,
 } from 'n8n-workflow';
 
-type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'PATCH';
-
 /**
- * Mock for the execute function
+ * Mock for the execute function - generic n8n utilities only
  */
 export function createMockExecuteFunction(
   nodeParameters: INodeParameters,
@@ -37,59 +35,12 @@ export function createMockExecuteFunction(
       return workflow.input || [{ json: {} }];
     },
     helpers: {
-      request: jest.fn().mockImplementation(async (options: any) => {
-        // Mock API responses based on the URL and method
-        const { method, url, headers, body } = options;
-
-        // Mock generation endpoint
-        if (url.includes('/generations') && method === 'POST') {
-          return {
-            sdGenerationJob: {
-              generationId: 'mock-generation-id',
-              status: 'PENDING',
-            },
-          };
-        }
-
-        // Mock generation status endpoint
-        if (url.includes('/generations/mock-generation-id') && method === 'GET') {
-          return {
-            generations_by_pk: {
-              id: 'mock-generation-id',
-              status: 'COMPLETE',
-              modelId: 'some-model-id',
-              prompt: 'test prompt',
-              width: 512,
-              height: 512,
-              generated_images: [
-                {
-                  id: 'image-1',
-                  url: 'https://example.com/image1.jpg',
-                  nsfw: false,
-                  likeCount: 0,
-                },
-                {
-                  id: 'image-2',
-                  url: 'https://example.com/image2.jpg',
-                  nsfw: false,
-                  likeCount: 0,
-                },
-              ],
-            },
-          };
-        }
-
-        // If no matching mock found, return a generic error
-        return { error: 'Unexpected request in test mock' };
+      request: jest.fn().mockResolvedValue({
+        error: 'Generic mock - override with specific node helpers',
       }),
     },
     getCredentials: jest.fn().mockImplementation(async (type: string) => {
-      if (type === 'leonardoAiApi') {
-        return {
-          apiKey: 'mock-api-key',
-        };
-      }
-      throw new Error(`Credentials for "${type}" not found`);
+      throw new Error(`Credentials for "${type}" not found - override with specific node helpers`);
     }),
     continueOnFail: () => false,
   };
