@@ -27,7 +27,6 @@ export function processParameter(
   // 3. The behavior matches expected functionality (parameters are skipped when undefined/null)
   // Verification is done in the 'Test Uncovered Lines' workflow
   if (value === undefined || value === null || value === '' || value === 'NO_SELECTION') {
-    console.log(`DEBUG: Skipping parameter ${paramKey}, value is ${value === undefined ? 'undefined' : value === null ? 'null' : value}`);
     return;
   }
 
@@ -131,7 +130,6 @@ export function buildRequestBody(
   this: IExecuteFunctions,
   itemIndex: number
 ): IDataObject {
-  // console.log('Building request body with parameter utilities');
   const requestBody: IDataObject = {};
 
   // Get all node parameters
@@ -249,7 +247,6 @@ export function buildRequestBody(
         // The actual functionality is verified through manual testing in 'Basic Parameter Test'
         condition: /* istanbul ignore next */ (value, allParams) => {
           const result = allParams.unzoom === 'true' || allParams.unzoom === true;
-          console.log(`DEBUG: unzoomAmount condition check: allParams.unzoom=${allParams.unzoom}, result=${result}`);
           return result;
         },
         transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value
@@ -301,14 +298,11 @@ export function buildRequestBody(
     // 4. This code is a fix for a previous bug where the parameter wasn't being included
     // The functionality is verified via manual testing in 'Parameter Passing Test' workflow
     if (params.canvasRequest === 'true' || params.canvasRequest === true) {
-      console.log(`DEBUG: canvasRequest is true, checking for canvasRequestType`);
       // Also handle canvasRequestType if provided - use params object for consistency
       const canvasRequestType = params.canvasRequestType as string ||
         this.getNodeParameter('canvasRequestType', itemIndex, '') as string;
-      console.log(`DEBUG: canvasRequestType value: ${canvasRequestType}`);
       if (canvasRequestType && canvasRequestType !== '') {
         requestBody.canvas_request_type = canvasRequestType;
-        console.log(`DEBUG: Added canvas_request_type to request body: ${canvasRequestType}`);
       }
     }
 
@@ -423,6 +417,5 @@ export function buildRequestBody(
     }
   }
 
-  // console.log('FINAL REQUEST BODY:', JSON.stringify(requestBody, null, 2));
   return requestBody;
 }

@@ -191,16 +191,6 @@ We use `istanbul ignore` directives with detailed comments to explain why specif
 
 For future reference, we've added istanbul ignore directives to the codebase. The sections are functionally tested through manual test workflows and console logging but could benefit from more comprehensive test coverage in the future if better testing approaches are developed.
 
-## Debug Logging
-
-The codebase maintains debug `console.log` statements that help verify the correct execution path during development. These logs provide valuable insights for future developers and help confirm that conditionally-executed code is working as expected.
-
-Key debug points include:
-- Parameter loading verification
-- Style parameter processing
-- Request body construction
-- Model compatibility checks
-
 ## API Response Considerations
 
 **Important**: Leonardo's API has inconsistent response behavior:

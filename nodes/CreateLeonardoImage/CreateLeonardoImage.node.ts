@@ -65,7 +65,7 @@ export class CreateLeonardoImage implements INodeType {
         noDataExpression: true,
       },
       {
-        displayName: 'Prompt',
+        displayName: 'Prompts',
         name: 'prompt',
         type: 'string',
         required: true,
@@ -1589,8 +1589,6 @@ export class CreateLeonardoImage implements INodeType {
               rawResponse: JSON.parse(JSON.stringify(finalResponse)),
             };
 
-            // console.log('Full images array:', JSON.stringify(formattedOutput.images, null, 2));
-            // console.log('Full rawResponse:', JSON.stringify(formattedOutput.rawResponse, null, 2));
             returnData.push({
               json: formattedOutput,
             });
@@ -1613,7 +1611,6 @@ export class CreateLeonardoImage implements INodeType {
       }
     }
 
-    // console.log('Process completed.', returnData);
     return [returnData];
   }
 }
