@@ -255,7 +255,14 @@ describe('CreateLeonardoImage Node', () => {
         })
       );
 
-    const result = await createLeonardoImage.execute.call(mockExecute);
+    jest.useFakeTimers();
+
+    const executePromise = createLeonardoImage.execute.call(mockExecute);
+
+    await jest.advanceTimersByTimeAsync(4000);
+    const result = await executePromise;
+
+    jest.useRealTimers();
 
     expect(result[0][0].json).toHaveProperty('success', true);
   });
@@ -285,10 +292,18 @@ describe('CreateLeonardoImage Node', () => {
         generations_by_pk: {
           id: 'test-id',
           status: 'COMPLETE',
+          // No generated_images property
         },
       });
 
-    const result = await createLeonardoImage.execute.call(mockExecute);
+    jest.useFakeTimers();
+
+    const executePromise = createLeonardoImage.execute.call(mockExecute);
+
+    await jest.advanceTimersByTimeAsync(4000);
+    const result = await executePromise;
+
+    jest.useRealTimers();
 
     expect(result[0][0].json.images).toEqual([]);
     expect(result[0][0].json.imageCount).toBe(0);
@@ -323,7 +338,14 @@ describe('CreateLeonardoImage Node', () => {
         },
       });
 
-    const result = await createLeonardoImage.execute.call(mockExecute);
+    jest.useFakeTimers();
+
+    const executePromise = createLeonardoImage.execute.call(mockExecute);
+
+    await jest.advanceTimersByTimeAsync(4000);
+    const result = await executePromise;
+
+    jest.useRealTimers();
 
     expect(result[0][0].json).toHaveProperty('imageUrl', null);
   });
