@@ -65,7 +65,7 @@ export class CreateLeonardoImage implements INodeType {
         noDataExpression: true,
       },
       {
-        displayName: 'Prompt',
+        displayName: 'Prompts',
         name: 'prompt',
         type: 'string',
         required: true,
@@ -1058,34 +1058,201 @@ export class CreateLeonardoImage implements INodeType {
         },
       },
       {
-        displayName: 'Preset Style',
+        displayName: 'Preset Style (SDXL Models Only)',
         name: 'presetStyle',
         type: 'options',
-        default: 'NO_SELECTION',
+        default: '',
         options: [
           {
-            name: 'No Selection',
-            value: 'NO_SELECTION',
+            name: 'None',
+            value: '',
           },
           {
-            name: 'PhotoReal (enabled)',
-            value: 'PHOTOREAL',
+            name: 'Bokeh',
+            value: 'BOKEH',
           },
           {
             name: 'Cinematic',
             value: 'CINEMATIC',
           },
           {
+            name: 'Cinematic (Closeup)',
+            value: 'CINEMATIC_CLOSEUP',
+          },
+          {
             name: 'Creative',
             value: 'CREATIVE',
           },
+          {
+            name: 'Fashion',
+            value: 'FASHION',
+          },
+          {
+            name: 'Film',
+            value: 'FILM',
+          },
+          {
+            name: 'Food',
+            value: 'FOOD',
+          },
+          {
+            name: 'HDR',
+            value: 'HDR',
+          },
+          {
+            name: 'Long Exposure',
+            value: 'LONG_EXPOSURE',
+          },
+          {
+            name: 'Macro',
+            value: 'MACRO',
+          },
         ],
-        description:
-          'NOT CURRENTLY SUPPORTED BY API. Style preset to apply to the generated images.',
+        description: 'Style preset for SDXL models only. Not compatible with Flux, Lucid Realism, or Phoenix models.',
         displayOptions: {
           show: {
             operation: ['createLeonardoImage'],
             advancedOptions: [true],
+            modelSelectionMethod: ['list'],
+            // Show only for SDXL models
+            modelId: [
+              '16e7060a-803e-4df3-97ee-edcfa5dc9cc8', // SDXL 1.0
+              '1e60896f-3c26-4296-8ecc-53e2afecc132', // Leonardo Diffusion XL
+              '2067ae52-33fd-4a82-bb92-c2c55e7d2786', // AlbedoBase XL
+              'b63f7119-31dc-4540-969b-2a9df997e173', // SDXL 0.9
+              'aa77f04e-3eec-4034-9c07-d0f619684628', // Leonardo Kino XL
+              '5c232a9e-9061-4777-980a-ddc8e65647c6', // Leonardo Vision XL
+              'e71a1c2f-4f80-4800-934f-2c68979d8cc8', // Leonardo Anime XL
+              'b24e16ff-06e3-43eb-8d33-4416c2d75876', // Leonardo Lightning XL
+            ],
+          },
+        },
+      },
+      {
+        displayName: 'Style UUID (Flux/Lucid Realism/Phoenix Only)',
+        name: 'styleUUID',
+        type: 'options',
+        default: '',
+        options: [
+          {
+            name: 'None',
+            value: '',
+          },
+          {
+            name: '3D Render',
+            value: 'debdf72a-91a4-467b-bf61-cc02bdeb69c6',
+          },
+          {
+            name: 'Bokeh',
+            value: '9fdc5e8c-4d13-49b4-9ce6-5a74cbb19177',
+          },
+          {
+            name: 'Cinematic',
+            value: 'a5632c7c-ddbb-4e2f-ba34-8456ab3ac436',
+          },
+          {
+            name: 'Cinematic Concept',
+            value: '33abbb99-03b9-4dd7-9761-ee98650b2c88',
+          },
+          {
+            name: 'Creative',
+            value: '6fedbf1f-4a17-45ec-84fb-92fe524a29ef',
+          },
+          {
+            name: 'Dynamic',
+            value: '111dc692-d470-4eec-b791-3475abac4c46',
+          },
+          {
+            name: 'Fashion',
+            value: '594c4a08-a522-4e0e-b7ff-e4dac4b6b622',
+          },
+          {
+            name: 'Graphic Design Pop Art',
+            value: '2e74ec31-f3a4-4825-b08b-2894f6d13941',
+          },
+          {
+            name: 'Graphic Design Vector',
+            value: '1fbb6a68-9319-44d2-8d56-2957ca0ece6a',
+          },
+          {
+            name: 'HDR',
+            value: '97c20e5c-1af6-4d42-b227-54d03d8f0727',
+          },
+          {
+            name: 'Illustration',
+            value: '645e4195-f63d-4715-a3f2-3fb1e6eb8c70',
+          },
+          {
+            name: 'Macro',
+            value: '30c1d34f-e3a9-479a-b56f-c018bbc9c02a',
+          },
+          {
+            name: 'Minimalist',
+            value: 'cadc8cd6-7838-4c99-b645-df76be8ba8d8',
+          },
+          {
+            name: 'Moody',
+            value: '621e1c9a-6319-4bee-a12d-ae40659162fa',
+          },
+          {
+            name: 'None',
+            value: '556c1ee5-ec38-42e8-955a-1e82dad0ffa1',
+          },
+          {
+            name: 'Portrait',
+            value: '8e2bc543-6ee2-45f9-bcd9-594b6ce84dcd',
+          },
+          {
+            name: 'Pro B&W Photography',
+            value: '22a9a7d2-2166-4d86-80ff-22e2643adbcf',
+          },
+          {
+            name: 'Pro Color Photography',
+            value: '7c3f932b-a572-47cb-9b9b-f20211e63b5b',
+          },
+          {
+            name: 'Pro Film Photography',
+            value: '581ba6d6-5aac-4492-bebe-54c424a0d46e',
+          },
+          {
+            name: 'Portrait Fashion',
+            value: '0d34f8e1-46d4-428f-8ddd-4b11811fa7c9',
+          },
+          {
+            name: 'Ray Traced',
+            value: 'b504f83c-3326-4947-82e1-7fe9e839ec0f',
+          },
+          {
+            name: 'Sketch (B&W)',
+            value: 'be8c6b58-739c-4d44-b9c1-b032ed308b61',
+          },
+          {
+            name: 'Sketch (Color)',
+            value: '093accc3-7633-4ffd-82da-d34000dfc0d6',
+          },
+          {
+            name: 'Stock Photo',
+            value: '5bdc3f2a-1be6-4d1c-8e77-992a30824a2c',
+          },
+          {
+            name: 'Vibrant',
+            value: 'dee282d3-891f-4f73-ba02-7f8131e5541b',
+          },
+        ],
+        description: 'Style UUID for Flux, Lucid Realism, and Phoenix models only. Not compatible with SDXL models.',
+        displayOptions: {
+          show: {
+            operation: ['createLeonardoImage'],
+            advancedOptions: [true],
+            modelSelectionMethod: ['list'],
+            // Show only for Flux, Lucid Realism, and Phoenix models
+            modelId: [
+              'b2614463-296c-462a-9586-aafdb8f00e36', // Flux Dev
+              '1dd50843-d653-4516-a8e3-f0238ee453ff', // Flux Schnell
+              '05ce0082-2d80-4a2d-8653-4d1c85e2418e', // Lucid Realism
+              'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3', // Leonardo Phoenix 1.0
+              '6b645e3a-d64f-4341-a6d8-7a3690fbf042', // Leonardo Phoenix 0.9
+            ],
           },
         },
       },
@@ -1130,174 +1297,6 @@ export class CreateLeonardoImage implements INodeType {
         default: '1.0',
         description:
           'Adjusts contrast level of generated image. For Phoenix, if alchemy is true, must be 2.5 or higher.',
-        displayOptions: {
-          show: {
-            operation: ['createLeonardoImage'],
-            advancedOptions: [true],
-          },
-        },
-      },
-      {
-        displayName: 'Preset Style',
-        name: 'presetStyle',
-        type: 'options',
-        default: 'NO_SELECTION',
-        options: [
-          {
-            name: 'No Selection',
-            value: 'NO_SELECTION',
-          },
-          {
-            name: 'PhotoReal (enabled)',
-            value: 'PHOTOREAL',
-          },
-          {
-            name: 'Cinematic',
-            value: 'CINEMATIC',
-          },
-          {
-            name: 'Creative',
-            value: 'CREATIVE',
-          },
-          {
-            name: 'Vibrant',
-            value: 'VIBRANT',
-          },
-          {
-            name: 'None',
-            value: 'NONE',
-          },
-          {
-            name: 'Alchemy (enabled)',
-            value: 'ALCHEMY',
-          },
-          {
-            name: 'Anime',
-            value: 'ANIME',
-          },
-          {
-            name: 'Bokeh',
-            value: 'BOKEH',
-          },
-          {
-            name: 'Cinematic Closeup',
-            value: 'CINEMATIC_CLOSEUP',
-          },
-          {
-            name: 'Dynamic',
-            value: 'DYNAMIC',
-          },
-          {
-            name: 'Environment',
-            value: 'ENVIRONMENT',
-          },
-          {
-            name: 'Fashion',
-            value: 'FASHION',
-          },
-          {
-            name: 'Film',
-            value: 'FILM',
-          },
-          {
-            name: 'Food',
-            value: 'FOOD',
-          },
-          {
-            name: 'General',
-            value: 'GENERAL',
-          },
-          {
-            name: 'HDR',
-            value: 'HDR',
-          },
-          {
-            name: 'Illustration',
-            value: 'ILLUSTRATION',
-          },
-          {
-            name: 'Leonardo',
-            value: 'LEONARDO',
-          },
-          {
-            name: 'Long Exposure',
-            value: 'LONG_EXPOSURE',
-          },
-          {
-            name: 'Macro',
-            value: 'MACRO',
-          },
-          {
-            name: 'Minimalistic',
-            value: 'MINIMALISTIC',
-          },
-          {
-            name: 'Monochrome',
-            value: 'MONOCHROME',
-          },
-          {
-            name: 'Moody',
-            value: 'MOODY',
-          },
-          {
-            name: 'Neutral',
-            value: 'NEUTRAL',
-          },
-          {
-            name: 'Photography',
-            value: 'PHOTOGRAPHY',
-          },
-          {
-            name: 'Portrait',
-            value: 'PORTRAIT',
-          },
-          {
-            name: 'Raytraced',
-            value: 'RAYTRACED',
-          },
-          {
-            name: 'Render 3D',
-            value: 'RENDER_3D',
-          },
-          {
-            name: 'Retro',
-            value: 'RETRO',
-          },
-          {
-            name: 'Sketch B&W',
-            value: 'SKETCH_BW',
-          },
-          {
-            name: 'Sketch Color',
-            value: 'SKETCH_COLOR',
-          },
-          {
-            name: 'Stock Photo',
-            value: 'STOCK_PHOTO',
-          },
-          {
-            name: 'Unprocessed',
-            value: 'UNPROCESSED',
-          },
-          {
-            name: 'Fantasy Art',
-            value: 'FANTASY_ART',
-          },
-          {
-            name: 'Line Art',
-            value: 'LINE_ART',
-          },
-          {
-            name: 'Analog Film',
-            value: 'ANALOG_FILM',
-          },
-          {
-            name: 'Oil Painting',
-            value: 'OIL_PAINTING',
-          },
-        ],
-        description:
-          'NOT CURRENTLY SUPPORTED BY API. Style preset to apply to the generated images.',
         displayOptions: {
           show: {
             operation: ['createLeonardoImage'],
@@ -1477,6 +1476,23 @@ export class CreateLeonardoImage implements INodeType {
           },
         },
       },
+      {
+        displayName: 'Generation Timeout (seconds)',
+        name: 'generationTimeout',
+        type: 'number',
+        default: 30,
+        typeOptions: {
+          minValue: 15,
+          maxValue: 120,
+        },
+        description: 'Maximum time to wait for image generation to complete (15-120, default 30)',
+        displayOptions: {
+          show: {
+            operation: ['createLeonardoImage'],
+            advancedOptions: [true],
+          },
+        },
+      },
     ],
   };
 
@@ -1487,8 +1503,6 @@ export class CreateLeonardoImage implements INodeType {
     const credentials = await this.getCredentials('createLeonardoImageCredentials');
     const apiKey = credentials.apiKey as string;
     const apiUrl = 'https://cloud.leonardo.ai/api/rest/v1';
-    // If you're having trouble with the API, you might try the alternative endpoints:
-    // const apiUrl = "https://api.leonardo.ai/v1"
 
     for (let i = 0; i < items.length; i++) {
       try {
@@ -1498,13 +1512,7 @@ export class CreateLeonardoImage implements INodeType {
           throw new Error(`Unsupported operation: ${operation}`);
         }
 
-        // console.log('Operation: createLeonardoImage');
-
-        // Build request body using the new utility function - this handles all parameters
         const body = buildRequestBody.call(this, i);
-
-        // console.log('Request body:', body);
-
         const response = await this.helpers.request({
           method: 'POST',
           url: `${apiUrl}/generations`,
@@ -1515,8 +1523,6 @@ export class CreateLeonardoImage implements INodeType {
           },
         });
 
-        // console.log('Response from Leonardo AI:', response);
-
         const parsedResponse = typeof response === 'string' ? JSON.parse(response) : response;
 
         if (!parsedResponse.sdGenerationJob || !parsedResponse.sdGenerationJob.generationId) {
@@ -1525,27 +1531,23 @@ export class CreateLeonardoImage implements INodeType {
 
         const generationId = parsedResponse.sdGenerationJob.generationId;
 
-        // console.log('Generation ID:', generationId);
-
         // Polling for image generation completion
         let generationStatus;
         let attempts = 0;
-        const maxAttempts = 20; // Total 20 attempts
-        const initialWaitTime = 1000; // 1 second initial wait
-        const pollWaitTime = 1000; // 1 second poll wait time
+        const timeoutSeconds = this.getNodeParameter('generationTimeout', i, 30) as number;
+        const maxAttempts = Math.ceil(timeoutSeconds / 2);
+        const pollWaitTime = 2000;
 
         let finalResponse;
-        // Always use minimal timeout (1ms) for fast test execution and full code coverage
-        // This approach is simpler than conditionally checking for test environments
         await new Promise(resolve =>
-          setTimeout(resolve, 1)  // Always use 1ms timeout for faster tests
+          setTimeout(resolve, pollWaitTime)
         );
 
         do {
-          // Use the same minimal timeout approach for polling
           await new Promise(resolve =>
-            setTimeout(resolve, 1)  // 1ms timeout for fast tests and full coverage
+            setTimeout(resolve, pollWaitTime)
           );
+
           const statusResponse = await this.helpers.request({
             method: 'GET',
             url: `${apiUrl}/generations/${generationId}`,
@@ -1556,25 +1558,18 @@ export class CreateLeonardoImage implements INodeType {
           finalResponse =
             typeof statusResponse === 'string' ? JSON.parse(statusResponse) : statusResponse;
 
-          // Log the status response to debug
-          // console.log('Status response from Leonardo AI:', finalResponse);
-
           if (!finalResponse.generations_by_pk || !finalResponse.generations_by_pk.status) {
             throw new Error("Status response does not contain the expected 'status' field.");
           }
 
           generationStatus = finalResponse.generations_by_pk.status;
-          // console.log('Generation Status:', generationStatus);
+
           attempts++;
 
           if (generationStatus === 'COMPLETE') {
-            // console.log('Image generation completed.');
-
-            // Process the response to create a more user-friendly output format
             const generationData = finalResponse.generations_by_pk;
             const generatedImages = generationData.generated_images || [];
 
-            // Format the output to make the important data easily accessible
             const formattedOutput = {
               success: true,  // Ensure this is explicitly set to true for test compatibility
               generationId: generationData.id,
@@ -1586,13 +1581,12 @@ export class CreateLeonardoImage implements INodeType {
                 id: img.id,
                 url: img.url,
                 nsfw: img.nsfw || false,
-                width: generationData.width,
-                height: generationData.height,
+                width: generationData.imageWidth || generationData.width || 1024,
+                height: generationData.imageHeight || generationData.height || 576,
               })),
-              // Also add an imageUrl field for simpler access
+
               imageUrl: generatedImages.length > 0 ? generatedImages[0].url : null,
-              // Include the full response for advanced users
-              rawResponse: finalResponse,
+              rawResponse: JSON.parse(JSON.stringify(finalResponse)),
             };
 
             returnData.push({
@@ -1617,7 +1611,6 @@ export class CreateLeonardoImage implements INodeType {
       }
     }
 
-    // console.log('Process completed.');
     return [returnData];
   }
 }
