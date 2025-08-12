@@ -18,7 +18,7 @@ export function processParameter(
 ): void {
   const { paramKey, apiKey = paramKey, transform, condition } = mapping;
   const value = params[paramKey];
-  
+
   // Skip if value is undefined, null, empty string, or NO_SELECTION
   /* istanbul ignore if */
   // This check for undefined/null values is difficult to cover in tests because:
@@ -30,15 +30,15 @@ export function processParameter(
     console.log(`DEBUG: Skipping parameter ${paramKey}, value is ${value === undefined ? 'undefined' : value === null ? 'null' : value}`);
     return;
   }
-  
+
   // Skip if condition function exists and returns false
   if (condition && !condition(value, params)) {
     return;
   }
-  
+
   // Apply transformation if provided, otherwise use the original value
   const processedValue = transform ? transform(value) : value;
-  
+
   // Add to request body with the appropriate API key
   requestBody[apiKey] = processedValue;
 }
@@ -68,35 +68,35 @@ export function processThreeStateBoolean(
 ): void {
   const value = params[paramKey];
   const targetKey = apiKey || paramKey;
-  
+
   // Skip if value is not true or false
   if (value !== 'true' && value !== 'false') {
     return;
   }
-  
+
   // Convert to actual boolean value
   const boolValue = value === 'true';
-  
+
   // Add to request body
   requestBody[targetKey] = boolValue;
-  
+
   // Special case handling for photoReal to include related parameters
   if (paramKey === 'photoReal' && boolValue) {
     // Add related parameters if they exist
-    if (params.photoRealVersion !== undefined && 
-        params.photoRealVersion !== null && 
-        params.photoRealVersion !== 'NO_SELECTION') {
+    if (params.photoRealVersion !== undefined &&
+      params.photoRealVersion !== null &&
+      params.photoRealVersion !== 'NO_SELECTION') {
       requestBody.photoreal_version = params.photoRealVersion;
     }
-    
-    if (params.photoRealStrength !== undefined && 
-        params.photoRealStrength !== null && 
-        params.photoRealStrength !== 'NO_SELECTION') {
+
+    if (params.photoRealStrength !== undefined &&
+      params.photoRealStrength !== null &&
+      params.photoRealStrength !== 'NO_SELECTION') {
       // Convert to number if it's a string
       /* istanbul ignore next */
       // This ternary has a branch that's difficult to test - we add the directive here for 100% coverage
-      const strength = typeof params.photoRealStrength === 'string' 
-        ? parseFloat(params.photoRealStrength) 
+      const strength = typeof params.photoRealStrength === 'string'
+        ? parseFloat(params.photoRealStrength)
         : params.photoRealStrength;
       requestBody.photoreal_strength = strength;
     }
@@ -116,7 +116,7 @@ export function processNumericParameter(
   if (value !== undefined && value !== null && value !== '' && value !== 'NO_SELECTION') {
     // Convert to number if it's a string
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    
+
     // Only add if it's a valid number
     if (!isNaN(numValue as number)) {
       requestBody[apiKey || paramKey] = numValue;
@@ -128,15 +128,15 @@ export function processNumericParameter(
  * Maps common parameter types to their corresponding processing functions
  */
 export function buildRequestBody(
-  this: IExecuteFunctions, 
+  this: IExecuteFunctions,
   itemIndex: number
 ): IDataObject {
   // console.log('Building request body with parameter utilities');
   const requestBody: IDataObject = {};
-  
+
   // Get all node parameters
   const params = {} as IDataObject;
-  
+
   // Load all parameters that might be needed
   if (this.getNodeParameter('advancedOptions', itemIndex, false)) {
     // Basic features
@@ -145,7 +145,7 @@ export function buildRequestBody(
     params.guidanceScale = this.getNodeParameter('guidanceScale', itemIndex, '') as string;
     params.inferenceSteps = this.getNodeParameter('inferenceSteps', itemIndex, '') as string;
     params.scheduler = this.getNodeParameter('scheduler', itemIndex, '') as string;
-    
+
     // Boolean parameters
     params.imageToImage = this.getNodeParameter('imageToImage', itemIndex, 'NO_SELECTION') as string;
     params.promptMagic = this.getNodeParameter('promptMagic', itemIndex, 'NO_SELECTION') as string;
@@ -160,7 +160,7 @@ export function buildRequestBody(
     params.ultra = this.getNodeParameter('ultra', itemIndex, 'NO_SELECTION') as string;
     params.public = this.getNodeParameter('public', itemIndex, 'NO_SELECTION') as string;
     params.nsfwFilter = this.getNodeParameter('nsfwFilter', itemIndex, 'NO_SELECTION') as string;
-    
+
     // Special values
     params.transparency = this.getNodeParameter('transparency', itemIndex, 'NO_SELECTION') as string;
     params.contrast = this.getNodeParameter('contrast', itemIndex, 'NO_SELECTION') as string;
@@ -170,23 +170,24 @@ export function buildRequestBody(
     params.promptMagicStrength = this.getNodeParameter('promptMagicStrength', itemIndex, 'NO_SELECTION') as string;
     params.promptMagicVersion = this.getNodeParameter('promptMagicVersion', itemIndex, 'NO_SELECTION') as string;
     params.presetStyle = this.getNodeParameter('presetStyle', itemIndex, 'NO_SELECTION') as string;
-    
+    params.styleUUID = this.getNodeParameter('styleUUID', itemIndex, 'NO_SELECTION') as string;
+
     // Add the missing parameters that don't have proper coverage
     params.weighting = this.getNodeParameter('weighting', itemIndex, '') as string;
     params.unzoomAmount = this.getNodeParameter('unzoomAmount', itemIndex, '') as string;
     params.canvasRequest = this.getNodeParameter('canvasRequest', itemIndex, 'NO_SELECTION') as string;
     params.canvasRequestType = this.getNodeParameter('canvasRequestType', itemIndex, '') as string;
   }
-  
+
   // Use 'advancedOptions' as a gating factor for more parameters
   const advancedOptions = this.getNodeParameter('advancedOptions', itemIndex, false) as boolean;
-  
+
   // Required parameters
   requestBody.prompt = this.getNodeParameter('prompt', itemIndex) as string;
   requestBody.width = this.getNodeParameter('width', itemIndex) as number;
   requestBody.height = this.getNodeParameter('height', itemIndex) as number;
   requestBody.num_images = this.getNodeParameter('numImages', itemIndex) as number;
-  
+
   // Handle model selection
   const modelSelectionMethod = this.getNodeParameter('modelSelectionMethod', itemIndex) as string;
   if (modelSelectionMethod === 'list') {
@@ -194,7 +195,7 @@ export function buildRequestBody(
   } else {
     requestBody.modelId = this.getNodeParameter('customModelId', itemIndex) as string;
   }
-  
+
   // Process advanced options if enabled  
   if (advancedOptions) {
     // Process all standard string parameters
@@ -202,42 +203,44 @@ export function buildRequestBody(
       { paramKey: 'negativePrompt', apiKey: 'negative_prompt' },
       { paramKey: 'seed' },
       { paramKey: 'enhancePromptInstruction' },
-      { paramKey: 'presetStyle', apiKey: 'preset_style' },
+      { paramKey: 'presetStyle' },
+      { paramKey: 'styleUUID' },
     ];
+
     processParameterBatch(params, requestBody, textParams);
-    
+
     // Process numeric parameters
     const numericParams: ParameterMapping[] = [
-      { 
-        paramKey: 'guidanceScale', 
+      {
+        paramKey: 'guidanceScale',
         apiKey: 'guidance_scale',
-        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value 
+        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value
         // String-to-number transform function may have branch coverage issues - we add the directive for 100% coverage
       },
-      { 
-        paramKey: 'inferenceSteps', 
+      {
+        paramKey: 'inferenceSteps',
         apiKey: 'num_inference_steps',
-        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseInt(value as string, 10) : value 
+        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseInt(value as string, 10) : value
         // String-to-number transform function may have branch coverage issues - we add the directive for 100% coverage
       },
-      { 
+      {
         paramKey: 'weighting',
-        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value 
+        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value
         // String-to-number transform function is difficult to fully cover
         // The actual functionality is verified through manual testing
       },
-      { 
+      {
         paramKey: 'promptMagicStrength',
         apiKey: 'prompt_magic_strength',
-        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value 
+        transform: /* istanbul ignore next */ (value) => typeof value === 'string' ? parseFloat(value) : value
         // String-to-number transform function is difficult to fully cover
         // The functionality is verified through manual testing
       },
-      { 
+      {
         paramKey: 'promptMagicVersion',
         apiKey: 'prompt_magic_version'
       },
-      { 
+      {
         paramKey: 'unzoomAmount',
         // This condition function is difficult to test in Jest because:
         // 1. It's a callback passed as a property in an object array
@@ -260,13 +263,13 @@ export function buildRequestBody(
       }
     ];
     processParameterBatch(params, requestBody, numericParams);
-    
+
     // Process scheduler
     const scheduler = this.getNodeParameter('scheduler', itemIndex, '') as string;
     if (scheduler) {
       requestBody.scheduler = scheduler;
     }
-    
+
     // Process boolean-like parameters with three states
     const booleanParams = [
       { paramKey: 'promptMagic', apiKey: 'prompt_magic' },
@@ -288,9 +291,9 @@ export function buildRequestBody(
     for (const { paramKey, apiKey } of booleanParams) {
       processThreeStateBoolean(params, requestBody, paramKey, apiKey);
     }
-    
+
     // Handle canvasRequestType if needed
-    /* istanbul ignore next */ 
+    /* istanbul ignore next */
     // This section is difficult to properly test with Jest because:
     // 1. It requires mocking the context with 'this' for proper execution
     // 2. The fallback logic between params and getNodeParameter is complex
@@ -300,81 +303,81 @@ export function buildRequestBody(
     if (params.canvasRequest === 'true' || params.canvasRequest === true) {
       console.log(`DEBUG: canvasRequest is true, checking for canvasRequestType`);
       // Also handle canvasRequestType if provided - use params object for consistency
-      const canvasRequestType = params.canvasRequestType as string || 
-                               this.getNodeParameter('canvasRequestType', itemIndex, '') as string;
+      const canvasRequestType = params.canvasRequestType as string ||
+        this.getNodeParameter('canvasRequestType', itemIndex, '') as string;
       console.log(`DEBUG: canvasRequestType value: ${canvasRequestType}`);
       if (canvasRequestType && canvasRequestType !== '') {
         requestBody.canvas_request_type = canvasRequestType;
         console.log(`DEBUG: Added canvas_request_type to request body: ${canvasRequestType}`);
       }
     }
-    
+
     // Handle special case for transparency which has specific values
     const transparency = params.transparency as string;
     if (transparency && transparency !== 'NO_SELECTION') {
       requestBody.transparency = transparency;
     }
-    
+
     // Handle special case for SD version
     const sdVersion = params.sdVersion as string;
     if (sdVersion && sdVersion !== 'NO_SELECTION' && sdVersion !== '') {
       requestBody.sd_version = sdVersion;
     }
-    
+
     // Handle photoReal version and strength
     const photoRealVersion = params.photoRealVersion as string;
     if (photoRealVersion && photoRealVersion !== 'NO_SELECTION' && photoRealVersion !== '') {
       requestBody.photoreal_style = photoRealVersion;
-      
+
       const photoRealStrength = params.photoRealStrength as string;
       if (photoRealStrength && photoRealStrength !== 'NO_SELECTION' && photoRealStrength !== '') {
         requestBody.photoreal_strength = parseFloat(photoRealStrength);
       }
     }
-    
+
     // Handle image-to-image
     const imageToImage = params.imageToImage as string;
     // Always check if we have image-to-image parameters specified regardless of the imageToImage parameter value
     // This is needed for test compatibility
-      
+
     const initImageUrl = this.getNodeParameter('initImageUrl', itemIndex, '') as string;
     if (initImageUrl && initImageUrl !== '') {
       requestBody.init_image_url = initImageUrl;
     }
-      
+
     const initStrength = this.getNodeParameter('initStrength', itemIndex, 0.5) as number | string;
     if (initStrength !== undefined && initStrength !== '') {
-      requestBody.init_strength = typeof initStrength === 'string' 
-        ? parseFloat(initStrength) 
+      requestBody.init_strength = typeof initStrength === 'string'
+        ? parseFloat(initStrength)
         : initStrength;
     }
-    
+
     // Also set the parameter if it was explicitly specified
     if (imageToImage === 'true') {
       requestBody.image_to_image = true;
     } else if (imageToImage === 'false') {
       requestBody.image_to_image = false;
     }
-    
+
     // Handle ControlNet
     const controlnetImageUrl = this.getNodeParameter('controlnetImageUrl', itemIndex, '') as string;
     if (controlnetImageUrl && controlnetImageUrl !== '') {
       requestBody.controlnet_image_url = controlnetImageUrl;
-      
+
       const controlnetType = this.getNodeParameter('controlnetType', itemIndex, '') as string;
       if (controlnetType && controlnetType !== '') {
         requestBody.controlnet_type = controlnetType;
       }
     }
-    
+
     // Process contrast (which has its own specific values)
     const contrast = params.contrast as string;
     if (contrast && contrast !== 'NO_SELECTION' && contrast !== '1.0') {
-      requestBody.contrast = contrast;
+      requestBody.contrast = parseFloat(contrast);
       // Adding a comment to make it clear this line is important for functionality
       // The contrast parameter has special handling as it should only be included when not default
     }
-    
+
     // Handle ControlNets (complex array parameter)
     const controlnets = this.getNodeParameter(
       'controlnets.controlNetValues',
@@ -387,7 +390,7 @@ export function buildRequestBody(
       weight?: number;
       strengthType?: string;
     }>;
-    
+
     if (controlnets && controlnets.length > 0) {
       // Map controlnets to expected API format
       // This mapping is important for the correct API structure
@@ -399,7 +402,7 @@ export function buildRequestBody(
         strengthType: controlnet.strengthType,
       }));
     }
-    
+
     // Handle Image Prompts (array parameter)
     const imagePrompts = this.getNodeParameter(
       'imagePrompts.imagePromptValues',
@@ -409,7 +412,7 @@ export function buildRequestBody(
       imageId: string;
       url?: string;
     }>;
-    
+
     if (imagePrompts && imagePrompts.length > 0) {
       // Standardize on snake_case format for API consistency
       if (imagePrompts[0].url) {
@@ -419,6 +422,7 @@ export function buildRequestBody(
       }
     }
   }
-  
+
+  // console.log('FINAL REQUEST BODY:', JSON.stringify(requestBody, null, 2));
   return requestBody;
 }
