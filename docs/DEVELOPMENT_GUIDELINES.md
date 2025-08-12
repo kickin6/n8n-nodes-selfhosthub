@@ -40,19 +40,19 @@ This document outlines the standards and best practices for developing and maint
 - Place each service in its own subfolder under `/nodes/`
   ```
   nodes/
-    ├── CreateLeonardoImage/
-    │   ├── CreateLeonardoImage.node.ts
-    │   └── models.ts
-    ├── OtherServiceNode/
-    │   ├── OtherServiceNode.node.ts
-    │   └── ...
+    └── CreateLeonardoImage/
+        ├── CreateLeonardoImage.node.json
+        ├── CreateLeonardoImage.node.ts
+        ├── createLeonardoImage.png
+        ├── models.ts
+        └── parameterUtils.ts
   ```
 
 - Create corresponding credential files in `/credentials/`
   ```
   credentials/
     ├── CreateLeonardoImageCredentials.credentials.ts
-    ├── OtherServiceCredentials.credentials.ts
+    ├── LeonardoAiApi.credentials.ts
   ```
 
 - Update `index.ts` to export all nodes and credentials
@@ -64,6 +64,7 @@ This document outlines the standards and best practices for developing and maint
 
   export const credentials = [
     new CreateLeonardoImageCredentials(),
+    new LeonardoAiApi(),
     new OtherServiceCredentials(),
   ];
   ```
@@ -136,6 +137,24 @@ This document outlines the standards and best practices for developing and maint
   - Credential tests: `__tests__/credentials/`
   - Utility tests: `__tests__/src/`
   - Manual tests: `__tests__/manual/`
+
+- Test structure for comprehensive coverage:
+  ```
+  __tests__/
+    ├── credentials/
+    │   ├── CreateLeonardoImageCredentials.credentials.test.ts
+    │   └── LeonardoAiApi.credentials.test.ts
+    ├── nodes/
+    │   └── CreateLeonardoImage/
+    │       ├── CreateLeonardoImage.advanced.test.ts
+    │       ├── CreateLeonardoImage.basic.test.ts
+    │       ├── CreateLeonardoImage.parameters.test.ts
+    │       ├── CreateLeonardoImage.unit.test.ts
+    │       └── CreateLeonardoImage.utils.test.ts
+    └── shared/
+        ├── helpers.ts
+        └── leonardo-helpers.ts
+  ```
 
 - Ensure test files are excluded from production builds:
   ```json
