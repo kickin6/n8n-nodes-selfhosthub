@@ -5,26 +5,34 @@ This document outlines the process for preparing, testing, and publishing the n8
 ## TLDR: Quick Publishing Steps
 
 ```bash
-# 1. Update version in package.json (e.g., "0.1.0" to "0.1.1")
+# 1. Merge feature branch to main first (via GitHub PR)
 
-# 2. Run tests
-npm test
-npm run test:coverage
+# 2. Prepare main branch
+git checkout main
+git pull origin main
 
-# 3. Build the package
+# 3. Version bump (automatically updates package.json and creates tag)
+npm version patch   # Bug fixes (0.1.0 → 0.1.1)
+npm version minor   # New features (0.1.0 → 0.2.0)
+npm version major   # Breaking changes (0.1.0 → 1.0.0)
+
+# 4. Run tests
+npx jest
+npx jest --coverage --silent
+
+# 5. Build the package
 npm run build
 
-# 4. Login to npm
+# 6. Login to npm (if needed)
 npm login
 
-# 5. Publish
+# 7. Publish
 npm publish
 
-# 6. Tag and push to GitHub
-git tag -a v0.1.1 -m "Release v0.1.1"
-git push origin v0.1.1
+# 8. Push version tag to GitHub
+git push --follow-tags
 
-# 7. Create GitHub release through the web interface
+# 9. Create GitHub release through the web interface
 ```
 
 *See the detailed sections below for complete instructions.*

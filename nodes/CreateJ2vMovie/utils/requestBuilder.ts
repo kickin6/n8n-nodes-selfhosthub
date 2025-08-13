@@ -76,8 +76,6 @@ export function buildRequestBody(
   itemIndex = 0,
   isAdvancedMode = false
 ): IDataObject {
-  console.log('DEBUG - buildRequestBody called with operation:', operation, 'isAdvancedMode:', isAdvancedMode);
-
   if (isAdvancedMode) {
     const paramName =
       operation === 'createMovie'
@@ -91,7 +89,6 @@ export function buildRequestBody(
     try {
       const parsedTemplate = JSON.parse(jsonTemplate);
       const result = applyAdvancedModeOverrides.call(this, parsedTemplate, operation, itemIndex);
-      console.log('DEBUG - Advanced mode result:', JSON.stringify(result, null, 2));
       return result;
     } catch (error: any) {
       throw new Error(`Invalid JSON template: ${error.message || 'Unknown parsing error'}`);
@@ -116,9 +113,7 @@ export function buildRequestBody(
 /**
  * Builds the request body for the createMovie operation in basic mode
  */
-function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {
-  console.log('DEBUG - buildCreateMovieRequestBody called - this should only happen in BASIC mode');
-  
+function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     fps: this.getNodeParameter('framerate', itemIndex, 25),
     width: this.getNodeParameter('output_width', itemIndex, 1024),
@@ -199,9 +194,7 @@ function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): ID
 /**
  * Builds the request body for the mergeVideoAudio operation in basic mode
  */
-function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {
-  console.log('DEBUG - buildMergeVideoAudioRequestBody called - this should only happen in BASIC mode');
-  
+function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     scenes: [], // Only required property according to API docs
   };
@@ -282,7 +275,6 @@ function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0)
       elements.push(videoElement);
     }
   } catch (error) {
-    console.log('Video element access error:', error);
   }
 
   // Get audio element
@@ -333,7 +325,6 @@ function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0)
       elements.push(audioElement);
     }
   } catch (error) {
-    console.log('Audio element access error:', error);
   }
 
   // Get output settings
@@ -364,7 +355,6 @@ function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0)
       }
     }
   } catch (error) {
-    console.log('Output settings access error:', error);
   }
 
   if (requestBody.width === undefined) requestBody.width = 1024;
@@ -378,9 +368,7 @@ function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0)
 /**
  * Builds the request body for the mergeVideos operation in basic mode
  */
-function buildMergeVideosRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {
-  console.log('DEBUG - buildMergeVideosRequestBody called - this should only happen in BASIC mode');
-  
+function buildMergeVideosRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     scenes: [], // Only required property according to API docs
   };

@@ -136,5 +136,32 @@ describe('webhookUtils', () => {
       
       expect(result).toBe(cleanUrl);
     });
+
+    test('should return null for invalid URL format after trimming', () => {
+      // This tests line 60 in webhookUtils.ts - the isValidWebhookUrl check
+      const invalidUrls = [
+        'not-a-url',
+        'ftp://example.com',
+        'invalid://protocol',
+        'just-text'
+      ];
+
+      invalidUrls.forEach(url => {
+        expect(sanitizeWebhookUrl(url)).toBe(null);
+      });
+    });
+
+    test('should return null for URLs that fail validation', () => {
+      // Test edge case where URL is non-empty string but invalid format
+      expect(sanitizeWebhookUrl('malformed-url')).toBe(null);
+      expect(sanitizeWebhookUrl('http://')).toBe(null);
+      expect(sanitizeWebhookUrl('https://')).toBe(null);
+    });
+
+    test('should handle URLs with whitespace that become invalid after trimming', () => {
+      // Test URLs that have whitespace but are still invalid after trimming
+      expect(sanitizeWebhookUrl('  ftp://example.com  ')).toBe(null);
+      expect(sanitizeWebhookUrl('  not-a-url  ')).toBe(null);
+    });
   });
 });
