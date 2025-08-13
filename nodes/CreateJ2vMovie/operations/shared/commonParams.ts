@@ -124,7 +124,7 @@ export const advancedModeParameters = {
                 displayName: 'Advanced Mode',
                 name: 'advancedMode',
                 type: 'boolean',
-                default: true,
+                default: false,
                 description: 'Whether to use advanced mode with direct JSON template input',
                 displayOptions: {
                         show: {
@@ -137,7 +137,7 @@ export const advancedModeParameters = {
                 displayName: 'Advanced Mode',
                 name: 'advancedModeMergeAudio',
                 type: 'boolean',
-                default: true,
+                default: false,
                 description: 'Whether to use advanced mode with direct JSON template input',
                 displayOptions: {
                         show: {
@@ -150,7 +150,7 @@ export const advancedModeParameters = {
                 displayName: 'Advanced Mode',
                 name: 'advancedModeMergeVideos',
                 type: 'boolean',
-                default: true,
+                default: false,
                 description: 'Whether to use advanced mode with direct JSON template input',
                 displayOptions: {
                         show: {
