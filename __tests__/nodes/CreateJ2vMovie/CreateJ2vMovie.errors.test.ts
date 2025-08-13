@@ -271,8 +271,16 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
-      expect(result[0][0].json.error).toMatch(/Invalid JSON template: Expected property name or '\}' in JSON at position 1/);
-      expect(result[0][0].pairedItem.item).toBe(0);
+      expect(result).toEqual([[
+        {
+          json: {
+            error: expect.stringMatching(/Invalid JSON template: Expected property name or '\}' in JSON at position 1/),
+          },
+          pairedItem: {
+            item: 0,
+          },
+        },
+      ]]);
     });
 
     test('should handle invalid images format error', async () => {
