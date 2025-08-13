@@ -49,10 +49,8 @@ function processImageElement(
     processedElement.src = element.src;
   }
 
-  // Handle positioning
   processedElement = applyPositioning(element, processedElement, videoWidth, videoHeight);
 
-  // Handle dimensions
   if ((element.width as number) > 0) processedElement.width = element.width;
   if ((element.height as number) > 0) processedElement.height = element.height;
   if ((element.zoom as number) !== 0) processedElement.zoom = element.zoom;
@@ -73,33 +71,25 @@ function processVideoElement(
     processedElement.src = element.src;
   }
 
-  // Handle positioning
   processedElement = applyPositioning(element, processedElement, videoWidth, videoHeight);
 
-  // Handle dimensions
   if ((element.width as number) > 0) processedElement.width = element.width;
   if ((element.height as number) > 0) processedElement.height = element.height;
   if ((element.zoom as number) !== 0) processedElement.zoom = element.zoom;
 
-  // Handle duration carefully - preserve the exact value provided
   if (element.duration !== undefined) {
     const duration = Number(element.duration);
     if (!isNaN(duration)) {
       if (duration > 0) {
-        // Explicit positive duration
         processedElement.duration = duration;
       } else if (duration === -1) {
-        // Use -1 for full video duration (as provided by UI)
         processedElement.duration = -1;
       } else if (duration === -2) {
-        // Also support -2 if explicitly set
         processedElement.duration = -2;
       }
-      // For other negative values or 0, don't set duration - let API determine
     }
   }
 
-  // Handle video-specific properties
   if (element.volume !== undefined) processedElement.volume = element.volume;
   if (element.muted !== undefined) processedElement.muted = element.muted;
   if (element.crop !== undefined) processedElement.crop = element.crop;
@@ -174,14 +164,12 @@ function processSubtitlesElement(
   element: IDataObject,
   processedElement: IDataObject
 ): IDataObject {
-  // Handle subtitle source (text or file URL)
   if (element.subtitleSourceType === 'text' && element.text && typeof element.text === 'string') {
     processedElement.text = element.text;
   } else if (element.subtitleSourceType === 'src' && element.src && typeof element.src === 'string') {
     processedElement.src = element.src;
   }
 
-  // Handle subtitle-specific properties
   if (element.language && typeof element.language === 'string') {
     processedElement.language = element.language;
   }

@@ -113,7 +113,7 @@ export function buildRequestBody(
 /**
  * Builds the request body for the createMovie operation in basic mode
  */
-function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
+export function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     fps: this.getNodeParameter('framerate', itemIndex, 25),
     width: this.getNodeParameter('output_width', itemIndex, 1024),
@@ -194,7 +194,7 @@ function buildCreateMovieRequestBody(this: IExecuteFunctions, itemIndex = 0): ID
 /**
  * Builds the request body for the mergeVideoAudio operation in basic mode
  */
-function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
+export function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     scenes: [], // Only required property according to API docs
   };
@@ -368,7 +368,7 @@ function buildMergeVideoAudioRequestBody(this: IExecuteFunctions, itemIndex = 0)
 /**
  * Builds the request body for the mergeVideos operation in basic mode
  */
-function buildMergeVideosRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
+export function buildMergeVideosRequestBody(this: IExecuteFunctions, itemIndex = 0): IDataObject {  
   const requestBody: IDataObject = {
     scenes: [], // Only required property according to API docs
   };
