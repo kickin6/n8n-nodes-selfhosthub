@@ -125,6 +125,27 @@ describe('elementProcessor', () => {
       expect(result).not.toHaveProperty('height');
     });
 
+    test('should process video element with positive width and height dimensions', () => {
+      const videoElement: IDataObject = {
+        type: 'video',
+        src: 'https://example.com/video.mp4',
+        positionPreset: 'center',
+        width: 800,
+        height: 600,
+        start: 0,
+        duration: 10
+      };
+
+      const result = processElement.call(mockExecuteFunctions, videoElement, 1920, 1080);
+
+      expect(result).toHaveProperty('type', 'video');
+      expect(result).toHaveProperty('src', 'https://example.com/video.mp4');
+      expect(result).toHaveProperty('width', 800);
+      expect(result).toHaveProperty('height', 600);
+      expect(result).toHaveProperty('start', 0);
+      expect(result).toHaveProperty('duration', 10);
+    });
+
     test('should process video element with duration -1', () => {
       const videoElement: IDataObject = {
         type: 'video',
@@ -174,7 +195,7 @@ describe('elementProcessor', () => {
 
       expect(result).toHaveProperty('type', 'video');
       // Invalid duration string will be converted to NaN, which should not be set
-      expect(result.duration).toBe('invalid'); // Actually, invalid strings pass through
+      expect(result.duration).toBe('invalid');
     });
 
     test('should process video element with zero duration', () => {
@@ -189,7 +210,7 @@ describe('elementProcessor', () => {
       const result = processElement.call(mockExecuteFunctions, videoElement, 1920, 1080);
 
       expect(result).toHaveProperty('type', 'video');
-      expect(result.duration).toBe(0); // Zero duration is actually set in the code
+      expect(result.duration).toBe(0);
     });
 
     test('should process video element with negative duration other than -1 or -2', () => {
@@ -204,7 +225,7 @@ describe('elementProcessor', () => {
       const result = processElement.call(mockExecuteFunctions, videoElement, 1920, 1080);
 
       expect(result).toHaveProperty('type', 'video');
-      expect(result.duration).toBe(-5); // Negative durations other than -1/-2 are actually set
+      expect(result.duration).toBe(-5);
     });
 
     test('should process text element without text property', () => {
@@ -228,7 +249,7 @@ describe('elementProcessor', () => {
         type: 'text',
         text: 'Test',
         positionPreset: 'center',
-        fontFamily: 123, // Invalid type
+        fontFamily: 123,
         fontSize: 24,
         color: 'blue'
       };
@@ -244,7 +265,7 @@ describe('elementProcessor', () => {
         type: 'text',
         text: 'Test',
         positionPreset: 'center',
-        color: 123 // Invalid type
+        color: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, textElement, 1920, 1080);
@@ -273,7 +294,7 @@ describe('elementProcessor', () => {
     test('should process audio element with invalid src type', () => {
       const audioElement: IDataObject = {
         type: 'audio',
-        src: 123, // Invalid type
+        src: 123,
         volume: 0.8,
         start: 5,
         duration: 10
@@ -318,7 +339,7 @@ describe('elementProcessor', () => {
     test('should process voice element with invalid text type', () => {
       const voiceElement: IDataObject = {
         type: 'voice',
-        text: 123, // Invalid type
+        text: 123,
         voice: 'en-US-Standard-A'
       };
 
@@ -332,7 +353,7 @@ describe('elementProcessor', () => {
       const voiceElement: IDataObject = {
         type: 'voice',
         text: 'Hello',
-        voice: 123 // Invalid type
+        voice: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, voiceElement, 1920, 1080);
@@ -377,7 +398,7 @@ describe('elementProcessor', () => {
       const subtitlesElement: IDataObject = {
         type: 'subtitles',
         subtitleSourceType: 'src',
-        src: 123, // Invalid type
+        src: 123,
         language: 'en'
       };
 
@@ -391,7 +412,7 @@ describe('elementProcessor', () => {
       const subtitlesElement: IDataObject = {
         type: 'subtitles',
         subtitleSourceType: 'text',
-        text: 123, // Invalid type
+        text: 123,
         language: 'en'
       };
 
@@ -406,7 +427,7 @@ describe('elementProcessor', () => {
         type: 'subtitles',
         subtitleSourceType: 'text',
         text: 'Subtitle text',
-        language: 123 // Invalid type
+        language: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, subtitlesElement, 1920, 1080);
@@ -420,7 +441,7 @@ describe('elementProcessor', () => {
         type: 'subtitles',
         subtitleSourceType: 'text',
         text: 'Subtitle text',
-        position: 123 // Invalid type
+        position: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, subtitlesElement, 1920, 1080);
@@ -434,7 +455,7 @@ describe('elementProcessor', () => {
         type: 'subtitles',
         subtitleSourceType: 'text',
         text: 'Subtitle text',
-        fontFamily: 123 // Invalid type
+        fontFamily: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, subtitlesElement, 1920, 1080);
@@ -448,7 +469,7 @@ describe('elementProcessor', () => {
         type: 'subtitles',
         subtitleSourceType: 'text',
         text: 'Subtitle text',
-        color: 123 // Invalid type
+        color: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, subtitlesElement, 1920, 1080);
@@ -462,7 +483,7 @@ describe('elementProcessor', () => {
         type: 'subtitles',
         subtitleSourceType: 'text',
         text: 'Subtitle text',
-        backgroundColor: 123 // Invalid type
+        backgroundColor: 123
       };
 
       const result = processElement.call(mockExecuteFunctions, subtitlesElement, 1920, 1080);
@@ -612,7 +633,6 @@ describe('elementProcessor', () => {
         positionPreset: 'center',
         fontFamily: 'Arial',
         color: 'white'
-        // fontSize is intentionally omitted
       };
 
       const result = processElement.call(mockExecuteFunctions, textElement, 1920, 1080);
