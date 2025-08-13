@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/YOUR_REPO/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/YOUR_REPO)
+
 # n8n-nodes-selfhosthub
 
 Community nodes for n8n that integrate AI and content generation services. Built by [Self-Host Hub](https://linktr.ee/selfhosthub).
