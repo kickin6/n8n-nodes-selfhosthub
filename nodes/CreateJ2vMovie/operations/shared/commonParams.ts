@@ -73,7 +73,7 @@ export const qualityParameter: INodeProperties = {
                 { name: 'High', value: 'high' },
                 { name: 'Very High', value: 'very_high' },
         ],
-        default: '',
+        default: 'medium',
         description: 'Video quality setting',
 };
 
