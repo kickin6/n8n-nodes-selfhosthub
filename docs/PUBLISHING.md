@@ -5,26 +5,34 @@ This document outlines the process for preparing, testing, and publishing the n8
 ## TLDR: Quick Publishing Steps
 
 ```bash
-# 1. Update version in package.json (e.g., "0.1.0" to "0.1.1")
+# 1. Merge feature branch to main first (via GitHub PR)
 
-# 2. Run tests
-npm test
-npm run test:coverage
+# 2. Prepare main branch
+git checkout main
+git pull origin main
 
-# 3. Build the package
+# 3. Version bump (automatically updates package.json and creates tag)
+npm version patch   # Bug fixes (0.1.0 → 0.1.1)
+npm version minor   # New features (0.1.0 → 0.2.0)
+npm version major   # Breaking changes (0.1.0 → 1.0.0)
+
+# 4. Run tests
+npx jest
+npx jest --coverage --silent
+
+# 5. Build the package
 npm run build
 
-# 4. Login to npm
+# 6. Login to npm (if needed)
 npm login
 
-# 5. Publish
+# 7. Publish
 npm publish
 
-# 6. Tag and push to GitHub
-git tag -a v0.1.1 -m "Release v0.1.1"
-git push origin v0.1.1
+# 8. Push version tag to GitHub
+git push --follow-tags
 
-# 7. Create GitHub release through the web interface
+# 9. Create GitHub release through the web interface
 ```
 
 *See the detailed sections below for complete instructions.*
@@ -61,7 +69,7 @@ When deciding which version number to increment, consider these guidelines:
 **Increment the MINOR version when:**
 - Adding new functionalities that don't break existing workflows
 - Adding new parameters or options while maintaining backward compatibility
-- Adding support for new API features from Leonardo.ai
+- Adding support for new API features from any integrated service
 - Expanding node capabilities (additional operations, etc.)
 - Performance improvements that don't change behavior
 
@@ -74,151 +82,13 @@ When deciding which version number to increment, consider these guidelines:
 
 #### Example Decision Scenarios
 
-- **Added a new parameter to customize rendering?** → Minor version (0.x.0)
+- **Added a new parameter to customize output?** → Minor version (0.x.0)
 - **Fixed a bug in error handling?** → Patch version (0.0.x)
 - **Renamed a parameter field?** → Major version (x.0.0)
-- **Added support for a new Leonardo.ai feature?** → Minor version (0.x.0)
-- **Changed the credential API?** → Major version (x.0.0)
+- **Added support for a new API feature?** → Minor version (0.x.0)
+- **Changed the credential API structure?** → Major version (x.0.0)
 - **Updated documentation comments?** → Patch version (0.0.x)
+- **Added a new service integration node?** → Minor version (0.x.0)
+- **Changed how existing nodes handle responses?** → Major version (x.0.0)
 
-### 2. Update Documentation
-
-Ensure all documentation is up-to-date:
-
-- README.md reflects current functionality
-- Node documentation in docs/ directory is accurate
-- Code comments are clear and helpful
-- Changelog is updated with new features, changes, and bug fixes
-
-### 3. TypeScript Configuration
-
-The project maintains compatibility with n8n's usage of const enums by keeping `isolatedModules` disabled in `tsconfig.json`.
-
-If you need to enable `isolatedModules` for any reason:
-1. Uncomment the `"isolatedModules": true,` line in `tsconfig.json`
-2. Update all usages of const enums with string literals and type assertions
-3. For details, see the TypeScript Configuration section in [DEVELOPMENT_GUIDELINES.md](./DEVELOPMENT_GUIDELINES.md)
-
-## Testing Before Publication
-
-Run these checks before publishing:
-
-### 1. Run All Tests
-
-```bash
-npm test
-npm run test:coverage
-```
-
-Ensure all tests pass and code coverage meets standards (ideally 100%).
-
-The tests should complete in approximately 7-10 seconds with the optimized testing approach using minimal real timeouts instead of fake timers.
-
-### 2. Run Manual Tests
-
-```bash
-npx ts-node -r tsconfig-paths/register __tests__/manual/testCreateLeonardoImage.ts
-```
-
-Verify that the node functions correctly in a manual test scenario.
-
-### 3. Build the Package
-
-```bash
-npm run build
-```
-
-Verify the build completes without errors and check that the `dist/` directory contains the expected files.
-
-### 4. Verify the Package Contents
-
-Ensure the package contains only the necessary files:
-
-```bash
-# List files that would be included in the published package
-npm pack --dry-run
-```
-
-## Publishing Process
-
-Once all tests pass and the build is successful, follow these steps to publish:
-
-### 1. Login to npm
-
-```bash
-npm login
-```
-
-Enter your credentials when prompted.
-
-### 2. Publish the Package
-
-```bash
-npm publish
-```
-
-For a dry run (not actually publishing):
-```bash
-npm publish --dry-run
-```
-
-### 3. Tag the Release in Git
-
-After successful publication:
-
-```bash
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
-```
-
-Replace `0.1.0` with the actual version number.
-
-### 4. Create a GitHub Release
-
-- Go to the GitHub repository's Releases page
-- Create a new release using the tag you just pushed
-- Include detailed release notes describing new features, changes, and bug fixes
-- Add any additional context or migration information users might need
-
-## Post-Publication
-
-After publishing:
-
-1. Verify the package is accessible on npm: https://www.npmjs.com/package/n8n-nodes-selfhosthub
-2. Test installing the package in a new n8n instance to ensure it works as expected
-3. Announce the release to the community through appropriate channels
-
-## Troubleshooting
-
-If you encounter issues during the publishing process:
-
-### npm Publish Fails
-
-- Check that your npm account has the appropriate permissions
-- Verify you're logged in with the correct account
-- Ensure the package version hasn't already been published
-
-### Build Errors
-
-- Check TypeScript configuration issues, especially if you've modified the `tsconfig.json`
-- Ensure all dependencies are installed and up-to-date
-- Look for linting or formatting errors that might be causing the build to fail
-
-## Version Management
-
-### Managing Pre-releases
-
-For pre-release versions:
-
-```bash
-# Update version in package.json to something like "0.1.0-beta.1"
-npm publish --tag beta
-```
-
-This allows users to test pre-release versions without affecting the default install version.
-
-## Additional Resources
-
-- [npm Publishing Documentation](https://docs.npmjs.com/cli/v8/commands/npm-publish)
-- [n8n Community Node Documentation](https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/)
-- [Semantic Versioning](https://semver.org/)
+###

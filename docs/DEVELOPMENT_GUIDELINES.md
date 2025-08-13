@@ -9,6 +9,7 @@ This document outlines the standards and best practices for developing and maint
 - **Display Name**: `Self-Host Hub (ServiceName)` 
   - Use proper capitalization following the service's official branding
   - Example: "Self-Host Hub (Leonardo)" for Leonardo.ai integration
+  - Example: "Self-Host Hub (JSON2Video)" for JSON2Video integration
 
 - **Group**: Always use `selfhosthub` for the group property (lowercase)
   - This ensures all Self-Host Hub nodes appear together in the n8n UI
@@ -40,30 +41,40 @@ This document outlines the standards and best practices for developing and maint
 - Place each service in its own subfolder under `/nodes/`
   ```
   nodes/
-    └── CreateLeonardoImage/
-        ├── CreateLeonardoImage.node.json
-        ├── CreateLeonardoImage.node.ts
-        ├── createLeonardoImage.png
-        ├── models.ts
-        └── parameterUtils.ts
+    ├── CreateLeonardoImage/
+    |   ├── CreateLeonardoImage.node.json
+    |   ├── CreateLeonardoImage.node.ts
+    |   ├── createLeonardoImage.png
+    |   ├── models.ts
+    |   └── parameterUtils.ts
+    ├── CreateJ2vMovie/
+    │   ├── CreateJ2vMovie.node.ts
+    │   └── operations/
+    └── OtherServiceNode/
+        ├── OtherServiceNode.node.ts
+        └── ...
   ```
 
 - Create corresponding credential files in `/credentials/`
   ```
   credentials/
     ├── CreateLeonardoImageCredentials.credentials.ts
+    ├── CreateJ2vMovieCredentials.credentials.ts
     ├── LeonardoAiApi.credentials.ts
+    └── OtherServiceCredentials.credentials.ts
   ```
 
 - Update `index.ts` to export all nodes and credentials
   ```typescript
   export const nodes = [
     new CreateLeonardoImage(),
+    new CreateJ2vMovie(),
     new OtherServiceNode(),
   ];
 
   export const credentials = [
     new CreateLeonardoImageCredentials(),
+    new CreateJ2vMovieCredentials(),
     new LeonardoAiApi(),
     new OtherServiceCredentials(),
   ];
@@ -74,6 +85,7 @@ This document outlines the standards and best practices for developing and maint
 - Keep parameter handling separate from API interaction logic
 - Implement polling mechanism pattern for long-running operations
 - Use consistent error handling and validation approaches
+- Organize complex nodes with utility files and operation-specific modules
 
 ## Code Style and Quality
 
@@ -101,10 +113,10 @@ This document outlines the standards and best practices for developing and maint
 
 - Use section comments to organize node parameters
   ```typescript
-  // Prompt Engineering
+  // Basic Configuration
   {
-    displayName: '🔷 Prompt Engineering',
-    name: 'promptEngineeringHeading',
+    displayName: '🔷 Basic Configuration',
+    name: 'basicConfigHeading',
     type: 'notice',
     // ...
   }
@@ -127,6 +139,7 @@ This document outlines the standards and best practices for developing and maint
 - Use proper error handling in all API requests
 - Provide informative error messages that help users troubleshoot issues
 - Consider edge cases like API rate limits, authentication failures, etc.
+- Implement consistent retry logic for transient failures
 
 ## Testing
 
@@ -203,7 +216,7 @@ This document outlines the standards and best practices for developing and maint
 - The project uses real timeouts with minimal delay (1ms) instead of Jest's fake timers
 - This approach ensures consistent test behavior across different environments (local, CI/CD)
 - No need for complex environment detection or fake timer manipulation
-- Faster test execution (~7 seconds) while maintaining 100% code coverage
+- Faster test execution while maintaining 100% code coverage
 - If adding asynchronous code with timeouts, use the same pattern of 1ms timeouts for testing
 
 ## Documentation
@@ -216,10 +229,16 @@ This document outlines the standards and best practices for developing and maint
 
 ### User Documentation
 
-- Create service-specific documentation in the `/docs/` folder
+- Create service-specific documentation in the `/docs/ServiceName/` folder
 - Update the main README.md to list new nodes
 - Include example workflows where appropriate
 - Document credential requirements and any API limitations
+
+### Service-Specific Guidelines
+
+For service-specific implementation patterns and guidelines, refer to:
+- [Leonardo Implementation Guidelines](CreateLeonardoImage/leonardo-implementation-guidelines.md)
+- [JSON2Video Implementation Guidelines](CreateJ2vMovie/) (see DOCUMENTATION.md)
 
 ## API Compatibility
 
@@ -291,43 +310,19 @@ If you need to temporarily enable `isolatedModules` for testing purposes:
 
 For publishing information and release management, please refer to [PUBLISHING.md](./PUBLISHING.md).
 
-## Service-Specific Implementation Guides
-
-### Leonardo Node
-
-The Leonardo node implementation includes these specific guidelines:
-
-- **Parameter Organization**:
-  - Basic Parameters
-  - Image Options
-  - Prompt Engineering
-  - Generation Parameters
-  - Image-to-Image (when applicable)
-  - Advanced Options
-
-- **Polling Mechanism**:
-  - Use the established polling mechanism for generation jobs
-  - Handle status transitions properly (PENDING → STARTED → COMPLETE)
-  - Implement proper error handling for failed generations
-
-- **Feature Support**:
-  - Maintain support for all implemented features
-  - When adding new features, follow the section organization pattern
-  - Document new parameters thoroughly
-
 ## Community Resources
 
-- Join the Self-Host Hub community on Skool.com
+- Join the Self-Host Hub community through our creator's Linktree
 - Check the YouTube channel for updates and tutorials
 - Connect via GitHub for issues and feature requests
 - Visit the Linktree (https://linktr.ee/selfhosthub) for all resources
 
 ## Future Development Roadmap
 
-- Implement additional service integrations
-- Support for video generation in Leonardo
-- Texture generation features
-- 3D model integration
-- User account management operations
+- Implement additional service integrations beyond Leonardo and JSON2Video
+- Develop common utility libraries for shared functionality
+- Create template systems for rapid node development
+- Implement webhook support for real-time integrations
+- Develop testing frameworks for easier service integration testing
 
 By following these guidelines, we'll maintain a high-quality, consistent experience across all Self-Host Hub nodes in the n8n ecosystem.

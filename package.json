@@ -9,6 +9,9 @@
     "leonardo",
     "leonardoai",
     "leonardo.ai",
+    "json2video",
+    "video-creation",
+    "video-generation",
     "ai",
     "image generation",
     "image-generation",
@@ -21,7 +24,10 @@
     "on-premise",
     "local",
     "ai-art",
-    "image-creator"
+    "image-creator",
+    "movie-creator",
+    "video-merger",
+    "subtitle-generation"
   ],
   "author": {
     "name": "Kawika Ohumukini",
@@ -36,7 +42,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "tsc && copyfiles -u 1 nodes/**/*.json dist/nodes && copyfiles -u 1 nodes/**/*.png dist/nodes && copyfiles -u 1 src/**/*.png dist/src",
+    "build": "tsc && copyfiles -u 1 nodes/**/*.json dist/nodes && copyfiles -u 1 nodes/**/*.png dist/nodes && copyfiles -u 1 nodes/**/*.svg dist/nodes && copyfiles -u 1 src/**/*.png dist/src",
     "dev": "tsc --watch",
     "format": "prettier --write .",
     "lint": "eslint .",
@@ -44,7 +50,8 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "test:debug": "node --inspect-brk node_modules/.bin/jest",
-    "test:leonardoai": "cd test && ts-node testCreateLeonardoImage.ts"
+    "test:leonardoai": "cd test && ts-node testCreateLeonardoImage.ts",
+    "test:json2video": "cd test && ts-node testCreateJ2vMovie.ts"
   },
   "files": [
     "dist"
@@ -53,10 +60,12 @@
     "n8nNodesApiVersion": 1,
     "credentials": [
       "dist/credentials/CreateLeonardoImageCredentials.credentials.js",
-      "dist/credentials/LeonardoAiApi.credentials.js"
+      "dist/credentials/LeonardoAiApi.credentials.js",
+      "dist/credentials/Json2VideoApiCredentials.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/CreateLeonardoImage/CreateLeonardoImage.node.js"
+      "dist/nodes/CreateLeonardoImage/CreateLeonardoImage.node.js",
+      "dist/nodes/CreateJ2vMovie/CreateJ2vMovie.node.js"
     ]
   },
   "devDependencies": {

@@ -1,18 +1,18 @@
 {
-        "node": "n8n-nodes-selfhosthub.createLeonardoImage",
-        "nodeVersion": "1.0",
-        "codexVersion": "1.0",
-        "categories": ["AI", "Image Generation"],
-        "resources": {
-                "credentialDocumentation": [
-                        {
-                                "url": "https://docs.leonardo.ai/docs/create-your-api-key"
-                        }
-                ],
-                "primaryDocumentation": [
-                        {
-                                "url": "https://docs.leonardo.ai/reference/creategeneration"
-                        }
-                ]
-        }
+  "node": "n8n-nodes-selfhosthub.createLeonardoImage",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Media", "Image"],
+  "resources": {
+    "credentialDocumentation": [
+      {
+        "url": "https://docs.leonardo.ai/docs/create-your-api-key"
+      }
+    ],
+    "primaryDocumentation": [
+      {
+        "url": "https://docs.leonardo.ai/reference/creategeneration"
+      }
+    ]
+  }
 }
