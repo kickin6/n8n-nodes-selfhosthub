@@ -47,7 +47,6 @@ export function calculatePositionFromPreset(
  */
 export function mapPositionPresetToApiFormat(positionPreset: any): string {
   if (!positionPreset || typeof positionPreset !== 'string') {
-    console.log('DEBUG - Invalid positionPreset:', positionPreset, 'type:', typeof positionPreset);
     return 'center-center';
   }
 

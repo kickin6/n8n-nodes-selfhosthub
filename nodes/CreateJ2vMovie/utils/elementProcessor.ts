@@ -16,8 +16,6 @@ export function processElement(
     duration: element.duration,
   };
 
-  console.log('DEBUG - Processing element:', JSON.stringify(element, null, 2));
-
   switch (element.type) {
     case 'image':
       return processImageElement(element, processedElement, videoWidth, videoHeight);

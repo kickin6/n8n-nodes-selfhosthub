@@ -1,5 +1,5 @@
 {
-  "node": "n8n-nodes-base.createJ2vMovie",
+  "node": "n8n-nodes-selfhosthub.createJ2vMovie",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": ["Video Generation"],
