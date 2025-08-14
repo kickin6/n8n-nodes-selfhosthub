@@ -24,7 +24,7 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
         if (parameterName === 'elements.elementValues' && nodeParameters.elements) {
           return nodeParameters.elements;
         }
-        
+
         return (
           nodeParameters[parameterName] !== undefined
             ? nodeParameters[parameterName]
@@ -80,38 +80,31 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
     createJ2vMovie = new CreateJ2vMovie();
   });
 
-  describe('Debug logging coverage (line 137)', () => {
-    test('should handle debug logging when elements exist', async () => {
+  describe('Element processing', () => {
+    test('should handle elements when they exist', async () => {
       const nodeParameters: INodeParameters = {
         operation: 'createMovie',
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
-        images: 'https://example.com/image1.jpg',
-        // These should trigger the debug logging in the try block
-        movieElements: [{ type: 'image', src: 'test.jpg', start: 0, duration: 5 }],
-        elements: [{ type: 'text', text: 'Hello', start: 1, duration: 3 }]
+        // Add the elements in the format your node expects
+        'movieElements.elementValues': [{ type: 'image', src: 'test.jpg', start: 0, duration: 5 }],
+        'elements.elementValues': [{ type: 'text', text: 'Hello', start: 1, duration: 3 }]
       };
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
+      const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
-      // Spy on console.log to verify the debug logging is hit
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await createJ2vMovie.execute.call(mockExecuteFunction);
-
-      // Verify debug logging was called (this should hit line 137)
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - movieElements:', expect.any(String));
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - elements:', expect.any(String));
-
-      consoleSpy.mockRestore();
+      // Test that the result is what you expect
+      expect(result).toBeDefined();
+      expect(result[0]).toHaveLength(1);
+      // Add more specific assertions about the actual API request that gets built
     });
 
-    test('should handle debug logging error when elements cannot be retrieved', async () => {
+    test('should continue when elements cannot be retrieved', async () => {
       const nodeParameters: INodeParameters = {
         operation: 'createMovie',
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
-        images: 'https://example.com/image1.jpg',
       };
 
       // Create a mock that throws an error when getting elements
@@ -125,15 +118,8 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
         })
       } as unknown as IExecuteFunctions;
 
-      // Spy on console.log to verify error logging
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await createJ2vMovie.execute.call(mockExecuteWithError);
-
-      // Assert that error logging was called
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - Error getting elements:', expect.any(Error));
-
-      consoleSpy.mockRestore();
+      // The important thing is that it doesn't crash and continues execution
+      await expect(createJ2vMovie.execute.call(mockExecuteWithError)).resolves.toBeDefined();
     });
   });
 
@@ -214,7 +200,7 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
       // Should process all 3 items
       expect(mockExecuteFunction.helpers.request).toHaveBeenCalledTimes(3);
       expect(result[0]).toHaveLength(3); // 3 results
-      
+
       // Each result should have correct pairedItem
       expect(result[0][0].pairedItem).toEqual({ item: 0 });
       expect(result[0][1].pairedItem).toEqual({ item: 1 });
@@ -240,13 +226,13 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
       expect(result[0]).toHaveLength(2);
-      
+
       // First item should succeed
       expect(result[0][0]).toEqual({
         json: { id: 'success-job', status: 'queued' },
         pairedItem: { item: 0 },
       });
-      
+
       // Second item should be error
       expect(result[0][1]).toEqual({
         json: { error: 'Second item failed' },
@@ -453,8 +439,8 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
     });
   });
 
-  describe('Request body debugging', () => {
-    test('should log request body for debugging', async () => {
+  describe('Request body handling', () => {
+    test('should build and send valid request body', async () => {
       const nodeParameters: INodeParameters = {
         operation: 'createMovie',
         recordId: 'test-record-123',
@@ -463,18 +449,31 @@ describe('CreateJ2vMovie - Unit Tests & Coverage', () => {
       };
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
+      const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
-      // Spy on console.log to verify request body logging
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      // Test that the execution completed successfully
+      expect(result).toBeDefined();
+      expect(result[0]).toHaveLength(1);
 
-      await createJ2vMovie.execute.call(mockExecuteFunction);
+      // Test that the API was called with the expected structure
+      expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('api.json2video.com'),
+          body: expect.objectContaining({
+            id: 'test-record-123'
+          }),
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'x-api-key': expect.any(String)
+          }),
+          json: true
+        })
+      );
 
-      // Should log request body and API response
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - Request Body after buildRequestBody:', expect.any(String));
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - Request Body:', expect.any(String));
-      expect(consoleSpy).toHaveBeenCalledWith('DEBUG - API Response:', expect.any(String));
-
-      consoleSpy.mockRestore();
+      // Test that we got a proper response back
+      const response = result[0][0];
+      expect(response).toHaveProperty('json');
     });
   });
 });

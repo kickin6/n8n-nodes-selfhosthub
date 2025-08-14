@@ -1,5 +1,5 @@
-import { 
-  calculatePositionFromPreset, 
+import {
+  calculatePositionFromPreset,
   mapPositionPresetToApiFormat,
   validatePosition,
   mapApiFormatToPositionPreset,
@@ -24,7 +24,7 @@ describe('positionUtils', () => {
         // Test default case (should use center if preset is not recognized)
         { preset: 'invalid_preset', expectedX: 640, expectedY: 360 }
       ];
-      
+
       testCases.forEach(({ preset, expectedX, expectedY }) => {
         const result = calculatePositionFromPreset(
           preset,
@@ -33,12 +33,12 @@ describe('positionUtils', () => {
           500,   // element width
           300    // element height
         );
-        
+
         expect(result.x).toBeCloseTo(expectedX);
         expect(result.y).toBeCloseTo(expectedY);
       });
     });
-    
+
     test('should handle custom positions by using default center', () => {
       const result = calculatePositionFromPreset(
         'custom',
@@ -47,7 +47,7 @@ describe('positionUtils', () => {
         500,
         300
       );
-      
+
       expect(result.x).toBeCloseTo(640);
       expect(result.y).toBeCloseTo(360);
     });
@@ -60,7 +60,7 @@ describe('positionUtils', () => {
         400,
         200
       );
-      
+
       // For 1920x1080 video with 400x200 element
       // Offset should be (400/2, 200/2) = (200, 100)
       expect(result.x).toBeCloseTo(200);
@@ -75,7 +75,7 @@ describe('positionUtils', () => {
         0,
         0
       );
-      
+
       // Should use default offset of 50 when element dimensions are 0
       expect(result.x).toBeCloseTo(50);
       expect(result.y).toBeCloseTo(50);
@@ -89,7 +89,7 @@ describe('positionUtils', () => {
         100,
         100
       );
-      
+
       // Should use fallback dimensions: 1024x768
       expect(result.x).toBeCloseTo(512); // 1024/2
       expect(result.y).toBeCloseTo(384); // 768/2
@@ -102,24 +102,14 @@ describe('positionUtils', () => {
         1080
         // elementWidth and elementHeight are undefined
       );
-      
+
       // Should use default offset of 50 when element dimensions are undefined
       expect(result.x).toBeCloseTo(50);
       expect(result.y).toBeCloseTo(50);
     });
   });
-  
-  describe('mapPositionPresetToApiFormat', () => {
-    // Mock console.log to capture debug output
-    const originalConsoleLog = console.log;
-    beforeEach(() => {
-      console.log = jest.fn();
-    });
-    
-    afterEach(() => {
-      console.log = originalConsoleLog;
-    });
 
+  describe('mapPositionPresetToApiFormat', () => {
     test('should map all position presets to API format', () => {
       const testCases = [
         { preset: 'top_left', expected: 'top-left' },
@@ -135,29 +125,27 @@ describe('positionUtils', () => {
         { preset: 'custom', expected: 'center-center' },
         { preset: 'invalid_preset', expected: 'center-center' }
       ];
-      
+
       testCases.forEach(({ preset, expected }) => {
         const result = mapPositionPresetToApiFormat(preset);
         expect(result).toBe(expected);
       });
     });
 
-    test('should handle null preset with debug log', () => {
+    // Just test the return values, not the logging
+    test('should handle null preset', () => {
       const result = mapPositionPresetToApiFormat(null);
       expect(result).toBe('center-center');
-      expect(console.log).toHaveBeenCalledWith('DEBUG - Invalid positionPreset:', null, 'type:', 'object');
     });
 
-    test('should handle undefined preset with debug log', () => {
+    test('should handle undefined preset', () => {
       const result = mapPositionPresetToApiFormat(undefined);
       expect(result).toBe('center-center');
-      expect(console.log).toHaveBeenCalledWith('DEBUG - Invalid positionPreset:', undefined, 'type:', 'undefined');
     });
 
-    test('should handle non-string preset with debug log', () => {
+    test('should handle non-string preset', () => {
       const result = mapPositionPresetToApiFormat(123 as any);
       expect(result).toBe('center-center');
-      expect(console.log).toHaveBeenCalledWith('DEBUG - Invalid positionPreset:', 123, 'type:', 'number');
     });
   });
 
@@ -208,7 +196,7 @@ describe('positionUtils', () => {
         { apiFormat: 'bottom-right', expected: 'bottom_right' },
         { apiFormat: 'invalid-format', expected: 'center' }
       ];
-      
+
       testCases.forEach(({ apiFormat, expected }) => {
         const result = mapApiFormatToPositionPreset(apiFormat);
         expect(result).toBe(expected);
@@ -219,7 +207,7 @@ describe('positionUtils', () => {
   describe('getAvailablePositionPresets', () => {
     test('should return all available position presets', () => {
       const result = getAvailablePositionPresets();
-      
+
       expect(result).toHaveLength(10);
       expect(result[0]).toEqual({ name: 'Custom (Set X/Y Manually)', value: 'custom' });
       expect(result[1]).toEqual({ name: 'Center', value: 'center' });
@@ -237,7 +225,7 @@ describe('positionUtils', () => {
   describe('calculateElementBounds', () => {
     test('should calculate correct bounds for an element', () => {
       const result = calculateElementBounds(100, 100, 50, 30);
-      
+
       expect(result.left).toBe(75);   // 100 - 25
       expect(result.top).toBe(85);    // 100 - 15
       expect(result.right).toBe(125); // 100 + 25
@@ -246,7 +234,7 @@ describe('positionUtils', () => {
 
     test('should handle zero dimensions', () => {
       const result = calculateElementBounds(100, 100, 0, 0);
-      
+
       expect(result.left).toBe(100);
       expect(result.top).toBe(100);
       expect(result.right).toBe(100);
@@ -255,7 +243,7 @@ describe('positionUtils', () => {
 
     test('should handle negative coordinates', () => {
       const result = calculateElementBounds(-50, -30, 20, 10);
-      
+
       expect(result.left).toBe(-60);  // -50 - 10
       expect(result.top).toBe(-35);   // -30 - 5
       expect(result.right).toBe(-40); // -50 + 10
@@ -267,7 +255,7 @@ describe('positionUtils', () => {
     test('should detect overlapping elements', () => {
       const element1 = { x: 100, y: 100, width: 50, height: 50 };
       const element2 = { x: 120, y: 120, width: 50, height: 50 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true);
     });
@@ -275,7 +263,7 @@ describe('positionUtils', () => {
     test('should detect non-overlapping elements', () => {
       const element1 = { x: 100, y: 100, width: 50, height: 50 };
       const element2 = { x: 200, y: 200, width: 50, height: 50 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(false);
     });
@@ -283,7 +271,7 @@ describe('positionUtils', () => {
     test('should detect adjacent elements as overlapping (they actually touch)', () => {
       const element1 = { x: 100, y: 100, width: 50, height: 50 };
       const element2 = { x: 150, y: 100, width: 50, height: 50 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true); // Actually overlapping at the edge
     });
@@ -291,7 +279,7 @@ describe('positionUtils', () => {
     test('should handle elements with zero dimensions as overlapping', () => {
       const element1 = { x: 100, y: 100, width: 0, height: 0 };
       const element2 = { x: 100, y: 100, width: 0, height: 0 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true); // Zero-dimension elements at same position overlap
     });
@@ -299,7 +287,7 @@ describe('positionUtils', () => {
     test('should detect overlap when one element is inside another', () => {
       const element1 = { x: 100, y: 100, width: 100, height: 100 };
       const element2 = { x: 110, y: 110, width: 20, height: 20 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true);
     });
@@ -307,7 +295,7 @@ describe('positionUtils', () => {
     test('should detect partial overlap', () => {
       const element1 = { x: 100, y: 100, width: 60, height: 60 };
       const element2 = { x: 130, y: 130, width: 60, height: 60 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true);
     });
@@ -315,7 +303,7 @@ describe('positionUtils', () => {
     test('should handle negative coordinates', () => {
       const element1 = { x: -50, y: -50, width: 100, height: 100 };
       const element2 = { x: 0, y: 0, width: 50, height: 50 };
-      
+
       const result = checkElementOverlap(element1, element2);
       expect(result).toBe(true);
     });
