@@ -130,18 +130,12 @@ export class CreateJ2vMovie implements INodeType {
         // Log parameters for debugging
         try {
           const movieElements = this.getNodeParameter('movieElements.elementValues', i, []);
-          console.log('DEBUG - movieElements:', JSON.stringify(movieElements));
           const elements = this.getNodeParameter('elements.elementValues', i, []);
-          console.log('DEBUG - elements:', JSON.stringify(elements));
         } catch (error) {
-          console.log('DEBUG - Error getting elements:', error);
         }
 
         // Build request body using the centralized utility
         const requestBody = buildRequestBody.call(this, operation, i, isAdvancedMode);
-
-        // Debug the request body right after it's built
-        console.log('DEBUG - Request Body after buildRequestBody:', JSON.stringify(requestBody, null, 2));
 
         // Get recordId and webhookUrl for the API URL parameters
         const recordId = String(this.getNodeParameter('recordId', i, ''));
@@ -173,16 +167,8 @@ export class CreateJ2vMovie implements INodeType {
             break;
         }
 
-        // Log the request body for debugging
-        console.log('DEBUG - Request Body:', JSON.stringify(options.body, null, 2));
-
         // Make the API request
         const responseData = await this.helpers.request(options);
-
-        // Debug the response data
-        console.log('DEBUG - API Response:', JSON.stringify(responseData, null, 2));
-        console.log('DEBUG - Response type:', typeof responseData);
-        console.log('DEBUG - Is array:', Array.isArray(responseData));
 
         // Handle the API response properly - JSON2Video returns an object, not an array
         let processedResponse: IDataObject[];
