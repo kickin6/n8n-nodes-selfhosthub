@@ -86,6 +86,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@elevenlabs/n8n-nodes-elevenlabs": "file:nodes/elevenlabs-n8n",
     "axios": "^1.8.4",
     "tsconfig-paths": "^4.2.0"
   }

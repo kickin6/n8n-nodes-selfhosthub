@@ -4,12 +4,9 @@ import {
   INodeExecutionData,
   INodeParameters
 } from 'n8n-workflow';
-import { CreateJ2vMovie } from '../../../nodes/CreateJ2vMovie/CreateJ2vMovie.node';
+import { CreateJ2vMovie } from '@nodes/CreateJ2vMovie/CreateJ2vMovie.node';
 
 describe('CreateJ2vMovie - Error Handling', () => {
-  /**
-   * Helper function to create a mock execute function with given parameters
-   */
   const createMockExecuteFunction = (nodeParameters: INodeParameters) => {
     const mockExecute = {
       getNodeParameter: (
@@ -17,7 +14,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
         itemIndex: number,
         fallbackValue?: any
       ) => {
-        // Handle dotted path notation for 'movieElements.elementValues' and 'elements.elementValues'
         if (parameterName === 'movieElements.elementValues' && nodeParameters.movieElements) {
           return nodeParameters.movieElements;
         }
@@ -37,6 +33,9 @@ describe('CreateJ2vMovie - Error Handling', () => {
           return { apiKey: 'test-api-key' };
         }
         throw new Error(`Unknown credentials type: ${type}`);
+      }),
+      getNode: jest.fn().mockReturnValue({
+        parameters: nodeParameters
       }),
       continueOnFail: jest.fn().mockReturnValue(false),
       helpers: {
@@ -86,7 +85,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock API error with Error object
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce(new Error('API error'));
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
@@ -112,7 +110,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock API error with a string
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce('Simple string error');
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
@@ -137,7 +134,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
 
-      // Mock API error
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce(new Error('API error'));
 
       await expect(createJ2vMovie.execute.call(mockExecuteFunction))
@@ -155,7 +151,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock timeout error
       const timeoutError = new Error('Request timeout');
       timeoutError.name = 'TimeoutError';
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce(timeoutError);
@@ -183,7 +178,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock 401 error
       const authError = new Error('Unauthorized');
       (authError as any).statusCode = 401;
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce(authError);
@@ -212,7 +206,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock 500 error
       const serverError = new Error('Internal Server Error');
       (serverError as any).statusCode = 500;
       (mockExecuteFunction.helpers.request as jest.Mock).mockRejectedValueOnce(serverError);
@@ -237,7 +230,7 @@ describe('CreateJ2vMovie - Error Handling', () => {
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
         advancedMode: true,
-        jsonTemplate: '{invalid-json}', // Invalid JSON
+        jsonTemplate: '{invalid-json}',
         output_width: 1280,
         output_height: 720,
         quality: 'medium',
@@ -256,7 +249,7 @@ describe('CreateJ2vMovie - Error Handling', () => {
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
         advancedMode: true,
-        jsonTemplate: '{invalid-json}', // Invalid JSON
+        jsonTemplate: '{invalid-json}',
         output_width: 1280,
         output_height: 720,
       };
@@ -264,7 +257,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock the request to never be called due to JSON parsing error
       (mockExecuteFunction.helpers.request as jest.Mock).mockImplementation(() => {
         throw new Error('Invalid JSON template: Expected property name or \'}\' in JSON at position 1 (line 1 column 2)');
       });
@@ -288,7 +280,7 @@ describe('CreateJ2vMovie - Error Handling', () => {
         operation: 'createMovie',
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
-        images: '{invalid-json-images}', // Invalid JSON for images
+        images: '{invalid-json-images}',
         output_width: 1280,
         output_height: 720,
       };
@@ -296,7 +288,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock parsing error
       (mockExecuteFunction.helpers.request as jest.Mock).mockImplementation(() => {
         throw new Error('Invalid images format');
       });
@@ -342,10 +333,9 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       const mockExecuteWithInvalidCreds = {
         ...createMockExecuteFunction(nodeParameters),
-        getCredentials: jest.fn().mockResolvedValue({ apiKey: '' }) // Empty API key
+        getCredentials: jest.fn().mockResolvedValue({ apiKey: '' })
       } as unknown as IExecuteFunctions;
 
-      // The node should still make the request with empty API key and let the API handle it
       const result = await createJ2vMovie.execute.call(mockExecuteWithInvalidCreds);
 
       expect(mockExecuteWithInvalidCreds.helpers.request).toHaveBeenCalledWith(
@@ -361,7 +351,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
   describe('parameter validation errors', () => {
     test('should handle missing operation parameter', async () => {
       const nodeParameters: INodeParameters = {
-        // operation parameter missing
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
         images: 'https://example.com/image1.jpg',
@@ -370,7 +359,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock the request to throw error due to unsupported operation
       (mockExecuteFunction.helpers.request as jest.Mock).mockImplementation(() => {
         throw new Error('Unsupported operation: ');
       });
@@ -397,7 +385,6 @@ describe('CreateJ2vMovie - Error Handling', () => {
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       (mockExecuteFunction.continueOnFail as jest.Mock).mockReturnValue(true);
 
-      // Mock the request to throw error due to unsupported operation
       (mockExecuteFunction.helpers.request as jest.Mock).mockImplementation(() => {
         throw new Error('Unsupported operation: unknownOperation');
       });
@@ -424,14 +411,16 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
 
-      // Mock response as undefined
       (mockExecuteFunction.helpers.request as jest.Mock).mockResolvedValueOnce(undefined);
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
       expect(result).toEqual([[
         {
-          json: undefined,
+          json: expect.objectContaining({
+            input_jobId: 'test-job-id',
+            input_operation: 'checkStatus',
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -447,14 +436,18 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
 
-      // Mock response as null
       (mockExecuteFunction.helpers.request as jest.Mock).mockResolvedValueOnce(null);
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
       expect(result).toEqual([[
         {
-          json: null,
+          json: expect.objectContaining({
+            input_images: 'https://example.com/image1.jpg',
+            input_operation: 'createMovie',
+            input_recordId: 'test-record-123',
+            input_webhookUrl: 'https://webhook.site/test',
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -470,14 +463,18 @@ describe('CreateJ2vMovie - Error Handling', () => {
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
 
-      // Mock malformed response
       (mockExecuteFunction.helpers.request as jest.Mock).mockResolvedValueOnce('invalid response');
 
       const result = await createJ2vMovie.execute.call(mockExecuteFunction);
 
       expect(result).toEqual([[
         {
-          json: 'invalid response',
+          json: expect.objectContaining({
+            input_images: 'https://example.com/image1.jpg',
+            input_operation: 'createMovie',
+            input_recordId: 'test-record-123',
+            input_webhookUrl: 'https://webhook.site/test',
+          }),
           pairedItem: { item: 0 },
         }
       ]]);

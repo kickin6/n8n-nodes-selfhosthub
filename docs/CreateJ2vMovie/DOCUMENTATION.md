@@ -19,7 +19,26 @@ Combines a video file with an audio file, with options for adding subtitles.
 
 ### Merge Videos
 
-Combines multiple video files into a single video by creating separate scenes for each video, with optional transitions between scenes.
+Combines multiple video files into a single video by creating separate scenes for each video, with optional transitions between scenes and text overlays.
+
+#### Text Elements (Subtitles)
+
+The Merge Videos operation supports adding text elements for subtitles, captions, and text overlays:
+
+- **Font settings**: Family, size, weight, color, background color
+- **Text positioning**: Canvas position presets (top-left, bottom-center, etc.) or custom coordinates
+- **Text canvas alignment**: Vertical (top/center/bottom) and horizontal (left/center/right) positioning within the text canvas
+- **Timing controls**: Start time, duration, fade in/out effects
+- **Advanced effects**: Z-index layering, animations (pan, zoom, rotation), visual corrections (brightness, contrast, etc.)
+- **Animation styles**: Basic, word-by-word, character-by-character, jumping letters
+
+Text elements are added to all video scenes in the merge, allowing precise timing control through start/duration parameters. This enables you to create synchronized subtitles that appear across multiple merged videos.
+
+**Example use cases:**
+- Adding subtitles to a series of merged video clips
+- Creating multilingual captions for training videos
+- Adding branded text overlays to marketing content
+- Synchronizing text with specific video segments
 
 ### Check Status
 
@@ -88,6 +107,22 @@ When merging videos, each video becomes a separate scene in the final movie:
           "type": "video", 
           "src": "https://example.com/video2.mp4",
           "duration": -1
+        },
+        {
+          "type": "text",
+          "text": "Second video subtitle",
+          "start": 2,
+          "duration": 3,
+          "style": "001",
+          "position": "bottom-left",
+          "settings": {
+            "font-family": "Roboto",
+            "font-size": "32px",
+            "font-color": "#FFFFFF",
+            "background-color": "rgba(0,0,0,0.7)",
+            "vertical-position": "bottom",
+            "horizontal-position": "center"
+          }
         }
       ]
     }
@@ -109,6 +144,7 @@ The JSON2Video node has been updated to resolve API compatibility issues:
 - **API Response Handling**: Fixed array casting issues in response processing
 - **Duration Handling**: Fixed duration parameter handling to preserve exact values (-1, -2, positive numbers)
 - **Video Merging Structure**: Fixed merge videos operation to use proper scene-based structure instead of invalid `videos` array
+- **Text Elements Support**: Added comprehensive text element support for subtitles and captions in merge videos operation
 
 ### Common Issues
 
@@ -127,17 +163,34 @@ The JSON2Video node has been updated to resolve API compatibility issues:
   2. Using different video hosting services
   3. Ensuring videos are in standard formats (MP4, H.264)
 
+- **Text Element Validation Errors**: Ensure text elements have:
+  - Non-empty text content
+  - Valid hex color codes (e.g., `#FFFFFF`)
+  - Numeric values within specified ranges
+  - Valid position and alignment options
+
 ## Architecture
 
 The node has been refactored into a modular structure for better maintainability:
 
 ### Utility Files
 
-- **`requestBuilder.ts`**: Handles request body construction for all operations
+- **`requestBuilder/`**: Handles request body construction for all operations
+  - `createMovieBuilder.ts`: Create movie operation request building
+  - `mergeVideoAudioBuilder.ts`: Video/audio merge operation request building
+  - `mergeVideosBuilder.ts`: Video merge operation request building with text element support
+  - `advanced.ts`: Advanced mode JSON template processing
+  - `shared.ts`: Shared utilities across request builders
 - **`elementProcessor.ts`**: Processes individual elements based on their type
+- **`textElementProcessor.ts`**: Processes and validates text elements for subtitle functionality
 - **`webhookUtils.ts`**: Manages webhook functionality and validation
 - **`positionUtils.ts`**: Handles element positioning calculations
-- **`imageUtils.ts`**: Image dimension detection utilities
+
+### Operation Files
+
+- **`createMovieOperation.ts`**: Parameter definitions for create movie operation
+- **`mergeVideoAudioOperation.ts`**: Parameter definitions for video/audio merging
+- **`mergeVideosOperation.ts`**: Parameter definitions for video merging with text element support
 
 ### Templates
 
@@ -148,7 +201,38 @@ The node has been refactored into a modular structure for better maintainability
 ### Shared Components
 
 - **`operations/shared/commonParams.ts`**: Common parameters across operations
-- **`operations/shared/elements.ts`**: Shared element definitions
+- **`operations/shared/elements.ts`**: Shared element definitions including text element interfaces and types
+
+## Text Element Configuration
+
+When adding text elements to merged videos, you can configure:
+
+### Basic Properties
+- **Text Content**: The actual text to display
+- **Style**: Animation style (001-004 for different text reveal effects)
+- **Start Time**: When the text appears (in seconds)
+- **Duration**: How long the text is visible (-2 = match container, -1 = auto, positive = explicit seconds)
+
+### Font Settings
+- **Font Family**: Google Fonts (Roboto, Arial, etc.) or custom font URLs
+- **Font Size**: Size with units (e.g., "32px", "2em")
+- **Font Weight**: 300 (light) to 800 (extra bold)
+- **Font Color**: Hex color code (e.g., "#FFFFFF")
+- **Background Color**: Background behind text (hex or rgba)
+- **Text Alignment**: left, center, right, justify
+
+### Positioning
+- **Canvas Position**: Predefined positions (top-left, bottom-center, etc.) or custom coordinates
+- **Text Canvas Alignment**: How text aligns within its canvas area
+  - Vertical: top, center, bottom
+  - Horizontal: left, center, right
+- **Z-Index**: Layering order (-99 to 99, higher values appear on top)
+
+### Effects
+- **Fade In/Out**: Transition duration in seconds
+- **Animations**: Pan, zoom, rotation effects
+- **Visual Corrections**: Brightness, contrast, gamma, saturation adjustments
+- **Chroma Key**: Green screen effects for transparency
 
 ## Credentials
 

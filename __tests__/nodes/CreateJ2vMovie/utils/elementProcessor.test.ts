@@ -1,5 +1,5 @@
 import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { processElement } from '../../../../nodes/CreateJ2vMovie/utils/elementProcessor';
+import { processElement } from '@nodes/CreateJ2vMovie/utils/elementProcessor';
 
 describe('elementProcessor', () => {
   describe('processElement', () => {

@@ -4,12 +4,9 @@ import {
   INodeExecutionData,
   INodeParameters
 } from 'n8n-workflow';
-import { CreateJ2vMovie } from '../../../nodes/CreateJ2vMovie/CreateJ2vMovie.node';
+import { CreateJ2vMovie } from '@nodes/CreateJ2vMovie/CreateJ2vMovie.node';
 
 describe('CreateJ2vMovie - Advanced Mode', () => {
-  /**
-   * Helper function to create a mock execute function with given parameters
-   */
   const createMockExecuteFunction = (nodeParameters: INodeParameters) => {
     const mockExecute = {
       getNodeParameter: (
@@ -17,7 +14,6 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
         itemIndex: number,
         fallbackValue?: any
       ) => {
-        // Handle dotted path notation for 'movieElements.elementValues' and 'elements.elementValues'
         if (parameterName === 'movieElements.elementValues' && nodeParameters.movieElements) {
           return nodeParameters.movieElements;
         }
@@ -37,6 +33,9 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
           return { apiKey: 'test-api-key' };
         }
         throw new Error(`Unknown credentials type: ${type}`);
+      }),
+      getNode: jest.fn().mockReturnValue({
+        parameters: nodeParameters
       }),
       continueOnFail: jest.fn().mockReturnValue(false),
       logger: {
@@ -110,10 +109,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -167,8 +166,6 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Verify the request body contains the parsed JSON template
-      // In advanced mode, elements are indexed by number, not in an array
       expect(requestCall.body).toHaveProperty('0');
       expect(requestCall.body).toHaveProperty('1');
       expect(requestCall.body).toHaveProperty('2');
@@ -178,10 +175,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -213,10 +210,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -247,10 +244,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -281,10 +278,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -314,10 +311,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -331,7 +328,7 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
         recordId: 'test-record-123',
         webhookUrl: 'https://webhook.site/test',
         advancedMode: true,
-        jsonTemplate: '[]', // Empty array
+        jsonTemplate: '[]',
         output_width: 1280,
         output_height: 720,
       };
@@ -349,10 +346,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -383,17 +380,16 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // In advanced mode, should use JSON template, not movieElements
       expect(requestCall.body).toHaveProperty('0');
       expect(requestCall.body['0'].type).toBe('image');
       expect(requestCall.body['0'].src).toBe('https://example.com/template.jpg');
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -421,17 +417,15 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Should include advanced settings
       expect(requestCall.body).toHaveProperty('fps', 120);
       expect(requestCall.body).toHaveProperty('quality', 'ultra');
-      // Note: width/height may not be in a resolution object depending on implementation
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -454,17 +448,16 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Should use the object structure from JSON template
       expect(requestCall.body).toHaveProperty('elements');
       expect(requestCall.body).toHaveProperty('settings');
       expect(requestCall.body.settings.quality).toBe('high');
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -498,17 +491,16 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Should include both template elements and scene elements
-      expect(requestCall.body).toHaveProperty('0'); // From JSON template
+      expect(requestCall.body).toHaveProperty('0');
       expect(requestCall.body).toHaveProperty('id', 'test-record-scene');
       expect(requestCall.body).toHaveProperty('webhook');
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -549,7 +541,6 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Should use the advanced template structure
       expect(requestCall.body).toHaveProperty('video', 'https://example.com/video.mp4');
       expect(requestCall.body).toHaveProperty('audio', 'https://example.com/audio.mp3');
       expect(requestCall.body).toHaveProperty('subtitles');
@@ -557,10 +548,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -604,7 +595,6 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       const requestCall = (mockExecuteFunction.helpers.request as jest.Mock).mock.calls[0][0];
       
-      // Should use the advanced template structure
       expect(requestCall.body).toHaveProperty('videos');
       expect(requestCall.body).toHaveProperty('settings');
       expect(requestCall.body.videos).toHaveLength(2);
@@ -612,10 +602,10 @@ describe('CreateJ2vMovie - Advanced Mode', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);

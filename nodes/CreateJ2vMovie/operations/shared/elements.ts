@@ -13,11 +13,11 @@ export const commonElementFields: INodeProperties[] = [
                 displayName: 'Start Time (seconds)',
                 name: 'start',
                 type: 'number',
-                default: 0,
+                default: undefined,
                 description: 'Start time in seconds',
         },
         {
-                displayName: 'Duration (seconds)', 
+                displayName: 'Duration (seconds)',
                 name: 'duration',
                 type: 'number',
                 default: 5,
@@ -490,10 +490,173 @@ export const completeElementFields: INodeProperties[] = [
                 description: 'Type of element to add',
         },
         ...commonElementFields,
-        ...imageElementFields.filter(field => field.name !== 'type'), // Exclude duplicate type field
+        ...imageElementFields.filter(field => field.name !== 'type' &&
+                field.name !== 'start' &&
+                field.name !== 'duration'), // Exclude duplicate fields
         ...videoElementFields,
         ...textElementFields,
         ...audioElementFields,
         ...voiceElementFields,
         ...subtitlesElementFields,
 ];
+
+export interface TextSettings {
+	// Font properties
+	'font-family'?: string;
+	'font-size'?: string;
+	'font-weight'?: string | number;
+	'font-color'?: string;
+	'background-color'?: string;
+	'text-align'?: 'left' | 'center' | 'right' | 'justify';
+	
+	// Position properties within text canvas
+	'vertical-position'?: 'top' | 'center' | 'bottom';
+	'horizontal-position'?: 'left' | 'center' | 'right';
+	
+	// Additional CSS properties (extensible)
+	[key: string]: string | number | undefined;
+}
+
+export interface ChromaKey {
+	color: string; // Color to make transparent (e.g., "#00b140")
+	tolerance?: number; // Sensitivity (1-100, default: 25)
+}
+
+export interface Correction {
+	brightness?: number; // -1 to 1, default: 0
+	contrast?: number; // -1000 to 1000, default: 1
+	gamma?: number; // 0.1 to 10, default: 1
+	saturation?: number; // 0 to 3, default: 1
+}
+
+export interface Crop {
+	height: number;
+	width: number;
+	x?: number; // default: 0
+	y?: number; // default: 0
+}
+
+export interface Rotate {
+	angle: number; // -360 to 360, default: 0
+	speed?: number; // Time to complete rotation, default: 0
+}
+
+export interface TextElement {
+	// Required properties
+	type: 'text';
+	text: string;
+	
+	// Optional core properties
+	id?: string; // default: "@randomString"
+	cache?: boolean; // default: true
+	comment?: string;
+	condition?: string;
+	
+	// Visual effects
+	'chroma-key'?: ChromaKey;
+	correction?: Correction;
+	crop?: Crop;
+	
+	// Timing properties
+	duration?: number; // default: -2 (match container duration)
+	'extra-time'?: number; // default: 0
+	start?: number; // default: 0
+	'fade-in'?: number;
+	'fade-out'?: number;
+	
+	// Transform properties
+	'flip-horizontal'?: boolean; // default: false
+	'flip-vertical'?: boolean; // default: false
+	height?: number; // default: -1
+	width?: number; // default: -1
+	mask?: string; // URL to PNG or video mask
+	
+	// Animation properties
+	pan?: 'left' | 'top' | 'right' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+	'pan-crop'?: boolean; // default: true
+	'pan-distance'?: number; // 0.01 to 0.5, default: 0.1
+	rotate?: Rotate;
+	zoom?: number; // -10 to 10
+	
+	// Position properties
+	position?: 'top-left' | 'top-right' | 'bottom-right' | 'bottom-left' | 'center-center' | 'custom'; // default: 'custom'
+	x?: number; // default: 0 (when position is 'custom')
+	y?: number; // default: 0 (when position is 'custom')
+	'z-index'?: number; // -99 to 99, default: 0
+	
+	// Resize mode
+	resize?: 'cover' | 'fill' | 'fit' | 'contain';
+	
+	// Text-specific properties
+	style?: string; // default: "001"
+	settings?: TextSettings;
+	
+	// Variables
+	variables?: Record<string, any>;
+}
+
+// Node.js parameter interface for the text element
+export interface TextElementParams {
+	// Basic text properties
+	displayName?: string;
+	text: string;
+	style?: string;
+	
+	// Font settings
+	fontFamily?: string;
+	fontSize?: string;
+	fontWeight?: string | number;
+	fontColor?: string;
+	backgroundColor?: string;
+	textAlign?: 'left' | 'center' | 'right' | 'justify';
+	
+	// Position within text canvas
+	verticalPosition?: 'top' | 'center' | 'bottom';
+	horizontalPosition?: 'left' | 'center' | 'right';
+	
+	// Element positioning
+	position?: 'top-left' | 'top-right' | 'bottom-right' | 'bottom-left' | 'center-center' | 'custom';
+	x?: number;
+	y?: number;
+	zIndex?: number;
+	
+	// Timing
+	start?: number;
+	duration?: number;
+	extraTime?: number;
+	fadeIn?: number;
+	fadeOut?: number;
+	
+	// Transform
+	width?: number;
+	height?: number;
+	resize?: 'cover' | 'fill' | 'fit' | 'contain';
+	flipHorizontal?: boolean;
+	flipVertical?: boolean;
+	
+	// Effects
+	chromaKeyColor?: string;
+	chromaKeyTolerance?: number;
+	brightness?: number;
+	contrast?: number;
+	gamma?: number;
+	saturation?: number;
+	
+	// Animation
+	pan?: 'left' | 'top' | 'right' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+	panCrop?: boolean;
+	panDistance?: number;
+	zoom?: number;
+	rotateAngle?: number;
+	rotateSpeed?: number;
+	
+	// Advanced
+	mask?: string;
+	condition?: string;
+	cache?: boolean;
+	comment?: string;
+	
+	// Custom settings
+	customSettings?: Record<string, any>;
+	variables?: Record<string, any>;
+}

@@ -1,5 +1,5 @@
 import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { buildRequestBody } from '../../../../../nodes/CreateJ2vMovie/utils/requestBuilder';
+import { buildRequestBody } from '@nodes/CreateJ2vMovie/utils/requestBuilder';
 
 describe('requestBuilder - Main Operations', () => {
   describe('buildRequestBody - Core Operations', () => {

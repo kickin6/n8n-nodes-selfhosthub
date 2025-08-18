@@ -1,5 +1,5 @@
 import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { getParameterValue } from '../../../../../nodes/CreateJ2vMovie/utils/requestBuilder';
+import { getParameterValue } from '@nodes/CreateJ2vMovie/utils/requestBuilder';
 
 describe('requestBuilder - Basic Functions', () => {
   describe('getParameterValue', () => {

@@ -1,4 +1,4 @@
-import { buildWebhookObject, isValidWebhookUrl, buildWebhookExports, sanitizeWebhookUrl } from '../../../../nodes/CreateJ2vMovie/utils/webhookUtils';
+import { buildWebhookObject, isValidWebhookUrl, buildWebhookExports, sanitizeWebhookUrl } from '@nodes/CreateJ2vMovie/utils/webhookUtils';
 
 describe('webhookUtils', () => {
   describe('isValidWebhookUrl', () => {

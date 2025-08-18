@@ -179,7 +179,6 @@ export const jsonTemplateParameters = {
         {
           "type": "image",
           "src": "https://example.com/image.jpg",
-          "start": 0,
           "duration": 5,
           "position": "center-center"
         }

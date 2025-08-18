@@ -172,24 +172,78 @@ Valid position values:
 
 ### Text Element
 
+The text element supports comprehensive configuration for subtitles, captions, and text overlays:
+
 ```json
 {
   "type": "text",
-  "text": "Your text content",
+  "text": "Your subtitle text",
   "start": 0,
   "duration": 5,
-  "position": "center-center",
-  "x": 960,
-  "y": 540,
-  "font-family": "Arial",
-  "font-size": 32,
-  "color": "white",
-  "background-color": "transparent",
-  "text-align": "center",
-  "opacity": 1.0,
-  "style": "001"              // Predefined animation style
+  "style": "001",                    // Animation style ("001", "002", "003", "004")
+  "position": "bottom-left",         // Canvas position preset
+  "x": 50,                          // X coordinate (when position is "custom")
+  "y": 50,                          // Y coordinate (when position is "custom")
+  "z-index": 10,                    // Layering order (-99 to 99)
+  "settings": {
+    "font-family": "Roboto",        // Google Font or custom font URL
+    "font-size": "32px",            // Font size with units
+    "font-weight": "600",           // Font weight (300-800)
+    "font-color": "#FFFFFF",        // Text color (hex format)
+    "background-color": "rgba(0,0,0,0.7)", // Background color (hex or rgba)
+    "text-align": "center",         // Text alignment (left, center, right, justify)
+    "vertical-position": "bottom",  // Vertical alignment in text canvas (top, center, bottom)
+    "horizontal-position": "center" // Horizontal alignment in text canvas (left, center, right)
+  },
+  "fade-in": 0.3,                   // Fade in duration in seconds
+  "fade-out": 0.3,                  // Fade out duration in seconds
+  "width": 800,                     // Element width (-1 for auto)
+  "height": 100,                    // Element height (-1 for auto)
+  "resize": "fit",                  // Resize mode (cover, fill, fit, contain)
+  "pan": "left",                    // Pan animation direction
+  "pan-distance": 0.1,              // Pan movement distance (0.01-0.5)
+  "pan-crop": true,                 // Crop during pan animation
+  "zoom": 2,                        // Zoom level (-10 to 10)
+  "rotate": {
+    "angle": 45,                    // Rotation angle (-360 to 360)
+    "speed": 2                      // Time to complete rotation
+  },
+  "flip-horizontal": false,         // Horizontal flip
+  "flip-vertical": false,           // Vertical flip
+  "chroma-key": {
+    "color": "#00FF00",             // Color to make transparent
+    "tolerance": 25                 // Sensitivity (1-100)
+  },
+  "correction": {
+    "brightness": 0.1,              // Brightness adjustment (-1 to 1)
+    "contrast": 1.2,                // Contrast adjustment (-1000 to 1000)
+    "gamma": 1.0,                   // Gamma adjustment (0.1 to 10)
+    "saturation": 1.1               // Saturation adjustment (0 to 3)
+  },
+  "mask": "https://example.com/mask.png", // URL to mask file
+  "condition": "some_variable == true",   // Conditional rendering expression
+  "variables": {                          // Element-specific variables
+    "custom_var": "value"
+  },
+  "comment": "Subtitle for intro section"  // Internal note
 }
 ```
+
+#### Text Element Animation Styles
+
+- **"001"**: Basic fade in/out
+- **"002"**: Word by word reveal
+- **"003"**: Character by character reveal  
+- **"004"**: Jumping letters animation
+
+#### Text Element Positioning
+
+Text elements use a two-level positioning system:
+
+1. **Canvas Position** (`position`, `x`, `y`): Where the text canvas is placed on the video
+2. **Text Alignment** (`vertical-position`, `horizontal-position`): How text aligns within its canvas
+
+This allows for flexible positioning while maintaining text alignment consistency.
 
 ### Audio Element
 
@@ -239,7 +293,7 @@ Valid position values:
 
 ## Video Merging Structure
 
-When merging videos, each video should be placed in a separate scene:
+When merging videos, each video should be placed in a separate scene with optional text elements:
 
 ```json
 {
@@ -254,6 +308,25 @@ When merging videos, each video should be placed in a separate scene:
           "src": "https://example.com/video1.mp4",
           "start": 0,
           "duration": -1
+        },
+        {
+          "type": "text",
+          "text": "Introduction Video",
+          "start": 1,
+          "duration": 3,
+          "style": "001",
+          "position": "bottom-center",
+          "settings": {
+            "font-family": "Roboto",
+            "font-size": "28px",
+            "font-color": "#FFFFFF",
+            "background-color": "rgba(0,0,0,0.8)",
+            "vertical-position": "bottom",
+            "horizontal-position": "center"
+          },
+          "fade-in": 0.5,
+          "fade-out": 0.5,
+          "z-index": 10
         }
       ]
     },
@@ -268,6 +341,26 @@ When merging videos, each video should be placed in a separate scene:
           "src": "https://example.com/video2.mp4", 
           "start": 0,
           "duration": -1
+        },
+        {
+          "type": "text",
+          "text": "Second Section",
+          "start": 0.5,
+          "duration": 4,
+          "style": "002",
+          "position": "top-right",
+          "x": 50,
+          "y": 50,
+          "settings": {
+            "font-family": "Arial",
+            "font-size": "24px",
+            "font-weight": "700",
+            "font-color": "#FFD700",
+            "text-align": "right",
+            "vertical-position": "top",
+            "horizontal-position": "right"
+          },
+          "z-index": 15
         }
       ]
     }
@@ -304,6 +397,29 @@ In the JSON2Video node's Advanced Mode:
 
 This allows you to maintain a complex JSON template with detailed scene configurations while easily overriding specific parameters when needed without editing the JSON directly.
 
+## Text Element Best Practices
+
+### Subtitle Creation
+1. **Use consistent styling**: Define a common font family, size, and color scheme
+2. **Position for readability**: Bottom-center with sufficient contrast
+3. **Time appropriately**: Start slightly after speech begins, end before it finishes
+4. **Layer properly**: Use z-index 10+ to ensure text appears above video content
+
+### Multi-language Support
+1. **Font selection**: Use fonts that support your target languages (e.g., Noto Sans for international text)
+2. **Text length**: Account for text expansion in different languages
+3. **Reading speed**: Adjust duration based on language reading patterns
+
+### Animation and Effects
+1. **Subtle animations**: Use fade-in/out (0.3-0.5s) for professional look
+2. **Consistent timing**: Maintain uniform fade timings across all text elements
+3. **Avoid overuse**: Use text animations sparingly to maintain focus on content
+
+### Performance Optimization
+1. **Minimal text elements**: Combine related text when possible
+2. **Efficient positioning**: Use position presets instead of custom coordinates when possible
+3. **Cache management**: Use cache: true for repeated text styles
+
 ## Best Practices
 
 1. Always include the core required properties (`fps`, `width`, `height`, `scenes`)
@@ -319,6 +435,8 @@ This allows you to maintain a complex JSON template with detailed scene configur
 8. When referencing data from previous nodes, use expressions in the JSON template
 9. For video merging, create separate scenes rather than using a `videos` array
 10. Test with publicly accessible media URLs to avoid duration detection issues
+11. For text elements, ensure proper contrast and readability
+12. Use z-index values to control layering of overlapping elements
 
 ## Troubleshooting Duration Issues
 
@@ -329,6 +447,22 @@ If you encounter "Movie duration cannot be zero" errors:
 3. **Verify file formats**: Use standard formats (MP4, H.264 for video; MP3, WAV for audio)
 4. **Test different hosting**: Some CDNs work better with JSON2Video's duration detection
 5. **Omit duration property**: Let the API determine duration automatically
+
+## Text Element Validation
+
+Text elements are validated for:
+
+- **Required content**: Text field cannot be empty
+- **Color format**: Colors must be valid hex codes (e.g., "#FFFFFF")
+- **Numeric ranges**: All numeric properties must be within specified ranges
+- **Enum values**: Position, alignment, and style values must be from predefined lists
+
+Common validation errors and solutions:
+
+- **"Text content is required"**: Ensure the text field is not empty or whitespace-only
+- **"Invalid hex color"**: Use proper format like "#FF0000" instead of "red" or invalid codes
+- **"Value out of range"**: Check that numeric values are within documented limits
+- **"Invalid position value"**: Use predefined position values or "custom" for coordinates
 
 ## API Documentation
 

@@ -6,7 +6,7 @@ import {
   getAvailablePositionPresets,
   calculateElementBounds,
   checkElementOverlap
-} from '../../../../nodes/CreateJ2vMovie/utils/positionUtils';
+} from '@nodes/CreateJ2vMovie/utils/positionUtils';
 
 describe('positionUtils', () => {
   describe('calculatePositionFromPreset', () => {

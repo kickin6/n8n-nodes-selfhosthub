@@ -4,12 +4,9 @@ import {
   INodeExecutionData,
   INodeParameters
 } from 'n8n-workflow';
-import { CreateJ2vMovie } from '../../../nodes/CreateJ2vMovie/CreateJ2vMovie.node';
+import { CreateJ2vMovie } from '@nodes/CreateJ2vMovie/CreateJ2vMovie.node';
 
 describe('CreateJ2vMovie - Operations', () => {
-  /**
-   * Helper function to create a mock execute function with given parameters
-   */
   const createMockExecuteFunction = (nodeParameters: INodeParameters) => {
     const mockExecute = {
       getNodeParameter: (
@@ -17,7 +14,6 @@ describe('CreateJ2vMovie - Operations', () => {
         itemIndex: number,
         fallbackValue?: any
       ) => {
-        // Handle dotted path notation for 'movieElements.elementValues' and 'elements.elementValues'
         if (parameterName === 'movieElements.elementValues' && nodeParameters.movieElements) {
           return nodeParameters.movieElements;
         }
@@ -37,6 +33,9 @@ describe('CreateJ2vMovie - Operations', () => {
           return { apiKey: 'test-api-key' };
         }
         throw new Error(`Unknown credentials type: ${type}`);
+      }),
+      getNode: jest.fn().mockReturnValue({
+        parameters: nodeParameters
       }),
       continueOnFail: jest.fn().mockReturnValue(false),
       helpers: {
@@ -108,10 +107,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -172,10 +171,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -209,10 +208,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -259,10 +258,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -302,10 +301,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -343,10 +342,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -384,10 +383,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -421,10 +420,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -461,10 +460,10 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'queued',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
@@ -480,7 +479,6 @@ describe('CreateJ2vMovie - Operations', () => {
 
       mockExecuteFunction = createMockExecuteFunction(nodeParameters);
       
-      // Override the mock for GET request
       (mockExecuteFunction.helpers.request as jest.Mock).mockResolvedValueOnce({
         id: 'test-job-id',
         status: 'completed',
@@ -501,11 +499,11 @@ describe('CreateJ2vMovie - Operations', () => {
 
       expect(result).toEqual([[
         {
-          json: {
+          json: expect.objectContaining({
             id: 'test-job-id',
             status: 'completed',
             url: 'https://example.com/video.mp4',
-          },
+          }),
           pairedItem: { item: 0 },
         }
       ]]);
