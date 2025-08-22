@@ -1,207 +1,168 @@
+// nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideosBuilder.ts
+
 import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { VideoRequestBody, Scene, VideoElement } from './types';
-import { TextElement, TextElementParams } from '../../operations/shared/elements';
-import { processTextElement, validateTextElementParams } from '../textElementProcesor';
+import { VideoRequestBody, Scene } from './types';
+import { SubtitleElementParams, TextElementParams } from '../../operations/shared/elements';
+import { processTextElement } from '../textElementProcessor';
+import { validateSceneElements } from '../validationUtils';
+import { 
+  initializeRequestBody,
+  addCommonParameters,
+  processAllMovieElements,
+  processSceneTextElements,
+  processOutputSettings,
+  finalizeRequestBody
+} from './shared';
 
-/**
- * Builds the request body for the mergeVideos operation in basic mode
- * Now includes support for text elements (subtitles/captions)
- */
+function processMergeVideosScenes(
+  this: IExecuteFunctions,
+  itemIndex: number,
+  requestBody: VideoRequestBody
+): Scene[] {
+  const videoElements = this.getNodeParameter('videoElements.videoDetails', itemIndex, []) as IDataObject[];
+  const scenes: Scene[] = [];
+
+  const globalTransition = this.getNodeParameter('transition', itemIndex, 'none') as string;
+  const globalTransitionDuration = this.getNodeParameter('transitionDuration', itemIndex, 1) as number;
+
+  if (Array.isArray(videoElements) && videoElements.length > 0) {
+    const { processElement } = require('../elementProcessor');
+
+    videoElements.forEach((videoData, index) => {
+      const scene: Scene = { elements: [] };
+
+      if (videoData.src && typeof videoData.src === 'string') {
+        const videoElement: IDataObject = {
+          type: 'video',
+          src: videoData.src.trim()
+        };
+
+        if (videoData.start !== undefined) {
+          const start = Number(videoData.start);
+          if (!isNaN(start) && start >= 0) {
+            videoElement.start = start;
+          }
+        }
+
+        if (videoData.duration !== undefined) {
+          const duration = Number(videoData.duration);
+          if (!isNaN(duration) && (duration === -1 || duration === -2 || duration > 0)) {
+            videoElement.duration = duration;
+          }
+        }
+
+        if (videoData.speed !== undefined) {
+          const speed = Number(videoData.speed);
+          if (!isNaN(speed) && speed > 0) {
+            videoElement.speed = speed;
+          }
+        }
+
+        if (videoData.volume !== undefined) {
+          const volume = Number(videoData.volume);
+          if (!isNaN(volume) && volume >= 0 && volume <= 1) {
+            videoElement.volume = volume;
+          }
+        }
+
+        scene.elements.push(videoElement);
+      }
+
+      if (index > 0) {
+        const transitionStyle = globalTransition !== 'none' ? globalTransition : 'none';
+        
+        if (transitionStyle !== 'none') {
+          scene.transition = { style: transitionStyle };
+
+          const transitionDuration = globalTransitionDuration;
+          if (transitionDuration !== undefined) {
+            const duration = Number(transitionDuration);
+            if (!isNaN(duration) && duration > 0) {
+              scene.transition.duration = duration;
+            }
+          }
+        }
+      }
+
+      try {
+        const sceneTextElementsCollection = videoData.textElements as IDataObject;
+        const sceneTextElements = sceneTextElementsCollection?.textDetails as TextElementParams[];
+        if (Array.isArray(sceneTextElements) && sceneTextElements.length > 0) {
+          processSceneTextElements.call(this, sceneTextElements, index, scene.elements);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('validation errors')) {
+          throw error;
+        }
+      }
+
+      const sceneSubtitleElementsCollection = videoData.subtitleElements as IDataObject;
+      const sceneSubtitleElements = sceneSubtitleElementsCollection?.subtitleDetails as SubtitleElementParams[];
+      if (Array.isArray(sceneSubtitleElements) && sceneSubtitleElements.length > 0) {
+        const subtitleAsElements = sceneSubtitleElements.map(s => ({ ...s, type: 'subtitles' }));
+        const sceneValidationErrors = validateSceneElements(subtitleAsElements, `Scene ${index + 1}`);
+        if (sceneValidationErrors.length > 0) {
+          throw new Error(`Scene subtitle validation errors:\n${sceneValidationErrors.join('\n')}`);
+        }
+      }
+
+      const sceneElementsCollection = videoData.elements as IDataObject;
+      const sceneElements = sceneElementsCollection?.elementValues as IDataObject[];
+      if (Array.isArray(sceneElements) && sceneElements.length > 0) {
+        const sceneValidationErrors = validateSceneElements(sceneElements, `Scene ${index + 1}`);
+        if (sceneValidationErrors.length > 0) {
+          throw new Error(`Scene element validation errors:\n${sceneValidationErrors.join('\n')}`);
+        }
+
+        sceneElements.forEach(element => {
+          try {
+            if (element.type === 'text') {
+              const textParams: TextElementParams = {
+                text: (element.text as string) || 'Default Text',
+                ...(element.start !== undefined && { start: element.start as number }),
+                ...(element.duration !== undefined && { duration: element.duration as number }),
+                ...(element.style !== undefined && { style: element.style as string }),
+                ...(typeof element.position === 'string' && { position: element.position as any }),
+                ...(element['font-family'] !== undefined && { fontFamily: element['font-family'] as string }),
+                ...(element['font-size'] !== undefined && { fontSize: element['font-size'] as string }),
+                ...(element.color !== undefined && { fontColor: element.color as string }),
+              };
+
+              const processedTextElement = processTextElement(textParams);
+              scene.elements.push(processedTextElement as unknown as IDataObject);
+            } else {
+              const processedElement = processElement.call(this, element, requestBody.width, requestBody.height);
+              scene.elements.push(processedElement);
+            }
+          } catch (error) {
+            this.logger.warn(`Failed to process scene element: ${error}`);
+          }
+        });
+      }
+
+      scenes.push(scene);
+    });
+  }
+
+  return scenes;
+}
+
 export function buildMergeVideosRequestBody(this: IExecuteFunctions, itemIndex = 0): VideoRequestBody {
-	const requestBody: VideoRequestBody = {
-		scenes: [],
-		fps: 30,
-		width: 1024,
-		height: 768
-	};
-	const scenes: Scene[] = [];
-
-	// Add record ID if provided (optional)
-	const recordId = this.getNodeParameter('recordId', itemIndex, '') as string;
-	if (recordId && recordId.trim() !== '') {
-		requestBody.id = recordId.trim();
-	}
-
-	// Add webhook in exports format if webhook URL is provided  
-	const webhookUrl = this.getNodeParameter('webhookUrl', itemIndex, '') as string;
-	if (webhookUrl && webhookUrl.trim() !== '') {
-		requestBody.exports = [{
-			destinations: [{
-				type: 'webhook',
-				endpoint: webhookUrl.trim()
-			}]
-		}];
-	}
-
-	// Get transition settings
-	const transition = this.getNodeParameter('transition', itemIndex, 'none') as string;
-	let transitionConfig: { style: string; duration?: number } | undefined;
-	if (transition && transition !== 'none') {
-		transitionConfig = {
-			style: transition
-		};
-		const transitionDuration = this.getNodeParameter('transitionDuration', itemIndex, 1) as number;
-		if (transitionDuration > 0) {
-			transitionConfig.duration = transitionDuration;
-		}
-	}
-
-	// Process video elements - each video becomes a separate scene
-	const videoElements = this.getNodeParameter('videoElements.videoDetails', itemIndex, []) as IDataObject[];
-	
-	// Handle case where videoElements is not an array - return empty scenes gracefully
-	if (!Array.isArray(videoElements)) {
-		requestBody.scenes = scenes;
-		return requestBody;
-	}
-	
-	// Don't throw error for empty arrays - let the function complete and return empty scenes
-	// This allows the function to work in all contexts (initialization, default, etc.)
-	// The validation can be handled at a higher level if needed
-	if (videoElements.length === 0) {
-		requestBody.scenes = scenes;
-		return requestBody;
-	}
-
-	// Process text elements
-	const textElements = this.getNodeParameter('textElements.textDetails', itemIndex, []) as TextElementParams[];
-	const processedTextElements: TextElement[] = [];
-	const validationErrors: string[] = [];
-
-	// Validate and process text elements
-	if (Array.isArray(textElements)) {
-		textElements.forEach((textElement, index) => {
-			const errors = validateTextElementParams(textElement);
-			if (errors.length > 0) {
-				validationErrors.push(`Text element ${index + 1}: ${errors.join(', ')}`);
-			} else {
-				processedTextElements.push(processTextElement(textElement));
-			}
-		});
-	}
-
-	// Throw validation errors if any
-	if (validationErrors.length > 0) {
-		throw new Error(`Text element validation errors:\n${validationErrors.join('\n')}`);
-	}
-
-	videoElements.forEach((videoElement: IDataObject, index: number) => {
-		if (videoElement.src) {
-			const videoConfig: VideoElement = {
-				type: 'video',
-				src: videoElement.src as string,
-			};
-
-			// Set start time (usually 0 for scene-based videos)
-			if (videoElement.start !== undefined) {
-				videoConfig.start = videoElement.start as number;
-			}
-
-			// Set duration - use the exact value provided, don't convert -1 to -2
-			const videoDuration = videoElement.duration;
-			if (videoDuration !== undefined && videoDuration !== null) {
-				const duration = Number(videoDuration);
-				if (!isNaN(duration)) {
-					if (duration > 0) {
-						// Explicit positive duration
-						videoConfig.duration = duration;
-					} else if (duration === -1) {
-						// Use -1 for full video duration (don't convert to -2)
-						videoConfig.duration = -1;
-					} else if (duration === -2) {
-						// Also support -2 if explicitly set
-						videoConfig.duration = -2;
-					}
-				}
-			}
-
-			if (videoElement.speed !== undefined) videoConfig.speed = videoElement.speed as number;
-			if (videoElement.volume !== undefined) videoConfig.volume = videoElement.volume as number;
-
-			// Create scene elements array starting with the video
-			const sceneElements: IDataObject[] = [videoConfig as unknown as IDataObject];
-
-			// Add text elements that should appear in this scene
-			// For mergeVideos, we add text elements to all scenes, but users can control timing via start/duration
-			processedTextElements.forEach(textElement => {
-				sceneElements.push(textElement as unknown as IDataObject);
-			});
-
-			// Create a scene for this video with its text elements
-			const scene: Scene = {
-				elements: sceneElements
-			};
-
-			// Add transition to all scenes except the first one
-			if (index > 0 && transitionConfig) {
-				scene.transition = transitionConfig;
-			}
-
-			scenes.push(scene);
-		}
-	});
-
-	// Set output settings
-	const outputSettings = this.getNodeParameter('outputSettings.outputDetails', itemIndex, {}) as IDataObject;
-	if (outputSettings) {
-		if (outputSettings.width !== undefined) requestBody.width = outputSettings.width as number;
-		if (outputSettings.height !== undefined) requestBody.height = outputSettings.height as number;
-		if (outputSettings.fps !== undefined) requestBody.fps = outputSettings.fps as number;
-		if (outputSettings.quality !== undefined) requestBody.quality = outputSettings.quality as string;
-	}
-
-	requestBody.scenes = scenes;
-	return requestBody;
-}
-
-/**
- * Helper function to create a subtitle-focused text element with common defaults
- * This can be used for quick subtitle creation
- */
-export function createSubtitleElement(
-	text: string,
-	startTime: number,
-	duration: number,
-	options: Partial<TextElementParams> = {}
-): TextElement {
-	const defaultParams: TextElementParams = {
-		text,
-		start: startTime,
-		duration,
-		style: '001',
-		fontFamily: 'Roboto',
-		fontSize: '32px',
-		fontWeight: '600',
-		fontColor: '#FFFFFF',
-		backgroundColor: 'rgba(0, 0, 0, 0.7)',
-		textAlign: 'center',
-		verticalPosition: 'bottom',
-		horizontalPosition: 'center',
-		position: 'bottom-left',
-		x: 50,
-		y: 50,
-		fadeIn: 0.3,
-		fadeOut: 0.3,
-		zIndex: 10, // Ensure subtitles appear above video
-		...options
-	};
-
-	return processTextElement(defaultParams);
-}
-
-/**
- * Helper function to validate that at least one video element exists
- * This maintains the existing validation expectations
- */
-export function validateMergeVideosElements(videoElements: IDataObject[]): void {
-	if (!Array.isArray(videoElements) || videoElements.length === 0) {
-		throw new Error('At least one video element is required for merging videos');
-	}
-
-	// Validate that each video has a source
-	videoElements.forEach((video, index) => {
-		if (!video.src || typeof video.src !== 'string' || video.src.trim() === '') {
-			throw new Error(`Video element ${index + 1}: Source URL is required`);
-		}
-	});
+  // 1. Initialize basic request structure
+  const requestBody = initializeRequestBody.call(this, itemIndex);
+  
+  // 2. Setup common request properties
+  addCommonParameters.call(this, requestBody, itemIndex, []);
+  
+  // 3. Process movie-level elements (with subtitles support)
+  const allMovieElements = processAllMovieElements.call(this, itemIndex, requestBody, true);
+  
+  // 4. Process operation-specific content
+  const scenes = processMergeVideosScenes.call(this, itemIndex, requestBody);
+  
+  // 5. Handle output settings
+  processOutputSettings.call(this, requestBody, itemIndex);
+  
+  // 6. Finalize request body
+  return finalizeRequestBody(requestBody, scenes, allMovieElements);
 }

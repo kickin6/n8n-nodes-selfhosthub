@@ -1,3 +1,5 @@
+// __tests__/shared/helpers.ts
+
 import {
   IExecuteFunctions,
   IDataObject,
@@ -64,14 +66,14 @@ export function createMockNodeType(nodeType: Partial<INodeType>): INodeType {
       },
       inputs: [
         {
+          type: 'main' as NodeConnectionType,
           displayName: 'Input',
-          type: NodeConnectionType.Main,
         },
       ],
       outputs: [
         {
+          type: 'main' as NodeConnectionType,
           displayName: 'Output',
-          type: NodeConnectionType.Main,
         },
       ],
       properties: [],
@@ -93,7 +95,7 @@ export function expectSuccessfulExecution(
 ): void {
   expect(result.length).toEqual(1);
   expect(result[0].length).toEqual(expectedLength);
-  
+
   // Don't check success property as it might not be consistent between test mocks and actual implementation
   // Just verify that we have data returned
   expect(result[0][0].json).toBeDefined();

@@ -19,11 +19,20 @@ Combines a video file with an audio file, with options for adding subtitles.
 
 ### Merge Videos
 
-Combines multiple video files into a single video by creating separate scenes for each video, with optional transitions between scenes and text overlays.
+Combines multiple video files into a single video by creating separate scenes for each video, with optional transitions between scenes and support for both scene-level and movie-level elements.
 
-#### Text Elements (Subtitles)
+#### Movie-Level Elements
 
-The Merge Videos operation supports adding text elements for subtitles, captions, and text overlays:
+The Merge Videos operation now supports **Movie Elements** that appear across all scenes in the merged video:
+
+- **Text Elements**: Global text overlays using the same configuration as scene-level text
+- **Subtitle Elements**: Global subtitle tracks with language support and auto-detection
+- **Positioning**: Movie-level elements appear consistently across all video scenes
+- **Timing Control**: Independent timing control from scene transitions
+
+#### Scene-Level Text Elements (Subtitles)
+
+The Merge Videos operation also supports adding text elements to individual scenes for subtitles, captions, and text overlays:
 
 - **Font settings**: Family, size, weight, color, background color
 - **Text positioning**: Canvas position presets (top-left, bottom-center, etc.) or custom coordinates
@@ -32,13 +41,21 @@ The Merge Videos operation supports adding text elements for subtitles, captions
 - **Advanced effects**: Z-index layering, animations (pan, zoom, rotation), visual corrections (brightness, contrast, etc.)
 - **Animation styles**: Basic, word-by-word, character-by-character, jumping letters
 
-Text elements are added to all video scenes in the merge, allowing precise timing control through start/duration parameters. This enables you to create synchronized subtitles that appear across multiple merged videos.
+#### Subtitle Auto-Detection
+
+Movie-level subtitle elements feature intelligent content detection:
+
+- **URL Detection**: Captions starting with 'http' are treated as subtitle file URLs (SRT, VTT, ASS)
+- **Inline Content**: Non-URL captions are treated as inline subtitle text content
+- **Language Support**: Full language selection with ISO language codes
+- **Flexible Input**: Users can provide either file references or direct subtitle content
 
 **Example use cases:**
-- Adding subtitles to a series of merged video clips
-- Creating multilingual captions for training videos
-- Adding branded text overlays to marketing content
-- Synchronizing text with specific video segments
+- Adding global subtitles to an entire merged video sequence
+- Creating scene-specific captions for individual video clips
+- Adding branded text overlays that appear throughout the video
+- Combining external subtitle files with inline text overlays
+- Creating multilingual support with multiple subtitle tracks
 
 ### Check Status
 
@@ -83,7 +100,10 @@ The JSON2Video API supports special duration values for automatic duration handl
 
 ## Video Merging
 
-When merging videos, each video becomes a separate scene in the final movie:
+When merging videos, each video becomes a separate scene in the final movie. The operation supports both scene-level and movie-level elements:
+
+### Scene-Level Elements
+Elements added to individual scenes, appearing only during that specific video:
 
 ```json
 {
@@ -94,23 +114,10 @@ When merging videos, each video becomes a separate scene in the final movie:
           "type": "video",
           "src": "https://example.com/video1.mp4",
           "duration": -1
-        }
-      ]
-    },
-    {
-      "transition": {
-        "style": "fade",
-        "duration": 1
-      },
-      "elements": [
-        {
-          "type": "video", 
-          "src": "https://example.com/video2.mp4",
-          "duration": -1
         },
         {
           "type": "text",
-          "text": "Second video subtitle",
+          "text": "Scene 1 subtitle",
           "start": 2,
           "duration": 3,
           "style": "001",
@@ -130,12 +137,46 @@ When merging videos, each video becomes a separate scene in the final movie:
 }
 ```
 
+### Movie-Level Elements
+Elements that appear across all scenes in the merged video:
+
+```json
+{
+  "elements": [
+    {
+      "type": "text",
+      "text": "Global Title",
+      "start": 0,
+      "duration": -2,
+      "style": "001",
+      "position": "top-center",
+      "settings": {
+        "font-family": "Arial",
+        "font-size": "36px",
+        "font-color": "#FFD700",
+        "font-weight": "bold"
+      }
+    },
+    {
+      "type": "subtitles",
+      "src": "https://example.com/subtitles.srt",
+      "language": "en"
+    }
+  ],
+  "scenes": [
+    // Individual video scenes...
+  ]
+}
+```
+
 ## Known Issues & Troubleshooting
 
 ### Recent Fixes (August 2025)
 
 The JSON2Video node has been updated to resolve API compatibility issues:
 
+- **Movie-Level Elements**: Added support for global elements in mergeVideos operation
+- **Subtitle Auto-Detection**: Implemented intelligent content detection for URL vs inline subtitles
 - **Fixed TypeError toLowerCase function**: Corrected API response handling to prevent type errors
 - **Data Type Conversions**: Implemented proper conversions between UI and API formats:
   - `loop` parameter: UI boolean → API number (1 = play once, -1 = infinite loop)
@@ -178,7 +219,7 @@ The node has been refactored into a modular structure for better maintainability
 - **`requestBuilder/`**: Handles request body construction for all operations
   - `createMovieBuilder.ts`: Create movie operation request building
   - `mergeVideoAudioBuilder.ts`: Video/audio merge operation request building
-  - `mergeVideosBuilder.ts`: Video merge operation request building with text element support
+  - `mergeVideosBuilder.ts`: Video merge operation with movie-level and scene-level element support
   - `advanced.ts`: Advanced mode JSON template processing
   - `shared.ts`: Shared utilities across request builders
 - **`elementProcessor.ts`**: Processes individual elements based on their type
@@ -190,7 +231,7 @@ The node has been refactored into a modular structure for better maintainability
 
 - **`createMovieOperation.ts`**: Parameter definitions for create movie operation
 - **`mergeVideoAudioOperation.ts`**: Parameter definitions for video/audio merging
-- **`mergeVideosOperation.ts`**: Parameter definitions for video merging with text element support
+- **`mergeVideosOperation.ts`**: Parameter definitions for video merging with movie-level element support
 
 ### Templates
 
@@ -205,7 +246,7 @@ The node has been refactored into a modular structure for better maintainability
 
 ## Text Element Configuration
 
-When adding text elements to merged videos, you can configure:
+When adding text elements to videos, you can configure:
 
 ### Basic Properties
 - **Text Content**: The actual text to display
@@ -233,6 +274,18 @@ When adding text elements to merged videos, you can configure:
 - **Animations**: Pan, zoom, rotation effects
 - **Visual Corrections**: Brightness, contrast, gamma, saturation adjustments
 - **Chroma Key**: Green screen effects for transparency
+
+## Movie-Level vs Scene-Level Elements
+
+### When to Use Movie-Level Elements
+- **Global branding**: Logos, watermarks, or titles that should appear throughout
+- **Continuous subtitles**: Subtitle tracks that span multiple video segments
+- **Background elements**: Elements that provide context across all scenes
+
+### When to Use Scene-Level Elements
+- **Scene-specific content**: Text or graphics relevant to individual videos
+- **Timing-sensitive elements**: Elements that need precise timing within specific scenes
+- **Dynamic content**: Elements that change between different video segments
 
 ## Credentials
 

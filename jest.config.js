@@ -1,3 +1,5 @@
+// jest.config.js
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -13,14 +15,6 @@ module.exports = {
   },
   
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
-  collectCoverageFrom: [
-    'credentials/**/*.ts',
-    'nodes/**/*.ts',
-    '!**/node_modules/**',
-    '!**/dist/**',
-    '!**/*.d.ts',
-  ],
   
   transform: {
     '^.+\\.tsx?$': [

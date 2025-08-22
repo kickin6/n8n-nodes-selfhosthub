@@ -1,7 +1,9 @@
-import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+// nodes/CreateJ2vMovie/utils/requestBuilder/index.ts
+
+import { IExecuteFunctions } from 'n8n-workflow';
 import { buildCreateMovieRequestBody } from './createMovieBuilder';
 import { buildMergeVideoAudioRequestBody } from './mergeVideoAudioBuilder';
-import { buildMergeVideosRequestBody, createSubtitleElement, validateMergeVideosElements } from './mergeVideosBuilder';
+import { buildMergeVideosRequestBody } from './mergeVideosBuilder';
 import { applyAdvancedModeOverrides } from './advanced';
 import { VideoRequestBody } from './types';
 
@@ -51,6 +53,6 @@ export function buildRequestBody(
 // Re-export individual builders for direct use in tests
 export { buildCreateMovieRequestBody } from './createMovieBuilder';
 export { buildMergeVideoAudioRequestBody } from './mergeVideoAudioBuilder';
-export { buildMergeVideosRequestBody, createSubtitleElement, validateMergeVideosElements } from './mergeVideosBuilder';
+export { buildMergeVideosRequestBody } from './mergeVideosBuilder';
 export { getParameterValue } from './shared';
 export * from './types';

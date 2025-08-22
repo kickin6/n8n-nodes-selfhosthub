@@ -1,4 +1,4 @@
-// CreateLeonardoImage.node.ts
+// nodes/CreateLeonardoImage/CreateLeonardoImage.node.ts
 
 import {
   IExecuteFunctions,
@@ -19,7 +19,7 @@ export class CreateLeonardoImage implements INodeType {
     displayName: 'Self-Host Hub (Leonardo)',
     name: 'createLeonardoImage',
     icon: 'file:createLeonardoImage.png',
-    group: ['selfhosthub'],
+    group: [],
     version: 1,
     subtitle: '={{$parameter["operation"]}}',
     description:
@@ -28,18 +28,15 @@ export class CreateLeonardoImage implements INodeType {
       name: 'Self-Host Hub (Leonardo)',
     },
     documentationUrl: 'https://docs.leonardo.ai/docs/getting-started',
-    // We use NodeConnectionType.Main directly because isolatedModules is disabled in tsconfig.json
-    // If isolatedModules is enabled, these would need to be replaced with string literals and type assertions
-    // For more details, see docs/DEVELOPMENT_GUIDELINES.md#typescript-configuration
     inputs: [
       {
-        type: NodeConnectionType.Main,
+        type: 'main' as NodeConnectionType,
         displayName: 'Input',
       },
     ],
     outputs: [
       {
-        type: NodeConnectionType.Main,
+        type: 'main' as NodeConnectionType,
         displayName: 'Output',
       },
     ],

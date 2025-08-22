@@ -1,3 +1,5 @@
+// nodes/CreateJ2vMovie/operations/mergeVideosOperation.ts
+
 import { INodeProperties } from 'n8n-workflow';
 import { completeElementFields } from './shared/elements';
 import {
@@ -284,8 +286,89 @@ export const mergeVideosParameters: INodeProperties[] = [
 		],
 		description: 'Add videos to merge in sequence',
 	},
+	{
+		displayName: 'Movie Elements',
+		name: 'movieElements',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		placeholder: 'Add Movie Element',
+		description: 'Elements that appear across all scenes in the merged video',
+		displayOptions: {
+			show: {
+				operation: ['mergeVideos'],
+				advancedModeMergeVideos: [false],
+			},
+		},
+		options: [
+			{
+				name: 'textDetails',
+				displayName: 'Text Element',
+				values: textElementFields,
+			},
+			{
+				name: 'subtitleDetails',
+				displayName: 'Subtitle Element',
+				values: [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{ name: 'English', value: 'en' },
+							{ name: 'Bulgarian', value: 'bg' },
+							{ name: 'Catalan', value: 'ca' },
+							{ name: 'Czech', value: 'cs' },
+							{ name: 'Danish', value: 'da' },
+							{ name: 'Dutch', value: 'nl' },
+							{ name: 'Estonian', value: 'et' },
+							{ name: 'French', value: 'fr' },
+							{ name: 'Finnish', value: 'fi' },
+							{ name: 'German', value: 'de' },
+							{ name: 'Greek', value: 'el' },
+							{ name: 'Hindi', value: 'hi' },
+							{ name: 'Hungarian', value: 'hu' },
+							{ name: 'Indonesian', value: 'id' },
+							{ name: 'Italian', value: 'it' },
+							{ name: 'Japanese', value: 'ja' },
+							{ name: 'Korean', value: 'ko' },
+							{ name: 'Latvian', value: 'lv' },
+							{ name: 'Lithuanian', value: 'lt' },
+							{ name: 'Malay', value: 'ms' },
+							{ name: 'Norwegian', value: 'no' },
+							{ name: 'Polish', value: 'pl' },
+							{ name: 'Portuguese', value: 'pt' },
+							{ name: 'Romanian', value: 'ro' },
+							{ name: 'Russian', value: 'ru' },
+							{ name: 'Slovak', value: 'sk' },
+							{ name: 'Spanish', value: 'es' },
+							{ name: 'Swedish', value: 'sv' },
+							{ name: 'Thai', value: 'th' },
+							{ name: 'Turkish', value: 'tr' },
+							{ name: 'Ukrainian', value: 'uk' },
+							{ name: 'Vietnamese', value: 'vi' },
+							{ name: 'Chinese', value: 'zh' },
+						],
+						default: 'en',
+						description: 'Language code for the subtitles',
+						required: true,
+					},
+					{
+						displayName: 'Captions',
+						name: 'captions',
+						type: 'string',
+						default: '',
+						description: 'URL to subtitle file (SRT/VTT/ASS) or inline subtitle content',
+						required: true,
+					},
+				],
+			},
+		],
+	},
 
-	// Text Elements Collection - NEW: for subtitles and text overlays
+	// Text Elements Collection - for subtitle-focused text overlays (kept for backward compatibility)
 	{
 		displayName: 'Text Elements (Subtitles)',
 		name: 'textElements',

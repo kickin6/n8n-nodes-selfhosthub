@@ -73,6 +73,5 @@ local/
 attached_assets/
 
 # Repository-specific temporary files
-combined_leonardo_code.txt
-combine_files.sh
-fixes.txt
+combiner.sh
+*.txt

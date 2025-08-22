@@ -1,5 +1,7 @@
+// nodes/CreateJ2vMovie/operations/mergeVideoAudioOperation.ts
+
 import { INodeProperties } from 'n8n-workflow';
-import { completeElementFields } from './shared/elements';
+import { subtitlesElementFields } from './shared/elements';
 import {
 	advancedModeParameters,
 	jsonTemplateParameters,
@@ -387,6 +389,36 @@ export const mergeVideoAudioParameters: INodeProperties[] = [
 		],
 	},
 
+	// Subtitle Elements Collection
+	{
+		displayName: 'Subtitle Elements',
+		name: 'subtitleElements',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		placeholder: 'Add Subtitle Element',
+		description: 'Add subtitles or captions for accessibility',
+		displayOptions: {
+			show: {
+				operation: ['mergeVideoAudio'],
+				advancedModeMergeAudio: [false],
+			},
+		},
+		options: [
+			{
+				name: 'subtitleDetails',
+				displayName: 'Subtitle Element',
+				values: subtitlesElementFields.filter(field => 
+					// Only include subtitle-specific fields, not the type selector
+					field.name !== 'type' && 
+					field.displayOptions?.show?.type?.includes('subtitles')
+				),
+			},
+		],
+	},
+	
 	// Output Settings Configuration
 	{
 		displayName: 'Output Settings',

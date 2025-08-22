@@ -1,8 +1,66 @@
+// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideoAudio/mergeVideoAudioBuilder.test.ts
+
 import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { buildRequestBody } from '@nodes/CreateJ2vMovie/utils/requestBuilder';
+import { buildRequestBody, buildMergeVideoAudioRequestBody } from '@nodes/CreateJ2vMovie/utils/requestBuilder';
 
 describe('requestBuilder - mergeVideoAudio Operation', () => {
   describe('buildRequestBody - mergeVideoAudio Basic Mode', () => {
+    test('should handle audio element with loop false', () => {
+      const mockExecute = {
+        getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
+          if (parameterName === 'audioElement') {
+            throw new Error('audioElement not available');
+          }
+          if (parameterName === 'audioElement.audioDetails') {
+            return {
+              src: 'https://example.com/audio.mp3',
+              loop: false
+            };
+          }
+          return fallbackValue;
+        },
+        logger: {
+          debug: jest.fn(),
+          warn: jest.fn(),
+          info: jest.fn(),
+          error: jest.fn(),
+        }
+      };
+
+      const result = buildRequestBody.call(
+        mockExecute as unknown as IExecuteFunctions,
+        'mergeVideoAudio',
+        0,
+        false
+      );
+
+      const scenes = result.scenes as any[];
+      const audioElement = scenes[0].elements.find((el: any) => el.type === 'audio');
+      expect(audioElement.loop).toBe(1);
+    });
+
+    test('should use default itemIndex when called without parameter', () => {
+      const mockExecute = {
+        getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
+          expect(itemIndex).toBe(0);
+          return fallbackValue;
+        },
+        logger: {
+          debug: jest.fn(),
+          warn: jest.fn(),
+          info: jest.fn(),
+          error: jest.fn(),
+        }
+      };
+
+      const result = buildMergeVideoAudioRequestBody.call(mockExecute as unknown as IExecuteFunctions);
+
+      expect(result).toHaveProperty('scenes');
+      expect(result).toHaveProperty('width', 1024);
+      expect(result).toHaveProperty('height', 768);
+      expect(result).toHaveProperty('fps', 30);
+    });
+
     test('should handle mergeVideoAudio operation with basic parameters', () => {
       const mockExecute = {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
@@ -132,9 +190,8 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
     test('should handle video element with duration -1', () => {
       const mockExecute = {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
-          // Mock the nested parameter structure that the code expects
           if (parameterName === 'videoElement') {
-            throw new Error('videoElement not available'); // Force fallback to next try
+            throw new Error('videoElement not available');
           }
           if (parameterName === 'videoElement.videoDetails') {
             return {
@@ -165,7 +222,6 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
       expect(videoElement.duration).toBe(-1);
     });
 
-    // TARGET LINE 262: Video element duration === -2 condition
     test('should handle video element with duration -2', () => {
       const mockExecute = {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
@@ -201,7 +257,6 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
       expect(videoElement.duration).toBe(-2);
     });
 
-    // TARGET LINES 265-268: Video element properties (volume, muted, loop, crop)
     test('should handle video element with all properties', () => {
       const mockExecute = {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
@@ -534,7 +589,7 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
           if (parameterName === 'audioElement.audioDetails') {
             return {
               src: 'https://example.com/audio.mp3',
-              duration: 15.5 // Valid positive duration
+              duration: 15.5
             };
           }
           return fallbackValue;
@@ -603,7 +658,7 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
             throw new Error('outputSettings not available');
           }
           if (parameterName === 'outputSettings.outputDetails') {
-            throw new Error('outputSettings.outputDetails not available');
+            throw new Error('outputSettings.outputDetails nost available');
           }
           if (parameterName === 'width') return 1280;
           if (parameterName === 'height') return 720;
@@ -632,10 +687,8 @@ describe('requestBuilder - mergeVideoAudio Operation', () => {
   });
 });
 
-// Add these tests to your existing requestBuilder.mergeAudio.test.ts file
-
 describe('requestBuilder - mergeVideoAudio Text Elements', () => {
-  describe('buildRequestBody - mergeVideoAudio with Text Elements', () => {
+  describe('buildRequestBody - mergeVideoAudio with Text Element', () => {
 
     test('should handle text elements with valid configuration', () => {
       const mockExecute = {
@@ -648,7 +701,7 @@ describe('requestBuilder - mergeVideoAudio Text Elements', () => {
               fontSize: '32px',
               fontWeight: '600',
               fontColor: '#FFFFFF',
-              backgroundColor: '#000000', // Use hex color instead of rgba
+              backgroundColor: '#000000',
               textAlign: 'center',
               verticalPosition: 'bottom',
               horizontalPosition: 'center',
@@ -872,7 +925,7 @@ describe('requestBuilder - mergeVideoAudio Text Elements', () => {
       const mockExecute = {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
           if (parameterName === 'textElements.textDetails') {
-            return null; // Non-array value
+            return null;
           }
           return fallbackValue;
         },
@@ -902,7 +955,7 @@ describe('requestBuilder - mergeVideoAudio Text Elements', () => {
         getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any) => {
           if (parameterName === 'textElements.textDetails') {
             return [{
-              text: '', // Invalid empty text
+              text: '',
               style: '001'
             }];
           }
@@ -932,7 +985,6 @@ describe('requestBuilder - mergeVideoAudio Text Elements', () => {
           if (parameterName === 'textElements.textDetails') {
             return [{
               style: '001'
-              // Missing text property
             }];
           }
           return fallbackValue;
