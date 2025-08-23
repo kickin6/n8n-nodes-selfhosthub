@@ -2,6 +2,7 @@
 
 import { buildMergeVideosRequestBody } from '@nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideosBuilder';
 import { processTextElement, processSubtitleElement } from '@nodes/CreateJ2vMovie/utils/textElementProcessor';
+import { processVideoElements, processAudioElements } from '@nodes/CreateJ2vMovie/utils/requestBuilder/shared';
 
 // Mock the textElementProcessor functions
 jest.mock('@nodes/CreateJ2vMovie/utils/textElementProcessor', () => ({
@@ -17,225 +18,166 @@ jest.mock('@nodes/CreateJ2vMovie/utils/validationUtils', () => ({
 	validateMovieElements: jest.fn(),
 }));
 
-// Mock the elementProcessor
-jest.mock('@nodes/CreateJ2vMovie/utils/elementProcessor', () => ({
-	processElement: jest.fn(),
+// Mock the shared processors (NEW - testing unified processors)
+jest.mock('@nodes/CreateJ2vMovie/utils/requestBuilder/shared', () => ({
+	...jest.requireActual('@nodes/CreateJ2vMovie/utils/requestBuilder/shared'),
+	processVideoElements: jest.fn(),
+	processAudioElements: jest.fn(),
+	processAllMovieElements: jest.fn(),
 }));
 
-describe('mergeVideosBuilder - Core Functionality', () => {
+describe('mergeVideosBuilder.core', () => {
 	let mockExecute: any;
-	let mockValidateTextElementParams: jest.Mock;
-	let mockValidateSubtitleElementParams: jest.Mock;
-	let mockValidateSceneElements: jest.Mock;
-	let mockValidateMovieElements: jest.Mock;
-	let mockProcessElement: jest.Mock;
+	let mockProcessTextElement: jest.MockedFunction<typeof processTextElement>;
+	let mockProcessSubtitleElement: jest.MockedFunction<typeof processSubtitleElement>;
+	let mockProcessVideoElements: jest.MockedFunction<typeof processVideoElements>;
+	let mockProcessAudioElements: jest.MockedFunction<typeof processAudioElements>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		// Get mock references
-		mockValidateTextElementParams = require('@nodes/CreateJ2vMovie/utils/textElementProcessor').validateTextElementParams;
-		mockValidateSubtitleElementParams = require('@nodes/CreateJ2vMovie/utils/textElementProcessor').validateSubtitleElementParams;
-		mockValidateSceneElements = require('@nodes/CreateJ2vMovie/utils/validationUtils').validateSceneElements;
-		mockValidateMovieElements = require('@nodes/CreateJ2vMovie/utils/validationUtils').validateMovieElements;
-		mockProcessElement = require('@nodes/CreateJ2vMovie/utils/elementProcessor').processElement;
-
-		// Set default mock implementations
-		mockValidateTextElementParams.mockReturnValue([]);
-		mockValidateSubtitleElementParams.mockReturnValue([]);
-		mockValidateSceneElements.mockReturnValue([]);
-		mockValidateMovieElements.mockReturnValue([]);
-		mockProcessElement.mockReturnValue({ type: 'image', src: 'test.jpg' });
-
 		mockExecute = {
 			getNodeParameter: jest.fn(),
 			logger: {
+				debug: jest.fn(),
+				info: jest.fn(),
 				warn: jest.fn(),
+				error: jest.fn(),
 			},
 		};
 
-		// Set default return values - ensuring correct types
-		mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number, defaultValue?: any) => {
-			switch (paramName) {
-				// String parameters
-				case 'recordId':
-				case 'webhookUrl':
-					return defaultValue || '';
+		mockProcessTextElement = processTextElement as jest.MockedFunction<typeof processTextElement>;
+		mockProcessSubtitleElement = processSubtitleElement as jest.MockedFunction<typeof processSubtitleElement>;
+		mockProcessVideoElements = processVideoElements as jest.MockedFunction<typeof processVideoElements>;
+		mockProcessAudioElements = processAudioElements as jest.MockedFunction<typeof processAudioElements>;
 
-				// Number parameters
-				case 'framerate':
-					return 25;
-				case 'output_width':
-					return 1024;
-				case 'output_height':
-					return 768;
+		// Set up default mock returns
+		mockProcessTextElement.mockReturnValue({ type: 'text', text: 'Processed text' });
+		mockProcessSubtitleElement.mockReturnValue({ type: 'subtitles', captions: 'Processed subtitle' });
+		mockProcessVideoElements.mockReturnValue([{ type: 'video', src: 'https://example.com/processed-video.mp4' }]);
+		mockProcessAudioElements.mockReturnValue([{ type: 'audio', src: 'https://example.com/processed-audio.mp3' }]);
 
-				// Array parameters
-				case 'videoUrls.videoDetails':
-				case 'videoElements.videoDetails':
-				case 'movieElements.elementValues':
-				case 'movieTextElements.textDetails':
-				case 'movieElements.subtitleDetails':
-				case 'textElements.textDetails':
-				case 'subtitleElements.subtitleDetails':
-					return [];
+		// Validation mocks return no errors by default
+		const validationUtils = require('@nodes/CreateJ2vMovie/utils/validationUtils');
+		validationUtils.validateSceneElements.mockReturnValue([]);
+		validationUtils.validateMovieElements.mockReturnValue([]);
 
-				// Object parameters
-				case 'outputSettings.outputDetails':
-				case 'outputSettings':
-					return {};
-
-				default:
-					return defaultValue;
-			}
-		});
-
-		// Mock text and subtitle processors
-		(processTextElement as jest.Mock).mockReturnValue({
-			type: 'text',
-			text: 'Test text',
-			style: '001'
-		});
-
-		(processSubtitleElement as jest.Mock).mockReturnValue({
-			type: 'subtitles',
-			text: 'Test subtitle',
-			language: 'en'
-		});
+		// Mock processAllMovieElements
+		const shared = require('@nodes/CreateJ2vMovie/utils/requestBuilder/shared');
+		shared.processAllMovieElements.mockReturnValue([]);
 	});
 
-	describe('when building basic request structure', () => {
-		test('creates request with default parameters', () => {
+	describe('Basic Request Structure', () => {
+		test('should build basic request with minimal parameters', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return 'test-record';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{ src: 'https://example.com/video.mp4' }];
+					default: return [];
+				}
+			});
+
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
 			expect(result).toMatchObject({
-				fps: 25,
-				width: 1024,
-				height: 768,
+				fps: 30,
+				width: 1920,
+				height: 1080,
+				id: 'test-record',
 				scenes: expect.any(Array)
 			});
-			expect(result.scenes).toHaveLength(1); // Fallback empty scene
+			expect(result.scenes).toHaveLength(1);
 		});
 
-		test('handles recordId and webhookUrl configuration', () => {
+		test('should handle empty recordId', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'recordId': return 'test-record-123';
-					case 'webhookUrl': return 'https://webhook.example.com';
 					case 'framerate': return 25;
 					case 'output_width': return 1024;
 					case 'output_height': return 768;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{ src: 'https://example.com/video.mp4' }];
 					default: return [];
 				}
 			});
 
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
-			expect(result.id).toBe('test-record-123');
-			expect(result.exports).toEqual([{
-				destinations: [{
-					type: 'webhook',
-					endpoint: 'https://webhook.example.com'
-				}]
-			}]);
+			expect(result.id).toBe('');
 		});
 
-		test('handles function call with custom itemIndex', () => {
-			const result = buildMergeVideosRequestBody.call(mockExecute, 5);
+		test('should handle webhook URL configuration', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return 'webhook-test';
+					case 'webhookUrl': return 'https://webhook.example.com/callback';
+					case 'videoElements.videoDetails': return [{ src: 'https://example.com/video.mp4' }];
+					default: return [];
+				}
+			});
 
-			expect(result).toBeDefined();
-			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('framerate', 5, 25);
-		});
-
-		test('handles function call without itemIndex parameter', () => {
-			const result = buildMergeVideosRequestBody.call(mockExecute);
-
-			expect(result).toBeDefined();
-			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('framerate', 0, 25);
-			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('output_width', 0, 1024);
-			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('output_height', 0, 768);
-		});
-
-		test('handles empty video elements gracefully', () => {
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
-			expect(result).toBeDefined();
-			expect(result.scenes).toBeDefined();
-			expect(result.scenes).toHaveLength(1); // Fallback empty scene
-			expect(result).toHaveProperty('width', 1024);
-			expect(result).toHaveProperty('height', 768);
-			expect(result).toHaveProperty('fps', 25);
+			expect(result.exports).toBeDefined();
+			expect(result.exports![0]).toMatchObject({
+				destinations: [{
+					type: 'webhook',
+					endpoint: 'https://webhook.example.com/callback'
+				}]
+			});
 		});
 	});
 
-	describe('when processing video elements', () => {
-		test('processes single video element', () => {
+	describe('Unified Video Processing', () => {
+		test('should use processVideoElements for video processing', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
 					case 'recordId': return '';
 					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [{
-						url: 'https://example.com/video.mp4',
-						duration: -1,
-						volume: 1.0,
+					case 'videoElements.videoDetails': return [{
+						src: 'https://example.com/video.mp4',
+						duration: 10,
+						volume: 0.8,
 						muted: false,
-						loop: false
-					}];
-					default: return [];
-				}
-			});
-
-			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
-
-			expect(result.scenes).toHaveLength(1);
-			expect(result.scenes[0].elements).toHaveLength(1);
-			expect(result.scenes[0].elements[0]).toMatchObject({
-				type: 'video',
-				src: 'https://example.com/video.mp4',
-				duration: -1,
-				volume: 1.0,
-				muted: false,
-				loop: 1
-			});
-		});
-
-		test('handles video with all properties', () => {
-			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
-				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
-					case 'recordId': return '';
-					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [{
-						url: 'https://example.com/video.mp4',
-						duration: -2,
-						volume: 0.5,
-						muted: true,
 						loop: true,
-						seek: 10
+						fit: 'cover',
+						seek: 5,
+						speed: 1.5
 					}];
 					default: return [];
 				}
 			});
 
-			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+			buildMergeVideosRequestBody.call(mockExecute, 0);
 
-			expect(result.scenes[0].elements[0]).toMatchObject({
-				type: 'video',
-				src: 'https://example.com/video.mp4',
-				duration: -2,
-				volume: 0.5,
-				muted: true,
-				loop: -1, // true converts to -1
-				seek: 10
-			});
+			// Verify processVideoElements was called with correct video data
+			expect(mockProcessVideoElements).toHaveBeenCalledWith(
+				[expect.objectContaining({
+					src: 'https://example.com/video.mp4',
+					duration: 10,
+					volume: 0.8,
+					muted: false,
+					loop: true,
+					fit: 'cover',
+					seek: 5,
+					speed: 1.5
+				})],
+				expect.any(Object)
+			);
 		});
 
-		test('handles multiple videos with transitions', () => {
+		test('should handle multiple videos with processVideoElements', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'framerate': return 25;
@@ -243,17 +185,93 @@ describe('mergeVideosBuilder - Core Functionality', () => {
 					case 'output_height': return 768;
 					case 'recordId': return '';
 					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [
-						{
-							url: 'https://example.com/video1.mp4',
-							duration: 10
-						},
-						{
-							url: 'https://example.com/video2.mp4',
-							duration: 5,
-							transition_style: 'fade',
-							transition_duration: 2
-						}
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video1.mp4', duration: 5 },
+						{ src: 'https://example.com/video2.mp4', duration: 8 }
+					];
+					default: return [];
+				}
+			});
+
+			buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockProcessVideoElements).toHaveBeenCalledTimes(2);
+			expect(mockProcessVideoElements).toHaveBeenNthCalledWith(1,
+				[expect.objectContaining({ src: 'https://example.com/video1.mp4' })],
+				expect.any(Object)
+			);
+			expect(mockProcessVideoElements).toHaveBeenNthCalledWith(2,
+				[expect.objectContaining({ src: 'https://example.com/video2.mp4' })],
+				expect.any(Object)
+			);
+		});
+
+		test('should handle video elements without valid src property', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ duration: 5 }, // Missing src
+						{ src: 'https://example.com/video.mp4' },
+						{ src: '' }, // Empty src
+						{ src: null } // Null src
+					];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockProcessVideoElements).toHaveBeenCalledTimes(1); // Only valid src processed
+			expect(result.scenes).toHaveLength(4); // All scenes created, but only one has video element
+		});
+
+		test('should handle video processing errors gracefully', () => {
+			mockProcessVideoElements.mockImplementation(() => {
+				throw new Error('Video processing failed');
+			});
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockExecute.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to process video element')
+			);
+			expect(result.scenes[0].elements).toHaveLength(0); // No elements added due to error
+		});
+	});
+
+	describe('Transition Processing', () => {
+		test('should apply global transitions', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'transition': return 'fade';
+					case 'transitionDuration': return 2.5;
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video1.mp4' },
+						{ src: 'https://example.com/video2.mp4' }
 					];
 					default: return [];
 				}
@@ -262,110 +280,52 @@ describe('mergeVideosBuilder - Core Functionality', () => {
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
 			expect(result.scenes).toHaveLength(2);
-			expect(result.scenes[0].elements[0]).toMatchObject({
-				type: 'video',
-				src: 'https://example.com/video1.mp4',
-				duration: 10
-			});
-			expect(result.scenes[0].transition).toBeUndefined(); // No transition for first scene
-
-			expect(result.scenes[1].elements[0]).toMatchObject({
-				type: 'video',
-				src: 'https://example.com/video2.mp4',
-				duration: 5
-			});
+			expect(result.scenes[0].transition).toBeUndefined(); // First scene has no transition
 			expect(result.scenes[1].transition).toEqual({
 				style: 'fade',
-				duration: 2
+				duration: 2.5
 			});
 		});
 
-		test('skips video without URL', () => {
+		test('should handle none transition', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
 					case 'recordId': return '';
 					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [{
-						duration: 10 // No URL
-					}];
+					case 'transition': return 'none';
+					case 'transitionDuration': return 1;
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video1.mp4' },
+						{ src: 'https://example.com/video2.mp4' }
+					];
 					default: return [];
 				}
 			});
 
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
-			expect(result.scenes).toHaveLength(1);
-			expect(result.scenes[0].elements).toHaveLength(0); // No video element added
-		});
-	});
-
-	describe('when handling error conditions', () => {
-		test('handles non-array video data gracefully', () => {
-			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
-				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
-					case 'recordId': return '';
-					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': null; // Non-array
-					default: return [];
-				}
-			});
-
-			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
-
-			expect(result.scenes).toHaveLength(1); // Fallback scene
-			expect(result.scenes[0].elements).toHaveLength(0);
+			expect(result.scenes[1].transition).toBeUndefined();
 		});
 
-		test('handles invalid video properties gracefully', () => {
+		test('should apply video-specific transitions over global', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
 					case 'recordId': return '';
 					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [{
-						url: 'https://example.com/video.mp4',
-						duration: 'invalid',
-						volume: 'invalid',
-						seek: -5, // Invalid negative
-						speed: 0, // Invalid zero
-						start: -1 // Invalid negative
-					}];
-					default: return [];
-				}
-			});
-
-			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
-
-			const videoElement = result.scenes[0].elements[0];
-			expect(videoElement).not.toHaveProperty('duration');
-			expect(videoElement).not.toHaveProperty('volume');
-			expect(videoElement).not.toHaveProperty('seek');
-			expect(videoElement).not.toHaveProperty('speed');
-			expect(videoElement).not.toHaveProperty('start');
-		});
-
-		test('handles transition without style gracefully', () => {
-			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
-				switch (paramName) {
-					case 'framerate': return 25;
-					case 'output_width': return 1024;
-					case 'output_height': return 768;
-					case 'recordId': return '';
-					case 'webhookUrl': return '';
-					case 'videoUrls.videoDetails': return [
-						{ url: 'https://example.com/video1.mp4' },
+					case 'transition': return 'fade';
+					case 'transitionDuration': return 1;
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video1.mp4' },
 						{
-							url: 'https://example.com/video2.mp4',
-							transition_style: '', // Empty style
-							transition_duration: 2
+							src: 'https://example.com/video2.mp4',
+							transition_style: 'slide',
+							transition_duration: 3
 						}
 					];
 					default: return [];
@@ -374,30 +334,414 @@ describe('mergeVideosBuilder - Core Functionality', () => {
 
 			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
 
-			expect(result.scenes[1].transition).toBeUndefined(); // No transition added
+			expect(result.scenes[1].transition).toEqual({
+				style: 'slide',
+				duration: 3
+			});
 		});
 	});
 
-	describe('when handling complete integration scenarios', () => {
-		test('handles complete video merging with all elements', () => {
+	describe('Scene Elements Processing with Unified Processors', () => {
+		test('should process scene-level audio elements with unified processors', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video1.mp4' },
+						{ src: 'https://example.com/video2.mp4' }
+					];
+					case 'sceneElements.elementValues':
+						return itemIndex === 0 ?
+							[{ type: 'audio', src: 'https://example.com/audio1.mp3' }] :
+							[{ type: 'audio', src: 'https://example.com/audio2.mp3' }];
+					default: return [];
+				}
+			});
+
+			buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockProcessAudioElements).toHaveBeenCalledTimes(2);
+			expect(mockProcessAudioElements).toHaveBeenNthCalledWith(1,
+				[expect.objectContaining({ type: 'audio', src: 'https://example.com/audio1.mp3' })],
+				expect.any(Object)
+			);
+			expect(mockProcessAudioElements).toHaveBeenNthCalledWith(2,
+				[expect.objectContaining({ type: 'audio', src: 'https://example.com/audio2.mp3' })],
+				expect.any(Object)
+			);
+		});
+
+		test('should handle empty scene elements arrays', () => {
 			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					case 'sceneElements.elementValues': return [];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockProcessAudioElements).not.toHaveBeenCalled();
+			expect(result.scenes[0].elements).toHaveLength(1); // Only video element
+		});
+
+		test('should handle scene element processing errors gracefully', () => {
+			mockProcessAudioElements.mockImplementation(() => {
+				throw new Error('Audio processing failed');
+			});
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					case 'sceneElements.elementValues':
+						return [{ type: 'audio', src: 'https://example.com/audio.mp3' }];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockExecute.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to process scene element')
+			);
+			expect(result.scenes[0].elements).toHaveLength(1); // Only video element, failed audio not added
+		});
+	});
+
+	describe('Movie-Level Elements Integration', () => {
+		test('should process movie-level elements', () => {
+			const shared = require('@nodes/CreateJ2vMovie/utils/requestBuilder/shared');
+			shared.processAllMovieElements.mockReturnValue([
+				{ type: 'text', text: 'Movie Title' },
+				{ type: 'subtitles', captions: 'Global subtitles' }
+			]);
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					case 'movieTextElements.textDetails': return [{
+						text: 'Movie Title',
+						style: '001',
+						duration: 10
+					}];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(result.elements).toBeDefined();
+			expect(result.elements).toHaveLength(2);
+		});
+
+		test('should not add elements property when no movie elements', () => {
+			const shared = require('@nodes/CreateJ2vMovie/utils/requestBuilder/shared');
+			shared.processAllMovieElements.mockReturnValue([]);
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(result.elements).toBeUndefined();
+		});
+	});
+
+	describe('Edge Cases and Error Handling', () => {
+		test('should handle empty video elements array', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(result.scenes).toHaveLength(0);
+			expect(mockProcessVideoElements).not.toHaveBeenCalled();
+		});
+
+		test('should handle non-array video elements', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return null;
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(result.scenes).toHaveLength(0);
+			expect(mockProcessVideoElements).not.toHaveBeenCalled();
+		});
+
+		test('should handle validation errors appropriately', () => {
+			const validationUtils = require('@nodes/CreateJ2vMovie/utils/validationUtils');
+			validationUtils.validateSceneElements.mockReturnValue(['Scene validation error']);
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					default: return [];
+				}
+			});
+
+			expect(() => {
+				buildMergeVideosRequestBody.call(mockExecute, 0);
+			}).toThrow('Scene element validation errors: Scene validation error');
+		});
+
+		test('should handle scene element processing try/catch errors', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [
+						{ src: 'https://example.com/video.mp4' }
+					];
+					case 'sceneElements.elementValues':
+						// Return undefined to trigger the try/catch block
+						throw new Error('Parameter does not exist');
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			// Should continue processing despite the error
+			expect(result.scenes).toHaveLength(1);
+			expect(result.scenes[0].elements).toHaveLength(1); // Only video element
+		});
+
+		test('should process legacy video elements with textElements', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{
+						src: 'https://example.com/video.mp4',
+						textElements: {
+							textDetails: [{
+								text: 'Legacy text element',
+								style: '001'
+							}]
+						}
+					}];
+					default: return [];
+				}
+			});
+
+			buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			// Should call processTextElement for legacy text elements
+			expect(mockProcessTextElement).toHaveBeenCalledWith({
+				text: 'Legacy text element',
+				style: '001'
+			});
+		});
+
+		test('should handle legacy video elements with subtitle elements', () => {
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{
+						src: 'https://example.com/video.mp4',
+						subtitleElements: {
+							subtitleDetails: [{
+								captions: 'Legacy subtitle content',
+								language: 'en'
+							}]
+						}
+					}];
+					default: return [];
+				}
+			});
+
+			buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			// Should call processSubtitleElement for legacy subtitle elements
+			expect(mockProcessSubtitleElement).toHaveBeenCalledWith({
+				captions: 'Legacy subtitle content',
+				language: 'en'
+			});
+		});
+
+		test('should handle legacy video elements with generic elements fallback', () => {
+			// Mock processElement from elementProcessor
+			const mockProcessElement = jest.fn().mockReturnValue({
+				type: 'unknown',
+				src: 'https://example.com/unknown.file'
+			});
+
+			// Mock the elementProcessor module
+			jest.doMock('@nodes/CreateJ2vMovie/utils/elementProcessor', () => ({
+				processElement: mockProcessElement
+			}));
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{
+						src: 'https://example.com/video.mp4',
+						elements: {
+							elementValues: [{
+								type: 'unknown',
+								src: 'https://example.com/unknown.file'
+							}]
+						}
+					}];
+					default: return [];
+				}
+			});
+
+			buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			// Should call processElement for unknown element types
+			expect(mockProcessElement).toHaveBeenCalledWith(
+				{ type: 'unknown', src: 'https://example.com/unknown.file' },
+				1920,
+				1080
+			);
+		});
+
+		test('should handle legacy element processing errors gracefully', () => {
+			// Mock processElement to throw an error
+			const mockProcessElement = jest.fn().mockImplementation(() => {
+				throw new Error('Legacy element processing failed');
+			});
+
+			jest.doMock('@nodes/CreateJ2vMovie/utils/elementProcessor', () => ({
+				processElement: mockProcessElement
+			}));
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
+				switch (paramName) {
+					case 'framerate': return 30;
+					case 'output_width': return 1920;
+					case 'output_height': return 1080;
+					case 'recordId': return '';
+					case 'webhookUrl': return '';
+					case 'videoElements.videoDetails': return [{
+						src: 'https://example.com/video.mp4',
+						elements: {
+							elementValues: [{
+								type: 'failing',
+								src: 'https://example.com/failing.file'
+							}]
+						}
+					}];
+					default: return [];
+				}
+			});
+
+			const result = buildMergeVideosRequestBody.call(mockExecute, 0);
+
+			expect(mockExecute.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to process scene element')
+			);
+
+			// Should still have the video element despite the failed element processing
+			expect(result.scenes[0].elements).toHaveLength(1); // Only video element
+		});
+	});
+
+	describe('Complete Integration Test', () => {
+		test('should build complete request with all features and unified processors', () => {
+			const shared = require('@nodes/CreateJ2vMovie/utils/requestBuilder/shared');
+			shared.processAllMovieElements.mockReturnValue([
+				{ type: 'text', text: 'Global Title' },
+				{ type: 'subtitles', captions: 'Global subtitles' }
+			]);
+
+			mockExecute.getNodeParameter.mockImplementation((paramName: string, itemIndex: number) => {
 				switch (paramName) {
 					case 'framerate': return 30;
 					case 'output_width': return 1920;
 					case 'output_height': return 1080;
 					case 'recordId': return 'complete-test';
 					case 'webhookUrl': return 'https://webhook.test.com';
-					case 'videoUrls.videoDetails': return [
+					case 'transition': return 'fade';
+					case 'transitionDuration': return 1.5;
+					case 'videoElements.videoDetails': return [
 						{
-							url: 'https://example.com/intro.mp4',
+							src: 'https://example.com/intro.mp4',
 							duration: 5,
 							volume: 0.8
 						},
 						{
-							url: 'https://example.com/main.mp4',
+							src: 'https://example.com/main.mp4',
 							duration: -1,
-							transition_style: 'fade',
-							transition_duration: 1.5
+							transition_style: 'slide',
+							transition_duration: 2
 						}
 					];
 					case 'movieTextElements.textDetails': return [{
@@ -409,6 +753,10 @@ describe('mergeVideosBuilder - Core Functionality', () => {
 						captions: 'Global subtitles content',
 						language: 'en'
 					}];
+					case 'sceneElements.elementValues':
+						return itemIndex === 0 ?
+							[{ type: 'audio', src: 'https://example.com/audio.mp3' }] :
+							[];
 					default: return [];
 				}
 			});
@@ -425,23 +773,24 @@ describe('mergeVideosBuilder - Core Functionality', () => {
 
 			// Check webhook
 			expect(result.exports).toBeDefined();
+			expect(result.exports![0].destinations[0].endpoint).toBe('https://webhook.test.com');
 
 			// Check scenes
 			expect(result.scenes).toHaveLength(2);
-			expect(result.scenes[0].elements[0]).toMatchObject({
-				type: 'video',
-				src: 'https://example.com/intro.mp4'
-			});
 
-			// Check transition
+			// Check transitions
+			expect(result.scenes[0].transition).toBeUndefined();
 			expect(result.scenes[1].transition).toEqual({
-				style: 'fade',
-				duration: 1.5
+				style: 'slide',
+				duration: 2
 			});
 
 			// Check movie-level elements
-			expect(result.elements).toBeDefined();
 			expect(result.elements).toHaveLength(2);
+
+			// Verify unified processors were called
+			expect(mockProcessVideoElements).toHaveBeenCalledTimes(2);
+			expect(mockProcessAudioElements).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -1,6 +1,4 @@
-// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideos/mergeVideosBuilder.movieElements.test.ts
-
-// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideosBuilder.movieElements.test.ts
+// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideos/mergeVideosBuilder.movie.test.ts
 
 import { buildMergeVideosRequestBody } from '@nodes/CreateJ2vMovie/utils/requestBuilder/mergeVideosBuilder';
 import { processTextElement, processSubtitleElement } from '@nodes/CreateJ2vMovie/utils/textElementProcessor';

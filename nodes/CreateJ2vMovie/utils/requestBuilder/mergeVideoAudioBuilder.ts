@@ -11,7 +11,9 @@ import {
   processAllMovieElements,
   processSceneTextElements,
   processOutputSettings,
-  finalizeRequestBody
+  finalizeRequestBody,
+  processVideoElements,
+  processAudioElements
 } from './shared';
 
 function processMergeVideoAudioScenes(
@@ -20,15 +22,12 @@ function processMergeVideoAudioScenes(
   requestBody: VideoRequestBody
 ): any[] {
   const elements: IDataObject[] = [];
-  const { processElement } = require('../elementProcessor');
 
   const videoElement = this.getNodeParameter('videoElement', itemIndex, {}) as IDataObject;
   if (videoElement && Object.keys(videoElement).length > 0) {
     try {
-      const processedVideo = processElement(videoElement, requestBody.width, requestBody.height);
-      if (processedVideo) {
-        elements.push(processedVideo);
-      }
+      const processedVideos = processVideoElements.call(this, [videoElement], requestBody);
+      elements.push(...processedVideos);
     } catch (error: any) {
       throw new Error(`Video element processing failed: ${error.message || 'Unknown error'}`);
     }
@@ -37,10 +36,8 @@ function processMergeVideoAudioScenes(
   const audioElement = this.getNodeParameter('audioElement', itemIndex, {}) as IDataObject;
   if (audioElement && Object.keys(audioElement).length > 0) {
     try {
-      const processedAudio = processElement(audioElement, requestBody.width, requestBody.height);
-      if (processedAudio) {
-        elements.push(processedAudio);
-      }
+      const processedAudios = processAudioElements.call(this, [audioElement], requestBody);
+      elements.push(...processedAudios);
     } catch (error: any) {
       throw new Error(`Audio element processing failed: ${error.message || 'Unknown error'}`);
     }

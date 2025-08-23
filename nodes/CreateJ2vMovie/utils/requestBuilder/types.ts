@@ -1,3 +1,5 @@
+// nodes/CreateJ2vMovie/utils/requestBuilder/types.ts
+
 import { IDataObject } from 'n8n-workflow';
 
 export interface Scene {
@@ -52,4 +54,11 @@ export interface AudioElement {
   duration?: number;
   volume?: number;
   loop?: number;
+}
+
+export interface ActionConfig {
+  supportsMovieSubtitles: boolean;
+  supportsSceneTransitions: boolean;
+  supportsCustomScenes: boolean;
+  allowedElementTypes: string[];
 }

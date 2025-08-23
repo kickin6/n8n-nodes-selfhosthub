@@ -4,7 +4,28 @@ import { SubtitleElementParams, TextElementParams, TextElement } from '@nodes/Cr
 import { IDataObject, IExecuteFunctions, NodeParameterValue } from 'n8n-workflow';
 import { processSubtitleElement, processTextElement, validateTextElementParams, validateSubtitleElementParams } from '../textElementProcessor';
 import { validateMovieElements } from '../validationUtils';
-import { VideoRequestBody } from './types';
+import { VideoRequestBody, ActionConfig } from './types';
+
+const ACTION_CONFIGS: Record<string, ActionConfig> = {
+  createMovie: {
+    supportsMovieSubtitles: false,
+    supportsSceneTransitions: true,
+    supportsCustomScenes: true,
+    allowedElementTypes: ['video', 'audio', 'image', 'text', 'voice']
+  },
+  mergeVideoAudio: {
+    supportsMovieSubtitles: false,
+    supportsSceneTransitions: false,
+    supportsCustomScenes: false,
+    allowedElementTypes: ['video', 'audio', 'text']
+  },
+  mergeVideos: {
+    supportsMovieSubtitles: true,
+    supportsSceneTransitions: true,
+    supportsCustomScenes: false,
+    allowedElementTypes: ['video', 'text', 'subtitles']
+  }
+};
 
 export function getParameterValue(
   this: IExecuteFunctions,
@@ -97,6 +118,77 @@ export function addCommonParameters(
   });
 }
 
+export function getActionConfig(actionType: string): ActionConfig {
+  return ACTION_CONFIGS[actionType] || {
+    supportsMovieSubtitles: false,
+    supportsSceneTransitions: false,
+    supportsCustomScenes: false,
+    allowedElementTypes: []
+  };
+}
+
+export function processVideoElements(
+  this: IExecuteFunctions,
+  videoElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  const { processElement } = require('../elementProcessor');
+  return videoElements.map(video => 
+    processElement.call(this, video, context.width, context.height)
+  );
+}
+
+export function processAudioElements(
+  this: IExecuteFunctions,
+  audioElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  const { processElement } = require('../elementProcessor');
+  return audioElements.map(audio => 
+    processElement.call(this, audio, context.width, context.height)
+  );
+}
+
+export function processImageElements(
+  this: IExecuteFunctions,
+  imageElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  const { processElement } = require('../elementProcessor');
+  return imageElements.map(image => 
+    processElement.call(this, image, context.width, context.height)
+  );
+}
+
+export function processVoiceElements(
+  this: IExecuteFunctions,
+  voiceElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  const { processElement } = require('../elementProcessor');
+  return voiceElements.map(voice => 
+    processElement.call(this, voice, context.width, context.height)
+  );
+}
+
+export function processComponentElements(
+  this: IExecuteFunctions,
+  componentElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  // TODO: Implement when component element type is added
+  throw new Error('Component elements not yet implemented');
+}
+
+export function processAudiogramElements(
+  this: IExecuteFunctions,
+  audiogramElements: IDataObject[],
+  context: { width: number; height: number }
+): IDataObject[] {
+  // TODO: Implement when audiogram element type is added
+  throw new Error('Audiogram elements not yet implemented');
+}
+
 export function processOutputSettings(
   this: IExecuteFunctions,
   requestBody: VideoRequestBody,
@@ -153,21 +245,29 @@ export function processMovieSubtitleElements(
       if (errors.length > 0) {
         movieSubtitleValidationErrors.push(`Movie subtitle element ${index + 1}: ${errors.join(', ')}`);
       } else {
-        const subtitleParams = subtitleElement.captions?.startsWith('http')
-          ? {
-            src: subtitleElement.captions,
-            language: subtitleElement.language || 'en',
-            model: subtitleElement.model || 'default',
-            ...(subtitleElement.start !== undefined && { start: subtitleElement.start }),
-            ...(subtitleElement.duration !== undefined && { duration: subtitleElement.duration }),
-          }
-          : {
-            text: subtitleElement.captions || '',
-            language: subtitleElement.language || 'en',
-            model: subtitleElement.model || 'default',
-            ...(subtitleElement.start !== undefined && { start: subtitleElement.start }),
-            ...(subtitleElement.duration !== undefined && { duration: subtitleElement.duration }),
-          };
+        const subtitleParams: any = {};
+        
+        if (subtitleElement.captions?.startsWith('http')) {
+          subtitleParams.src = subtitleElement.captions;
+        } else if (subtitleElement.captions) {
+          subtitleParams.text = subtitleElement.captions;
+        }
+        
+        if (subtitleElement.language) {
+          subtitleParams.language = subtitleElement.language;
+        }
+        
+        if (subtitleElement.model) {
+          subtitleParams.model = subtitleElement.model;
+        }
+        
+        if (subtitleElement.start !== undefined) {
+          subtitleParams.start = subtitleElement.start;
+        }
+        
+        if (subtitleElement.duration !== undefined) {
+          subtitleParams.duration = subtitleElement.duration;
+        }
 
         const processedSubtitle = processSubtitleElement(subtitleParams);
         processedMovieSubtitleElements.push(processedSubtitle as unknown as IDataObject);
@@ -273,45 +373,129 @@ export function processMovieElements(
   requestBody: { width: number; height: number },
   allMovieElements: IDataObject[]
 ): void {
-  const { processElement } = require('../elementProcessor');
-
-  if (Array.isArray(movieElements) && movieElements.length > 0) {
-    movieElements.forEach(element => {
-      try {
-        if (element.type === 'text') {
-          const textParams: TextElementParams = {
-            text: element.text as string || 'Default Text',
-            ...(element.start !== undefined && { start: element.start }),
-            ...(element.duration !== undefined && { duration: element.duration }),
-            ...(element.style !== undefined && { style: element.style }),
-            ...(typeof element.position === 'string' && { position: element.position }),
-            ...(element['font-family'] !== undefined && { fontFamily: element['font-family'] }),
-            ...(element['font-size'] !== undefined && { fontSize: element['font-size'] }),
-            ...(element.color !== undefined && { fontColor: element.color }),
-          } as TextElementParams;
-
-          const processedTextElement = processTextElement(textParams);
-          allMovieElements.push(processedTextElement as unknown as IDataObject);
-        } else if (element.type === 'subtitles') {
-          const subtitleParams: SubtitleElementParams = {
-            captions: element.captions as string,
-            language: element.language as string || 'en',
-            model: element.model as string || 'default',
-            ...(element.start !== undefined && { start: element.start }),
-            ...(element.duration !== undefined && { duration: element.duration }),
-          } as SubtitleElementParams;
-
-          const processedSubtitleElement = processSubtitleElement(subtitleParams);
-          allMovieElements.push(processedSubtitleElement as unknown as IDataObject);
-        } else {
-          const processedElement = processElement.call(this, element, requestBody.width, requestBody.height);
-          allMovieElements.push(processedElement);
-        }
-      } catch (error) {
-        this.logger.warn(`Failed to process movie element: ${error}`);
-      }
-    });
+  if (!Array.isArray(movieElements) || movieElements.length === 0) {
+    return;
   }
+
+  movieElements.forEach((element) => {
+    if (!element || typeof element !== 'object' || Array.isArray(element)) {
+      return;
+    }
+
+    const elementType = element.type as string;
+    if (!elementType) {
+      this.logger.warn('Movie element missing type property');
+      return;
+    }
+
+    try {
+      let processedElement: IDataObject | null = null;
+      
+      switch (elementType) {
+        case 'text':
+          const textParams: Partial<TextElementParams> = {};
+          
+          if (element.text !== undefined) {
+            textParams.text = element.text as string;
+          }
+          
+          if (element.start !== undefined && typeof element.start === 'number') {
+            textParams.start = element.start;
+          }
+          
+          if (element.duration !== undefined && typeof element.duration === 'number') {
+            textParams.duration = element.duration;
+          }
+          
+          if (element.style !== undefined && typeof element.style === 'string') {
+            textParams.style = element.style;
+          }
+          
+          if (typeof element.position === 'string') {
+            textParams.position = element.position as any;
+          }
+          
+          if (element['font-family'] !== undefined && typeof element['font-family'] === 'string') {
+            textParams.fontFamily = element['font-family'];
+          }
+          
+          if (element['font-size'] !== undefined && typeof element['font-size'] === 'string') {
+            textParams.fontSize = element['font-size'];
+          }
+          
+          if (element.color !== undefined && typeof element.color === 'string') {
+            textParams.fontColor = element.color;
+          }
+          
+          processedElement = processTextElement(textParams as TextElementParams) as unknown as IDataObject;
+          break;
+          
+        case 'subtitles':
+          const subtitleParams: Partial<SubtitleElementParams> = {};
+          
+          if (element.captions !== undefined && typeof element.captions === 'string') {
+            subtitleParams.captions = element.captions;
+          }
+          
+          if (element.language !== undefined && typeof element.language === 'string') {
+            subtitleParams.language = element.language;
+          }
+          
+          if (element.model !== undefined && typeof element.model === 'string') {
+            subtitleParams.model = element.model;
+          }
+          
+          if (element.start !== undefined && typeof element.start === 'number') {
+            subtitleParams.start = element.start;
+          }
+          
+          if (element.duration !== undefined && typeof element.duration === 'number') {
+            subtitleParams.duration = element.duration;
+          }
+          
+          processedElement = processSubtitleElement(subtitleParams as SubtitleElementParams) as unknown as IDataObject;
+          break;
+          
+        case 'video':
+          const processedVideos = processVideoElements.call(this, [element], requestBody);
+          if (processedVideos.length > 0) {
+            processedElement = processedVideos[0];
+          }
+          break;
+          
+        case 'audio':
+          const processedAudios = processAudioElements.call(this, [element], requestBody);
+          if (processedAudios.length > 0) {
+            processedElement = processedAudios[0];
+          }
+          break;
+          
+        case 'image':
+          const processedImages = processImageElements.call(this, [element], requestBody);
+          if (processedImages.length > 0) {
+            processedElement = processedImages[0];
+          }
+          break;
+          
+        case 'voice':
+          const processedVoices = processVoiceElements.call(this, [element], requestBody);
+          if (processedVoices.length > 0) {
+            processedElement = processedVoices[0];
+          }
+          break;
+          
+        default:
+          this.logger.warn(`Unknown movie element type: ${elementType}`);
+          return;
+      }
+      
+      if (processedElement) {
+        allMovieElements.push(processedElement);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to process movie element of type ${elementType}: ${error}`);
+    }
+  });
 }
 
 export function finalizeRequestBody(

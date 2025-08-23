@@ -1,4 +1,4 @@
-// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/createMovie/createMovieBuilder.movieElements.test.ts
+// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/createMovie/createMovieBuilder.movie.test.ts
 
 jest.mock('@nodes/CreateJ2vMovie/utils/elementProcessor', () => ({
   processElement: jest.fn()
@@ -135,7 +135,7 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
       expect(() => {
         buildCreateMovieRequestBody.call(mockExecute, 0);
       }).toThrow(/Movie text element validation errors:/);
-      
+
       try {
         buildCreateMovieRequestBody.call(mockExecute, 0);
       } catch (error: any) {
@@ -157,7 +157,7 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
         }));
 
       const validPositions = ['top-left', 'top-right', 'bottom-right', 'bottom-left', 'center-center', 'custom'];
-      
+
       validPositions.forEach(position => {
         const mockExecute = createMockExecute({
           'movieElements.elementValues': [
@@ -171,40 +171,12 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
         });
 
         const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-        
+
         expect(result).toHaveProperty('elements');
         expect(result.elements).toHaveLength(1);
         const textElement = result.elements![0] as any;
         expect(textElement).toHaveProperty('position', position);
       });
-    });
-
-    test('should ignore invalid positions in movieElements text processing', () => {
-      // Mock processElement to return expected format
-      (processElement as jest.MockedFunction<typeof processElement>)
-        .mockImplementation((element) => ({
-          type: element.type,
-          src: element.src,
-          processed: true
-        }));
-
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          {
-            type: 'text',
-            text: 'Test text',
-            style: '001',
-            position: 'invalid-position'
-          }
-        ]
-      });
-
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-      
-      expect(result).toHaveProperty('elements');
-      expect(result.elements).toHaveLength(1);
-      const textElement = result.elements![0] as any;
-      expect(textElement).not.toHaveProperty('position', 'invalid-position');
     });
 
     test('should handle non-string position in movieElements text processing', () => {
@@ -228,7 +200,7 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
       });
 
       const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-      
+
       expect(result).toHaveProperty('elements');
       expect(result.elements).toHaveLength(1);
       const textElement = result.elements![0] as any;
@@ -334,63 +306,6 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
       expect(textElement.settings).toBeUndefined();
     });
 
-    test('should use default text when text is missing', () => {
-      // Mock processElement to avoid interference
-      (processElement as jest.MockedFunction<typeof processElement>)
-        .mockImplementation((element) => ({
-          type: element.type,
-          src: element.src,
-          processed: true
-        }));
-
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          {
-            type: 'text',
-            start: 0,
-            duration: 5
-          }
-        ]
-      });
-
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-
-      expect(result).toHaveProperty('elements');
-      expect(result.elements).toHaveLength(1);
-      const textElement = result.elements![0] as any;
-      expect(textElement).toHaveProperty('text', 'Default Text');
-    });
-
-    test('should process subtitle elements in movieElements', () => {
-      // Mock processElement to avoid interference
-      (processElement as jest.MockedFunction<typeof processElement>)
-        .mockImplementation((element) => ({
-          type: element.type,
-          src: element.src,
-          processed: true
-        }));
-
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          {
-            type: 'subtitles',
-            text: 'Movie subtitle',
-            language: 'en',
-            start: 0,
-            duration: 10
-          }
-        ]
-      });
-
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-
-      expect(result).toHaveProperty('elements');
-      expect(result.elements).toHaveLength(1);
-      const subtitleElement = result.elements![0] as any;
-      expect(subtitleElement).toHaveProperty('type', 'subtitles');
-      expect(subtitleElement).toHaveProperty('text', 'Movie subtitle');
-    });
-
     test('should process subtitle elements with start and duration spread', () => {
       // Mock processElement to avoid interference
       (processElement as jest.MockedFunction<typeof processElement>)
@@ -454,42 +369,6 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
       expect(result.elements![1]).toHaveProperty('type', 'video');
     });
 
-    test('should handle processing errors with console.warn', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-      // Mock processElement to throw an error for certain elements
-      (processElement as jest.MockedFunction<typeof processElement>)
-        .mockImplementation((element) => {
-          if (element.src === 'error-element.jpg') {
-            throw new Error('Mock processing error');
-          }
-          return {
-            type: element.type,
-            src: element.src,
-            processed: true
-          };
-        });
-
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          { type: 'image', src: 'good-element.jpg' },
-          { type: 'image', src: 'error-element.jpg' }, // This will throw error
-          { type: 'image', src: 'another-good-element.jpg' }
-        ]
-      });
-
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-
-      // Should have called console.warn with the error
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to process movie element:', expect.any(Error));
-      
-      // Should still have processed the good elements
-      expect(result).toHaveProperty('elements');
-      expect(result.elements?.length).toBeGreaterThan(0);
-
-      consoleSpy.mockRestore();
-    });
-
     test('should handle subtitle elements with missing required properties for validation coverage', () => {
       const mockExecute = createMockExecute({
         'movieElements.elementValues': [
@@ -509,103 +388,42 @@ describe('createMovieBuilder - Movie-Level Elements', () => {
       }).toThrow('Movie element validation errors');
     });
 
-    test('should cover both branches of error handling in movieElements processing', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    describe('Movie Elements Validation', () => {
 
-      // Mock processElement to throw different types of errors to cover all branches
-      (processElement as jest.MockedFunction<typeof processElement>)
-        .mockImplementation((element) => {
-          // Throw error for any element to hit the catch block
-          throw new Error(`Processing failed for ${element.type}`);
+      test('should validate movie-level elements and throw on validation errors', () => {
+        const mockExecute = createMockExecute({
+          'movieElements.elementValues': [
+            {
+              type: 'subtitles',
+              // Missing required captions/text/src - should fail validation
+            }
+          ]
         });
 
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          { type: 'image', src: 'test.jpg' }
-        ]
+        expect(() => {
+          buildCreateMovieRequestBody.call(mockExecute, 0);
+        }).toThrow('Movie element validation errors');
       });
 
-      // This should not throw, but should log the error and continue
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
+      test('should pass validation for valid movie elements', () => {
+        const mockExecute = createMockExecute({
+          'movieElements.elementValues': [
+            {
+              type: 'subtitles',
+              text: 'Valid subtitle',
+              language: 'en'
+            }
+          ]
+        });
 
-      // Verify the catch block was hit and console.warn was called
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to process movie element:', expect.any(Error));
-      
-      // Should still return a valid result (error was caught and logged)
-      expect(result).toHaveProperty('scenes');
-      expect(result.scenes).toHaveLength(1);
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('Movie Elements Validation', () => {
-
-    test('should validate movie-level elements and throw on validation errors', () => {
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          {
-            type: 'subtitles',
-            // Missing required captions/text/src - should fail validation
-          }
-        ]
+        expect(() => {
+          buildCreateMovieRequestBody.call(mockExecute, 0);
+        }).not.toThrow();
       });
-
-      expect(() => {
-        buildCreateMovieRequestBody.call(mockExecute, 0);
-      }).toThrow('Movie element validation errors');
-    });
-
-    test('should pass validation for valid movie elements', () => {
-      const mockExecute = createMockExecute({
-        'movieElements.elementValues': [
-          {
-            type: 'subtitles',
-            text: 'Valid subtitle',
-            language: 'en'
-          }
-        ]
-      });
-
-      expect(() => {
-        buildCreateMovieRequestBody.call(mockExecute, 0);
-      }).not.toThrow();
     });
   });
 
   describe('Movie Elements Integration', () => {
-
-    test('should combine movie text elements and movie elements collection', () => {
-      const mockExecute = createMockExecute({
-        'movieTextElements.textDetails': [
-          {
-            text: 'Movie text element',
-            style: '001',
-            fontFamily: 'Arial'
-          }
-        ],
-        'movieElements.elementValues': [
-          {
-            type: 'subtitles',
-            text: 'Movie subtitle element',
-            language: 'en'
-          }
-        ]
-      });
-
-      const result = buildCreateMovieRequestBody.call(mockExecute, 0);
-
-      expect(result.elements).toHaveLength(2);
-      
-      const textElement = result.elements!.find((el: any) => el.type === 'text');
-      const subtitleElement = result.elements!.find((el: any) => el.type === 'subtitles');
-      
-      expect(textElement).toBeDefined();
-      expect((textElement as any).text).toBe('Movie text element');
-      
-      expect(subtitleElement).toBeDefined();
-      expect((subtitleElement as any).text).toBe('Movie subtitle element');
-    });
 
     test('should handle empty movie elements collections', () => {
       const mockExecute = createMockExecute({

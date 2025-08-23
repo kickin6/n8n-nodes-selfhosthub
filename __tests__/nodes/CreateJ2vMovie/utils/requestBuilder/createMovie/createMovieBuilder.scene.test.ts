@@ -1,4 +1,4 @@
-// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/createMovie/createMovieBuilder.sceneElements.test.ts
+// __tests__/nodes/CreateJ2vMovie/utils/requestBuilder/createMovie/createMovieBuilder.scene.test.ts
 
 jest.mock('@nodes/CreateJ2vMovie/utils/elementProcessor', () => ({
   processElement: jest.fn()
@@ -126,6 +126,68 @@ describe('createMovieBuilder - Scene-Level Elements', () => {
       expect(() => {
         buildCreateMovieRequestBody.call(mockExecute, 0);
       }).not.toThrow();
+    });
+
+    test('should fallback to original processor when unified processor fails', () => {
+      // Create mock with video element using your existing helpers
+      const mockExecute = createMockExecute({
+        'scenes.sceneValues': [{
+          elements: {
+            elementValues: [
+              { type: 'video', src: 'test.mp4' }
+            ]
+          }
+        }]
+      });
+
+      // Add logger mock with warn method
+      mockExecute.logger = {
+        ...mockExecute.logger,
+        warn: jest.fn()
+      };
+
+      // Mock processElement to return a valid fallback element
+      (processElement as jest.MockedFunction<typeof processElement>)
+        .mockReturnValue({
+          type: 'video',
+          src: 'fallback.mp4',
+          processed: true
+        });
+
+      // Mock the shared module's processVideoElements to throw an error
+      const shared = require('@nodes/CreateJ2vMovie/utils/requestBuilder/shared');
+      const originalProcessVideo = shared.processVideoElements;
+
+      shared.processVideoElements = jest.fn().mockImplementation(() => {
+        throw new Error('Unified video processor failed');
+      });
+
+      try {
+        const result = buildCreateMovieRequestBody.call(mockExecute, 0);
+
+        // Should have processed elements using fallback
+        expect(result.scenes[0].elements).toHaveLength(1);
+        expect(result.scenes[0].elements[0]).toEqual({
+          type: 'video',
+          src: 'fallback.mp4',
+          processed: true
+        });
+
+        // Should have logged warning about the failure
+        expect(mockExecute.logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to process scene element')
+        );
+
+        // Should have called processElement as fallback
+        expect(processElement).toHaveBeenCalledWith(
+          { type: 'video', src: 'test.mp4' },
+          1024, // requestBody.width
+          768   // requestBody.height
+        );
+      } finally {
+        // Restore original function
+        shared.processVideoElements = originalProcessVideo;
+      }
     });
   });
 
@@ -282,7 +344,7 @@ describe('createMovieBuilder - Scene-Level Elements', () => {
       } as any);
 
       const mockExecute = mockExecuteFunctions();
-      
+
       // Mock getNodeParameter to throw error for scenes.sceneValues
       mockExecute.getNodeParameter.mockImplementation((param: string, itemIndex: any, defaultValue: any) => {
         if (param === 'scenes.sceneValues') {
@@ -290,7 +352,7 @@ describe('createMovieBuilder - Scene-Level Elements', () => {
         }
         // Return defaults for other parameters
         if (param === 'framerate') return 25;
-        if (param === 'output_width') return 1024; 
+        if (param === 'output_width') return 1024;
         if (param === 'output_height') return 768;
         if (param === 'recordId') return '';
         if (param === 'webhookUrl') return '';

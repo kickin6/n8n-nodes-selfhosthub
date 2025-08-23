@@ -4,13 +4,18 @@ import { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { VideoRequestBody, Scene } from './types';
 import { TextElementParams } from '../../operations/shared/elements';
 import { validateSceneElements } from '../validationUtils';
+import { processElement } from '../elementProcessor';
 import { 
   initializeRequestBody,
   addCommonParameters,
   processAllMovieElements,
   processSceneTextElements,
   processOutputSettings,
-  finalizeRequestBody
+  finalizeRequestBody,
+  processVideoElements,
+  processAudioElements,
+  processImageElements,
+  processVoiceElements
 } from './shared';
 
 function processCreateMovieScenes(
@@ -23,8 +28,6 @@ function processCreateMovieScenes(
   try {
     const scenesCollection = this.getNodeParameter('scenes.sceneValues', itemIndex, []) as IDataObject[];
     if (Array.isArray(scenesCollection) && scenesCollection.length > 0) {
-      const { processElement } = require('../elementProcessor');
-
       scenesCollection.forEach((sceneData, index) => {
         const scene: Scene = { elements: [] };
 
@@ -65,10 +68,39 @@ function processCreateMovieScenes(
               throw new Error(`Scene element validation errors:\n${sceneValidationErrors.join('\n')}`);
             }
 
-            const processedSceneElements = sceneTraditionalElements.map(element =>
-              processElement.call(this, element, requestBody.width, requestBody.height)
-            );
-            sceneElements.push(...processedSceneElements);
+            sceneTraditionalElements.forEach(element => {
+              try {
+                let processedElements: IDataObject[] = [];
+                
+                switch (element.type) {
+                  case 'video':
+                    processedElements = processVideoElements.call(this, [element], requestBody);
+                    break;
+                  case 'audio':
+                    processedElements = processAudioElements.call(this, [element], requestBody);
+                    break;
+                  case 'image':
+                    processedElements = processImageElements.call(this, [element], requestBody);
+                    break;
+                  case 'voice':
+                    processedElements = processVoiceElements.call(this, [element], requestBody);
+                    break;
+                  case 'text':
+                  case 'subtitles':
+                    processedElements = [processElement.call(this, element, requestBody.width, requestBody.height)];
+                    break;
+                  default:
+                    processedElements = [processElement.call(this, element, requestBody.width, requestBody.height)];
+                    break;
+                }
+                
+                sceneElements.push(...processedElements);
+              } catch (error) {
+                this.logger.warn(`Failed to process scene element: ${error}`);
+                const processedElement = processElement.call(this, element, requestBody.width, requestBody.height);
+                sceneElements.push(processedElement);
+              }
+            });
           }
         } catch (error) {
           if (error instanceof Error && error.message.includes('validation errors')) {
