@@ -1,273 +1,397 @@
-# JSON2Video API JSON Schema Documentation
+# JSON2Video API Complete Documentation
 
-This document describes the JSON schema used in the JSON2Video API and how it interacts with override parameters in the JSON2Video node.
+This document defines the complete JSON2Video API schema based on the official API documentation and JSON_SCHEMA.md. It serves as the authoritative reference for the JSON2Video n8n node development.
 
-## Base JSON Template Structure
+---
 
-The base JSON structure used in Advanced Mode adheres to the following schema:
+## Overview
 
-```json
-{
-  "id": "string",          // (Optional) Unique identifier for the video
-  "fps": number,           // (Required) Frames per second (e.g., 25)
-  "width": number,         // (Required) Output width in pixels (e.g., 1024)
-  "height": number,        // (Required) Output height in pixels (e.g., 768)
-  "quality": "string",     // (Optional) Video quality ("low", "medium", "high")
-  "resolution": "string",  // (Optional) Predefined resolution ("full-hd", "hd", "4k", "custom")
-  "cache": boolean,        // (Optional) Whether to force refresh rendering
-  "draft": boolean,        // (Optional) Whether to generate a draft version
-  "webhook": "string",     // (Optional) URL to receive notifications
-  "scenes": [              // (Required) Array of scenes
-    {
-      "elements": [        // (Required) Array of elements in the scene
-        // Element objects (see below)
-      ]
-    }
-  ],
-  "elements": []           // (Optional) Array of elements that appear across all scenes
-}
+The JSON2Video API follows a hierarchical structure:
+
+```
+Movie (top-level container)
+├── Movie-level Elements (global elements: subtitles, text, audio, voice, etc.)
+├── Scenes (array of scene objects)
+    ├── Scene-level Elements (per-scene: video, audio, image, text, voice, html, component, audiogram)
 ```
 
-> **Important Note**: Properties like `padding_color`, `horizontal_position`, `vertical_position`, and `zoom` at the movie level are not supported by the API, despite being mentioned in some documentation. These properties should be used within elements instead.
+**Critical Rule**: Subtitles elements can ONLY exist at the movie level, not within scenes.
 
-## Scene Structure
+---
 
-Each scene can have the following properties:
+## Movie Object (Root)
 
-```json
-{
-  "background-color": "string", // Background color (e.g., "#000000")
-  "duration": number,          // Duration in seconds (-1 for auto-calculation)
-  "transition": {              // Optional transition effect
-    "style": "string",         // Transition style (e.g., "fade", "wiperight")
-    "duration": number         // Transition duration in seconds
-  },
-  "elements": [],              // Array of elements in the scene
-  "cache": boolean             // Force refresh rendering for this scene
-}
-```
+The top-level movie object defines the overall structure and settings.
+
+### Required Properties
+- `scenes` (array) - Array of scene objects
+
+### Optional Properties
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `id` | string | No | "@randomString" | Unique identifier |
+| `resolution` | string | No | "custom" | Video resolution preset |
+| `width` | integer | No | 640 | Custom width in pixels (50-3840, required if resolution="custom") |
+| `height` | integer | No | 360 | Custom height in pixels (50-3840, required if resolution="custom") |
+| `quality` | string | No | "high" | Output quality: "low", "medium", "high", "very_high" |
+| `cache` | boolean | No | true | Use cached render if available |
+| `client-data` | object | No | {} | Custom key-value data for webhooks |
+| `comment` | string | No | - | Internal notes/memos |
+| `variables` | object | No | {} | Movie-level variables |
+| `elements` | array | No | - | Movie-level elements (global across all scenes) |
+| `exports` | array | No | - | Export configurations |
+
+### Resolution Options
+- `"sd"` - Standard Definition
+- `"hd"` - High Definition  
+- `"full-hd"` - Full HD (1920x1080)
+- `"squared"` - Square aspect ratio
+- `"instagram-story"` - Instagram Stories format
+- `"instagram-feed"` - Instagram Feed format
+- `"twitter-landscape"` - Twitter landscape
+- `"twitter-portrait"` - Twitter portrait
+- `"custom"` - Custom dimensions (requires width/height)
+
+---
+
+## Scene Object
+
+Represents a distinct segment of video content within the movie.
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `id` | string | No | "@randomString" | Unique identifier |
+| `duration` | number | No | -1 | Duration in seconds (-1 = auto-calculate) |
+| `background-color` | string | No | "#000000" | Hex color or "transparent" |
+| `comment` | string | No | - | Internal notes |
+| `condition` | string | No | - | Conditional expression for inclusion |
+| `cache` | boolean | No | true | Use cached render |
+| `variables` | object | No | {} | Scene-level variables (override movie-level) |
+| `elements` | array | No | - | Scene-level elements |
+
+---
+
+## Common Element Properties
+
+All elements share these base properties:
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Element type identifier |
+| `id` | string | No | "@randomString" | Unique identifier |
+| `comment` | string | No | - | Internal notes |
+| `condition` | string | No | - | Conditional rendering expression |
+| `variables` | object | No | {} | Element-level variables |
+| `cache` | boolean | No | true | Use cached render |
+| `start` | number | No | 0 | Start time in seconds |
+| `duration` | number | No | -1 | Duration (-1=intrinsic, -2=match container) |
+| `extra-time` | number | No | 0 | Additional time after duration |
+| `z-index` | number | No | 0 | Stacking order (-99 to 99) |
+| `fade-in` | number | No | - | Fade in duration in seconds (≥0) |
+| `fade-out` | number | No | - | Fade out duration in seconds (≥0) |
+
+### Duration Special Values
+- **Positive numbers**: Explicit duration in seconds
+- **-1**: Auto-duration based on asset intrinsic length
+- **-2**: Match container duration (scene or movie)
+
+---
 
 ## Element Types
 
-Each element in a scene must have a `type` property defining its type. Elements share common properties:
+### 1. Video Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "video" |
+| `src` | string | No | - | Video URL |
+| `seek` | number | No | 0 | Start offset within file (seconds) |
+| `volume` | number | No | 1 | Volume multiplier (0-10) |
+| `muted` | boolean | No | false | Mute audio track |
+| `loop` | number | No | - | Loop count (-1=infinite, positive=repeat count) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate (when position="custom") |
+| `y` | number | No | 0 | Y coordinate (when position="custom") |
+| `width` | number | No | -1 | Width in pixels (-1=maintain aspect ratio) |
+| `height` | number | No | -1 | Height in pixels (-1=maintain aspect ratio) |
+| `crop` | object | No | - | Cropping area settings |
+| `rotate` | object | No | - | Rotation settings (angle, speed) |
+| `pan` | string | No | - | Pan direction: "left", "right", "top", "bottom", combinations |
+| `pan-distance` | number | No | 0.1 | Pan distance (0.01-0.5) |
+| `pan-crop` | boolean | No | true | Stretch during pan |
+| `zoom` | number | No | - | Zoom level (-10 to 10) |
+| `flip-horizontal` | boolean | No | false | Horizontal flip |
+| `flip-vertical` | boolean | No | false | Vertical flip |
+| `mask` | string | No | - | Mask URL for transparency effects |
+| `chroma-key` | object | No | - | Green screen settings (color, tolerance) |
+| `correction` | object | No | - | Color correction (brightness, contrast, gamma, saturation) |
+
+### 2. Audio Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "audio" |
+| `src` | string | No | - | Audio URL |
+| `seek` | number | No | 0 | Start offset within file (seconds) |
+| `volume` | number | No | 1 | Volume multiplier (0-10) |
+| `muted` | boolean | No | false | Mute audio |
+| `loop` | number | No | - | Loop count (-1=infinite, positive=repeat count) |
+
+### 3. Image Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "image" |
+| `src` | string | No | - | Image URL (if not using AI generation) |
+| `prompt` | string | No | - | AI generation text prompt |
+| `model` | string | No | - | AI model: "flux-pro", "flux-schnell", "freepik-classic" |
+| `aspect-ratio` | string | No | "horizontal" | AI generation: "horizontal", "vertical", "squared" |
+| `connection` | string | No | - | Connection ID for custom AI API key |
+| `model-settings` | object | No | - | AI model-specific settings |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate |
+| `y` | number | No | 0 | Y coordinate |
+| `width` | number | No | -1 | Width in pixels (-1=auto) |
+| `height` | number | No | -1 | Height in pixels (-1=auto) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `crop` | object | No | - | Cropping settings |
+| `rotate` | object | No | - | Rotation settings |
+| `pan` | string | No | - | Pan direction |
+| `pan-distance` | number | No | 0.1 | Pan distance (0.01-0.5) |
+| `pan-crop` | boolean | No | true | Stretch during pan |
+| `zoom` | number | No | - | Zoom level (-10 to 10) |
+| `flip-horizontal` | boolean | No | false | Horizontal flip |
+| `flip-vertical` | boolean | No | false | Vertical flip |
+| `mask` | string | No | - | Mask URL |
+| `chroma-key` | object | No | - | Green screen settings |
+| `correction` | object | No | - | Color correction |
+
+### 4. Text Element
+
+**Note**: Text elements use a complex `settings` object with kebab-case properties for styling.
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "text" |
+| `text` | string | **Yes** | - | Text content to display |
+| `style` | string | No | "001" | Animation style: "001", "002", "003", "004" |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate |
+| `y` | number | No | 0 | Y coordinate |
+| `width` | number | No | -1 | Width in pixels (-1=auto) |
+| `height` | number | No | -1 | Height in pixels (-1=auto) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `settings` | object | No | {} | Text styling object (see below) |
+
+#### Text Settings Object (kebab-case properties)
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `font-family` | string | No | - | Google Fonts name or custom font URL |
+| `font-size` | string | No | - | Font size with units (e.g., "32px", "2em") |
+| `font-weight` | string | No | - | Font weight: "300" to "800" |
+| `font-color` | string | No | - | Text color (hex code) |
+| `background-color` | string | No | - | Background color (hex or rgba) |
+| `text-align` | string | No | - | "left", "center", "right", "justify" |
+| `vertical-position` | string | No | - | Textbox vertical alignment: "top", "center", "bottom" |
+| `horizontal-position` | string | No | - | Textbox horizontal alignment: "left", "center", "right" |
+
+### 5. Voice Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "voice" |
+| `text` | string | **Yes** | - | Text to synthesize into speech |
+| `voice` | string | No | - | Voice name/ID to use |
+| `model` | string | No | - | TTS model: "azure", "elevenlabs", "elevenlabs-flash-v2-5" |
+| `connection` | string | No | - | Connection ID for custom API key |
+| `volume` | number | No | 1 | Volume multiplier (0-10) |
+| `muted` | boolean | No | false | Mute generated audio |
+
+### 6. Component Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "component" |
+| `component` | string | **Yes** | - | Pre-defined component ID from library |
+| `settings` | object | No | {} | Component-specific customization settings |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate |
+| `y` | number | No | 0 | Y coordinate |
+| `width` | number | No | -1 | Width in pixels (-1=auto) |
+| `height` | number | No | -1 | Height in pixels (-1=auto) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `crop` | object | No | - | Cropping settings |
+| `rotate` | object | No | - | Rotation settings |
+| `pan` | string | No | - | Pan direction |
+| `pan-distance` | number | No | 0.1 | Pan distance (0.01-0.5) |
+| `pan-crop` | boolean | No | true | Stretch during pan |
+| `zoom` | number | No | - | Zoom level (-10 to 10) |
+| `flip-horizontal` | boolean | No | false | Horizontal flip |
+| `flip-vertical` | boolean | No | false | Vertical flip |
+| `mask` | string | No | - | Mask URL |
+| `chroma-key` | object | No | - | Green screen settings |
+| `correction` | object | No | - | Color correction |
+
+### 7. Audiogram Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "audiogram" |
+| `color` | string | No | - | Wave color (hex code, e.g., "#FF0000") |
+| `opacity` | number | No | 0.5 | Opacity (0.0-1.0) |
+| `amplitude` | number | No | 5 | Wave amplitude scaling (0-10) |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate |
+| `y` | number | No | 0 | Y coordinate |
+| `width` | number | No | -1 | Width in pixels (-1=inherit movie width) |
+| `height` | number | No | -1 | Height in pixels (-1=inherit movie height) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `crop` | object | No | - | Cropping settings |
+| `rotate` | object | No | - | Rotation settings |
+| `pan` | string | No | - | Pan direction |
+| `pan-distance` | number | No | 0.1 | Pan distance (0.01-0.5) |
+| `pan-crop` | boolean | No | true | Stretch during pan |
+| `zoom` | number | No | - | Zoom level (-10 to 10) |
+| `flip-horizontal` | boolean | No | false | Horizontal flip |
+| `flip-vertical` | boolean | No | false | Vertical flip |
+| `mask` | string | No | - | Mask URL |
+| `chroma-key` | object | No | - | Green screen settings |
+| `correction` | object | No | - | Color correction |
+
+### 8. HTML Element
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "html" |
+| `html` | string | No | - | HTML snippet to render (compatible with HTML5, CSS3, JavaScript) |
+| `src` | string | No | - | URL to the web page |
+| `tailwindcss` | boolean | No | false | Enables TailwindCSS for the HTML snippet |
+| `wait` | number | No | 2 | Time in seconds to wait before taking screenshot (0-5) |
+| `position` | string | No | "custom" | Positioning preset or "custom" |
+| `x` | number | No | 0 | X coordinate |
+| `y` | number | No | 0 | Y coordinate |
+| `width` | number | No | -1 | Width in pixels (-1=auto) |
+| `height` | number | No | -1 | Height in pixels (-1=auto) |
+| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `crop` | object | No | - | Cropping settings |
+| `rotate` | object | No | - | Rotation settings |
+| `pan` | string | No | - | Pan direction |
+| `pan-distance` | number | No | 0.1 | Pan distance (0.01-0.5) |
+| `pan-crop` | boolean | No | true | Stretch during pan |
+| `zoom` | number | No | - | Zoom level (-10 to 10) |
+| `flip-horizontal` | boolean | No | false | Horizontal flip |
+| `flip-vertical` | boolean | No | false | Vertical flip |
+| `mask` | string | No | - | Mask URL |
+| `chroma-key` | object | No | - | Green screen settings |
+| `correction` | object | No | - | Color correction |
+
+### 9. Subtitles Element (Movie-Level ONLY)
+
+**Critical**: Subtitles can ONLY exist in the movie `elements` array, never in scene elements.
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "subtitles" |
+| `captions` | string | No | - | Subtitle file URL or inline content (SRT/VTT/ASS) |
+| `language` | string | No | "auto" | Language code or "auto" for detection |
+| `model` | string | No | "default" | Transcription model: "default", "whisper" |
+| `settings` | object | No | {} | Subtitle styling settings |
+
+#### Subtitle Settings Object
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `style` | string | No | "classic" | Subtitle style |
+| `all-caps` | boolean | No | false | Make subtitles uppercase |
+| `font-family` | string | No | "Arial" | Font family name |
+| `font-size` | number | No | - | Font size (defaults to 5% of movie width) |
+| `font-url` | string | No | - | Custom font URL (TTF format) |
+| `position` | string | No | "bottom-center" | Position on canvas |
+| `word-color` | string | No | "#FFFF00" | Color of current word |
+| `line-color` | string | No | "#FFFFFF" | Color of other words |
+| `box-color` | string | No | "#000000" | Background box color |
+| `outline-color` | string | No | "#000000" | Text outline color |
+| `outline-width` | number | No | 0 | Outline width |
+| `shadow-color` | string | No | "#000000" | Shadow color |
+| `shadow-offset` | number | No | 0 | Shadow offset |
+| `max-words-per-line` | number | No | 4 | Maximum words per line |
+| `x` | number | No | 0 | X coordinate (when position="custom") |
+| `y` | number | No | 0 | Y coordinate (when position="custom") |
+| `keywords` | array | No | - | Keywords for transcription accuracy |
+| `replace` | object | No | - | Word replacement mapping |
+
+---
+
+## Advanced Features
+
+### Variables System
+
+Variables enable dynamic content injection and can be defined at movie, scene, or element levels.
 
 ```json
 {
-  "type": "element-type",
-  "start": number,           // Start time in seconds
-  "duration": number,        // Duration in seconds (see Duration Values section)
-  "extra-time": number,      // Additional time after duration
-  "position": "string",      // Position on screen (see positioning section)
-  "x": number,               // X-coordinate (used when position is "custom")
-  "y": number,               // Y-coordinate (used when position is "custom")
-  "cache": boolean           // Force refresh rendering for this element
-}
-```
-
-## Duration Values
-
-The JSON2Video API supports several duration value types:
-
-### Positive Numbers
-Explicit duration in seconds:
-```json
-{
-  "duration": 5.5    // Element lasts exactly 5.5 seconds
-}
-```
-
-### Special Duration Values
-
-- **`-1`**: Automatically set duration based on the intrinsic length of the asset file
-  ```json
-  {
-    "type": "video",
-    "src": "https://example.com/video.mp4", 
-    "duration": -1    // Uses the actual video file duration
+  "variables": {
+    "title": "Summer Sale!",
+    "discount": 20,
+    "show_logo": true,
+    "colors": ["#FF0000", "#00FF00", "#0000FF"]
   }
-  ```
-
-- **`-2`**: Set duration to match the parent container (scene or movie)
-  ```json
-  {
-    "type": "audio",
-    "src": "https://example.com/audio.mp3",
-    "duration": -2    // Matches the scene/movie duration
-  }
-  ```
-
-### Duration Best Practices
-
-1. **Use `-1` for media files**: When you want to use the full duration of video/audio files
-2. **Use `-2` for background elements**: When you want audio/video to match the container duration
-3. **Use positive values for control**: When you need exact timing
-4. **Omit duration for auto-detection**: Let the API determine the best duration
-
-## Element Positioning
-
-The `position` property determines how an element is positioned:
-
-```json
-"position": "center-center" // Centers the element both horizontally and vertically
-```
-
-Valid position values:
-
-- `top-left`: Positions the element at the top-left corner
-- `top-center`: Positions the element at the top-center
-- `top-right`: Positions the element at the top-right corner
-- `center-left`: Positions the element at the center-left
-- `center-center`: Centers the element both horizontally and vertically
-- `center-right`: Positions the element at the center-right
-- `bottom-left`: Positions the element at the bottom-left corner
-- `bottom-center`: Positions the element at the bottom-center
-- `bottom-right`: Positions the element at the bottom-right corner
-- `custom`: Uses the exact coordinates specified in `x` and `y` properties
-
-> When using a named position value (anything other than "custom"), the `x` and `y` coordinates are ignored, and the element is automatically positioned according to the named position. The default is "custom" if not specified.
-
-### Image Element
-
-```json
-{
-  "type": "image",
-  "src": "https://example.com/image.jpg",
-  "start": 0,
-  "duration": 5,
-  "position": "center-center",
-  "x": 0,
-  "y": 0,
-  "scale": {
-    "width": 0,
-    "height": 0
-  },
-  "zoom": 0,
-  "rotate": {
-    "angle": 45,
-    "speed": 1
-  },
-  "opacity": 0.8
 }
 ```
 
-### Video Element
+**Usage**: `{{variable_name}}` in any string value
+**Scope**: Scene variables override movie variables with same name
 
-```json
-{
-  "type": "video",
-  "src": "https://example.com/video.mp4",
-  "start": 0,
-  "duration": -1,              // Use video's actual duration
-  "position": "center-center",
-  "x": 0,
-  "y": 0,
-  "volume": 1.0,
-  "muted": false,
-  "loop": -1,                  // -1 = infinite loop, positive number = loop count
-  "crop": false,
-  "fit": "cover",
-  "zoom": 0
-}
-```
+### Expressions
 
-### Text Element
+Expressions allow calculations and conditional logic within templates.
+
+**Operators**: `+`, `-`, `*`, `/`, `==`, `!=`, `>`, `<`, `>=`, `<=`, `and`, `or`
+**Functions**: `min(a, b)`, `max(a, b)`
+**Ternary**: `condition ? value_if_true : value_if_false`
+
+**Examples**:
+- `"duration": "{{ base_duration + 2 }}"`
+- `"text": "{{ show_sale ? 'SALE!' : 'Regular Price' }}"`
+
+### Conditional Elements
+
+Elements can be conditionally included using the `condition` property:
 
 ```json
 {
   "type": "text",
-  "text": "Your text content",
-  "start": 0,
-  "duration": 5,
-  "position": "center-center",
-  "x": 960,
-  "y": 540,
-  "font-family": "Arial",
-  "font-size": 32,
-  "color": "white",
-  "background-color": "transparent",
-  "text-align": "center",
-  "opacity": 1.0,
-  "style": "001"              // Predefined animation style
+  "text": "Limited Time Offer!",
+  "condition": "{{ show_promo == true }}"
 }
 ```
 
-### Audio Element
+### Dynamic Number of Scenes
+
+Use the `iterate` property to generate multiple scenes from array data:
 
 ```json
 {
-  "type": "audio",
-  "src": "https://example.com/audio.mp3",
-  "start": 0,
-  "duration": -1,              // Use audio's actual duration
-  "volume": 0.8,
-  "loop": false,
-  "fade-in": 1.0,
-  "fade-out": 1.0
-}
-```
-
-### Voice Element
-
-```json
-{
-  "type": "voice",
-  "text": "Text to convert to speech",
-  "voice": "en-US-AriaNeural",
-  "start": 0,
-  "volume": 1.0,
-  "rate": 1.0,
-  "pitch": 1.0
-}
-```
-
-### Subtitles Element
-
-```json
-{
-  "type": "subtitles",
-  "settings": {
-    "style": "classic",
-    "model": "default",
-    "language": "en",
-    "all_caps": false,
-    "position": "bottom-center",
-    "font_size": 16,
-    "font_family": "Arial"
-  }
-}
-```
-
-## Video Merging Structure
-
-When merging videos, each video should be placed in a separate scene:
-
-```json
-{
-  "fps": 30,
-  "width": 1024,
-  "height": 768,
+  "variables": {
+    "slides": [
+      {"image": "img1.jpg", "title": "Slide 1"},
+      {"image": "img2.jpg", "title": "Slide 2"}
+    ]
+  },
   "scenes": [
     {
+      "iterate": "slides",
       "elements": [
         {
-          "type": "video",
-          "src": "https://example.com/video1.mp4",
-          "start": 0,
-          "duration": -1
-        }
-      ]
-    },
-    {
-      "transition": {
-        "style": "fade",
-        "duration": 1
-      },
-      "elements": [
+          "type": "image",
+          "src": "{{image}}"
+        },
         {
-          "type": "video",
-          "src": "https://example.com/video2.mp4", 
-          "start": 0,
-          "duration": -1
+          "type": "text", 
+          "text": "{{title}}"
         }
       ]
     }
@@ -275,61 +399,68 @@ When merging videos, each video should be placed in a separate scene:
 }
 ```
 
-> **Important**: Do not use a `videos` array at the movie level - this is not supported by the API.
+---
 
-## Override Parameters
+## Property Naming Convention
 
-In Advanced Mode, several parameters can override values in the JSON template:
+**Critical**: The API uses kebab-case property names, while n8n UI uses camelCase.
 
-| Parameter     | Description            | JSON Property | Type    |
-| ------------- | ---------------------- | ------------- | ------- |
-| Record ID     | Record identifier      | `id`          | string  |
-| Output Width  | Video width            | `width`       | number  |
-| Output Height | Video height           | `height`      | number  |
-| Framerate     | Frames per second      | `fps`         | number  |
-| Quality       | Video quality          | `quality`     | string  |
-| Cache         | Force refresh          | `cache`       | boolean |
-| Draft         | Generate draft version | `draft`       | boolean |
-| Resolution    | Predefined resolution  | `resolution`  | string  |
-| Webhook URL   | Notification URL       | `webhook`     | string  |
+**API (kebab-case)**: `background-color`, `font-family`, `z-index`
+**n8n UI (camelCase)**: `backgroundColor`, `fontFamily`, `zIndex`
 
-## How Overrides Work
+The n8n node processors must convert camelCase to kebab-case for API requests.
 
-In the JSON2Video node's Advanced Mode:
+---
 
-1. The node first parses the JSON template provided in the "JSON Template" field
-2. Required parameters (Output Width, Output Height, Framerate) are always overridden if provided
-3. Optional override parameters are applied only if they're provided
-4. The resulting modified JSON is sent to the JSON2Video API
+## Shared Object Specifications
 
-This allows you to maintain a complex JSON template with detailed scene configurations while easily overriding specific parameters when needed without editing the JSON directly.
+### Crop Object
 
-## Best Practices
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `width` | integer | **Yes** | - | Width of cropping area |
+| `height` | integer | **Yes** | - | Height of cropping area |
+| `x` | integer | No | 0 | Left point of cropping |
+| `y` | integer | No | 0 | Top point of cropping |
 
-1. Always include the core required properties (`fps`, `width`, `height`, `scenes`)
-2. For complex video projects, build the full JSON template with all scenes and elements
-3. Use override parameters for values that might change frequently between runs
-4. For element positioning, use named positions like "center-center" instead of coordinates when possible
-5. If precise positioning is needed, set `position: "custom"` and specify x/y coordinates
-6. Use appropriate duration values:
-   - `-1` for using media file's actual duration
-   - `-2` for matching container duration  
-   - Positive numbers for explicit control
-7. Avoid using properties like `padding_color` or `horizontal_position` at the top level of the movie object
-8. When referencing data from previous nodes, use expressions in the JSON template
-9. For video merging, create separate scenes rather than using a `videos` array
-10. Test with publicly accessible media URLs to avoid duration detection issues
+### Rotate Object
 
-## Troubleshooting Duration Issues
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `angle` | number | **Yes** | 0 | Rotation angle (-360 to 360) |
+| `speed` | number | No | 0 | Rotation animation speed (0=no movement) |
 
-If you encounter "Movie duration cannot be zero" errors:
+### Chroma-Key Object
 
-1. **Use explicit durations**: Instead of `-1` or `-2`, use positive values (e.g., `"duration": 10`)
-2. **Check media accessibility**: Ensure video/audio URLs are publicly accessible
-3. **Verify file formats**: Use standard formats (MP4, H.264 for video; MP3, WAV for audio)
-4. **Test different hosting**: Some CDNs work better with JSON2Video's duration detection
-5. **Omit duration property**: Let the API determine duration automatically
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `color` | string | **Yes** | - | Color to make transparent (hex code) |
+| `tolerance` | integer | No | 25 | Color sensitivity (1-100) |
 
-## API Documentation
+### Correction Object
 
-For the complete and most up-to-date API reference, see the [official JSON2Video API documentation](https://json2video.com/docs/v2/).
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `brightness` | number | No | 0 | Brightness adjustment (-1 to 1) |
+| `contrast` | number | No | 1 | Contrast adjustment (-1000 to 1000) |
+| `gamma` | number | No | 1 | Gamma adjustment (0.1 to 10) |
+| `saturation` | number | No | 1 | Saturation adjustment (0 to 3) |
+
+---
+
+## Validation Rules
+
+1. **Subtitles Restriction**: Subtitles elements can only exist in movie `elements` array
+2. **Required Fields**: Each element type has specific required properties
+3. **Value Ranges**: Numeric properties have defined min/max values
+4. **Enum Values**: String properties with limited valid options
+5. **Conditional Requirements**: Some properties become required based on others (e.g., x/y when position="custom")
+
+---
+
+## Performance Optimization Notes
+
+1. **Scene Structure**: Split into multiple scenes for parallel rendering
+2. **Asset Optimization**: Use appropriate formats and sizes
+3. **Caching**: Leverage `cache: true` for repeated elements
+4. **Transitions**: Use sparingly, prefer `fade` when needed

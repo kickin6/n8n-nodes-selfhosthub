@@ -1,7 +1,11 @@
 # Dependencies
+*.txt
 node_modules/
 .pnp/
 .pnp.js
+*.py
+*.sh
+*.csv
 
 # Build outputs
 dist/
