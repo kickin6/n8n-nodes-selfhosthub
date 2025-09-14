@@ -23,7 +23,44 @@ export interface JSON2VideoRequest {
   elements?: MovieElement[];
   exports?: ExportConfig[];
   scenes: Scene[];
-  fps?: number;
+}
+
+// =============================================================================
+// EXPORT CONFIGURATION INTERFACES
+// =============================================================================
+
+export interface ExportConfig {
+  // Basic export settings
+  format?: 'mp4' | 'webm' | 'gif';
+  quality?: 'low' | 'medium' | 'high' | 'very_high';
+  resolution?: string;
+  width?: number;
+  height?: number;
+  
+  // Delivery methods (mutually exclusive)
+  webhook?: WebhookExportConfig;
+  ftp?: FtpExportConfig;  
+  email?: EmailExportConfig;
+}
+
+export interface WebhookExportConfig {
+  url: string;
+}
+
+export interface FtpExportConfig {
+  host: string;
+  port?: number;
+  username: string;
+  password: string;
+  path?: string;
+  secure?: boolean; // SFTP vs FTP
+}
+
+export interface EmailExportConfig {
+  to: string | string[];
+  from?: string;
+  subject?: string;
+  message?: string;
 }
 
 // =============================================================================
@@ -278,14 +315,6 @@ export interface SubtitleSettings {
   language?: string;
 }
 
-export interface ExportConfig {
-  format?: 'mp4' | 'webm' | 'gif';
-  quality?: 'low' | 'medium' | 'high' | 'very_high';
-  resolution?: string;
-  width?: number;
-  height?: number;
-}
-
 // =============================================================================
 // API RULES AND VALIDATION CONSTANTS
 // =============================================================================
@@ -296,27 +325,26 @@ export const API_RULES = {
 
   REQUIRED_FIELDS: {
     movie: ['scenes'] as const,
-    scene: ['elements'] as const,
-    video: ['src'] as const,
-    audio: [] as const, // Can be used without src
-    image: [] as const, // Can use src OR prompt for AI generation
-    text: ['text'] as const,
-    voice: ['text'] as const,
-    subtitles: [] as const, // Can have src OR text OR captions
-    component: ['component'] as const,
+    scene: [] as const,
+    video: ['type'] as const,
+    audio: [] as const,
+    image: [] as const,
+    text: ['text', 'type'] as const,
+    voice: ['text', 'type'] as const,
+    subtitles: ['type'] as const,
+    component: ['component', 'type'] as const,
     audiogram: [] as const,
-    html: [] as const, // Can have html OR src
+    html: [] as const
   },
 
   SUBTITLE_RULES: {
     ONLY_AT_MOVIE_LEVEL: true,
-    NOT_ALLOWED_IN_SCENES: true,
+    NOT_ALLOWED_IN_SCENES: true
   },
 
   VALIDATION_RANGES: {
     width: { min: 50, max: 3840 },
     height: { min: 50, max: 3840 },
-    fps: { min: 1, max: 120 },
     volume: { min: 0, max: 10 },
     opacity: { min: 0, max: 1 },
     'z-index': { min: -99, max: 99 },

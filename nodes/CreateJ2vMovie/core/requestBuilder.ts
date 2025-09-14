@@ -2,7 +2,7 @@
 
 import { JSON2VideoRequest, Scene, MovieElement, SceneElement } from '../schema/json2videoSchema';
 import { CollectedParameters } from './parameterCollector';
-import { processMovieElements, processSceneElements, processElement } from './elementProcessor';
+import { processElements, processElement } from './elementProcessor';
 
 // =============================================================================
 // INTERFACES
@@ -37,8 +37,8 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
       // Advanced mode: Start with JSON template, apply overrides
       result.request = buildAdvancedModeRequest(parameters, result);
     } else {
-      // Basic mode: Build from form parameters
-      result.request = buildBasicModeRequest(parameters, result);
+      // Basic mode: Build from form parameters using unified approach
+      result.request = buildUnifiedRequest(parameters, result);
     }
 
     // Apply common request properties
@@ -54,8 +54,8 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
     return result;
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown request building error';
-    result.errors.push(`Failed to build request: ${errorMessage}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    result.errors.push(`Request building failed: ${errorMessage}`);
     return result;
   }
 }
@@ -68,22 +68,23 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
  * Build request from JSON template with parameter overrides
  */
 function buildAdvancedModeRequest(
-  parameters: CollectedParameters, 
+  parameters: CollectedParameters,
   result: RequestBuildResult
 ): JSON2VideoRequest | null {
-  
-  if (!parameters.jsonTemplate) {
-    result.errors.push('JSON template is required for advanced mode');
-    return null;
-  }
 
   try {
-    // Parse JSON template
+    if (!parameters.jsonTemplate || !parameters.jsonTemplate.trim()) {
+      result.errors.push('Advanced mode requires a JSON template');
+      return null;
+    }
+
+    // Parse the JSON template
     let baseRequest: JSON2VideoRequest;
     try {
-      baseRequest = JSON.parse(parameters.jsonTemplate);
+      baseRequest = JSON.parse(parameters.jsonTemplate.trim());
     } catch (parseError) {
-      result.errors.push(`Invalid JSON template: ${parseError instanceof Error ? parseError.message : 'Parse error'}`);
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Parse error';
+      result.errors.push(`Invalid JSON template: ${errorMessage}`);
       return null;
     }
 
@@ -121,9 +122,6 @@ function applyAdvancedOverrides(
   if (overrides.height !== undefined) {
     request.height = overrides.height;
   }
-  if (overrides.fps !== undefined) {
-    request.fps = overrides.fps;
-  }
 
   // Apply quality/rendering overrides
   if (overrides.quality !== undefined) {
@@ -138,52 +136,28 @@ function applyAdvancedOverrides(
 }
 
 // =============================================================================
-// BASIC MODE REQUEST BUILDING
+// UNIFIED REQUEST BUILDING
 // =============================================================================
 
 /**
- * Build request from form parameters based on workflow type
+ * Build request using unified approach for all operations
+ * This replaces the operation-specific request builders
  */
-function buildBasicModeRequest(
+function buildUnifiedRequest(
   parameters: CollectedParameters,
   result: RequestBuildResult
 ): JSON2VideoRequest | null {
-
-  switch (parameters.action) {
-    case 'createMovie':
-      return buildCreateMovieRequest(parameters, result);
-    case 'mergeVideoAudio':
-      return buildMergeAudioRequest(parameters, result);
-    case 'mergeVideos':
-      return buildMergeVideosRequest(parameters, result);
-    default:
-      result.errors.push(`Unsupported workflow: ${parameters.action}`);
-      return null;
-  }
-}
-
-/**
- * Build request for createMovie workflow
- */
-function buildCreateMovieRequest(
-  parameters: CollectedParameters,
-  result: RequestBuildResult
-): JSON2VideoRequest {
 
   const request: JSON2VideoRequest = {
     scenes: []
   };
 
-  // Apply basic movie configuration
-  if (parameters.width !== undefined) request.width = parameters.width;
-  if (parameters.height !== undefined) request.height = parameters.height;
-  if (parameters.fps !== undefined) request.fps = parameters.fps;
-  if (parameters.quality !== undefined) request.quality = parameters.quality as any;
-  if (parameters.cache !== undefined) request.cache = parameters.cache;
+  // Apply operation settings to request
+  applyOperationSettings(request, parameters);
 
   // Process movie-level elements (global across all scenes)
   if (parameters.movieElements && parameters.movieElements.length > 0) {
-    const movieResult = processMovieElements(parameters.movieElements);
+    const movieResult = processElements(parameters.movieElements);
     if (movieResult.errors.length > 0) {
       result.errors.push(...movieResult.errors);
     }
@@ -192,14 +166,84 @@ function buildCreateMovieRequest(
     }
   }
 
-  // Build scenes from scene elements
+  // Build scenes based on operation type
+  buildScenesForOperation(request, parameters, result);
+
+  // If no scenes were created, handle based on operation
+  if (request.scenes.length === 0) {
+    handleEmptyScenes(request, parameters, result);
+  }
+
+  return request;
+}
+
+/**
+ * Apply operation settings to the request
+ */
+function applyOperationSettings(
+  request: JSON2VideoRequest,
+  parameters: CollectedParameters
+): void {
+
+  if (!parameters.operationSettings) {
+    return;
+  }
+
+  const settings = parameters.operationSettings;
+
+  // Apply output settings if present
+  if (settings.outputSettings) {
+    const output = settings.outputSettings;
+    
+    if (output.width !== undefined) request.width = output.width;
+    if (output.height !== undefined) request.height = output.height;
+    if (output.quality !== undefined) request.quality = output.quality as any;
+    if (output.cache !== undefined) request.cache = output.cache;
+    // Note: draft property not supported in JSON2VideoRequest schema
+    if (output.resolution !== undefined) request.resolution = output.resolution;
+  }
+}
+
+/**
+ * Build scenes based on operation type using unified element collections
+ */
+function buildScenesForOperation(
+  request: JSON2VideoRequest,
+  parameters: CollectedParameters,
+  result: RequestBuildResult
+): void {
+
+  switch (parameters.action) {
+    case 'createMovie':
+      buildCreateMovieScenes(request, parameters, result);
+      break;
+    case 'mergeVideoAudio':
+      buildMergeVideoAudioScenes(request, parameters, result);
+      break;
+    case 'mergeVideos':
+      buildMergeVideosScenes(request, parameters, result);
+      break;
+    default:
+      result.errors.push(`Unsupported operation: ${parameters.action}`);
+  }
+}
+
+/**
+ * Build scenes for createMovie operation
+ */
+function buildCreateMovieScenes(
+  request: JSON2VideoRequest,
+  parameters: CollectedParameters,
+  result: RequestBuildResult
+): void {
+
+  // For createMovie, all scene elements go into a single scene
   if (parameters.sceneElements && parameters.sceneElements.length > 0) {
-    const sceneResult = processSceneElements(parameters.sceneElements);
+    const sceneResult = processElements(parameters.sceneElements);
     if (sceneResult.errors.length > 0) {
       result.errors.push(...sceneResult.errors);
     }
     
-    // Create a single scene containing all scene elements
     if (sceneResult.processed.length > 0) {
       const scene: Scene = {
         elements: sceneResult.processed
@@ -207,168 +251,162 @@ function buildCreateMovieRequest(
       request.scenes.push(scene);
     }
   }
-
-  // If no scenes were created, create an empty scene to prevent API errors
-  if (request.scenes.length === 0) {
-    result.warnings.push('No scene elements provided, creating empty scene');
-    request.scenes.push({ elements: [] });
-  }
-
-  return request;
 }
 
 /**
- * Build request for mergeVideoAudio workflow
+ * Build scenes for mergeVideoAudio operation
  */
-function buildMergeAudioRequest(
+function buildMergeVideoAudioScenes(
+  request: JSON2VideoRequest,
   parameters: CollectedParameters,
   result: RequestBuildResult
-): JSON2VideoRequest {
+): void {
 
-  const request: JSON2VideoRequest = {
-    scenes: []
-  };
-
-  if (!parameters.mergeVideoAudio) {
-    result.errors.push('mergeVideoAudio parameters are required');
-    return request;
-  }
-
-  // Apply output settings as movie configuration
-  if (parameters.mergeVideoAudio.outputSettings) {
-    const output = parameters.mergeVideoAudio.outputSettings;
-    if (output.width !== undefined) request.width = output.width;
-    if (output.height !== undefined) request.height = output.height;
-    if (output.fps !== undefined) request.fps = output.fps;
-    if (output.quality !== undefined) request.quality = output.quality;
-  }
-
-  // Create single scene with video + audio elements
-  const sceneElements: any[] = [];
-
-  // Add video element
-  if (parameters.mergeVideoAudio.videoElement && parameters.mergeVideoAudio.videoElement.src) {
-    const videoElement = {
-      type: 'video',
-      ...parameters.mergeVideoAudio.videoElement
-    };
-    sceneElements.push(videoElement);
-  }
-
-  // Add audio element  
-  if (parameters.mergeVideoAudio.audioElement && parameters.mergeVideoAudio.audioElement.src) {
-    const audioElement = {
-      type: 'audio',
-      ...parameters.mergeVideoAudio.audioElement
-    };
-    sceneElements.push(audioElement);
-  }
-
-  // Process elements and create scene
-  if (sceneElements.length > 0) {
-    const processResult = processSceneElements(sceneElements);
-    if (processResult.errors.length > 0) {
-      result.errors.push(...processResult.errors);
+  // For mergeVideoAudio, all elements go into a single scene
+  if (parameters.sceneElements && parameters.sceneElements.length > 0) {
+    const sceneResult = processElements(parameters.sceneElements);
+    if (sceneResult.errors.length > 0) {
+      result.errors.push(...sceneResult.errors);
     }
     
-    const scene: Scene = {
-      elements: processResult.processed
-    };
-    request.scenes.push(scene);
+    if (sceneResult.processed.length > 0) {
+      const scene: Scene = {
+        elements: sceneResult.processed
+      };
+      request.scenes.push(scene);
+    }
   } else {
     result.errors.push('No valid video or audio elements found for mergeVideoAudio');
   }
-
-  return request;
 }
 
 /**
- * Build request for mergeVideos workflow  
+ * Build scenes for mergeVideos operation
  */
-function buildMergeVideosRequest(
+function buildMergeVideosScenes(
+  request: JSON2VideoRequest,
   parameters: CollectedParameters,
   result: RequestBuildResult
-): JSON2VideoRequest {
+): void {
 
-  const request: JSON2VideoRequest = {
-    scenes: []
-  };
-
-  if (!parameters.mergeVideos) {
-    result.errors.push('mergeVideos parameters are required');
-    return request;
+  if (!parameters.sceneElements || parameters.sceneElements.length === 0) {
+    result.errors.push('No video elements found for mergeVideos');
+    return;
   }
 
-  // Apply output settings as movie configuration
-  if (parameters.mergeVideos.outputSettings) {
-    const output = parameters.mergeVideos.outputSettings;
-    if (output.width !== undefined) request.width = output.width;
-    if (output.height !== undefined) request.height = output.height;
-    if (output.fps !== undefined) request.fps = output.fps;
-    if (output.quality !== undefined) request.quality = output.quality;
-  }
+  // Group elements by sceneIndex (if specified) or create separate scenes for each video
+  const sceneGroups = groupElementsForMergeVideos(parameters.sceneElements);
+  
+  sceneGroups.forEach((elements, index) => {
+    const sceneResult = processElements(elements);
+    if (sceneResult.errors.length > 0) {
+      result.errors.push(...sceneResult.errors.map(err => `Scene ${index + 1}: ${err}`));
+    }
+    
+    if (sceneResult.processed.length > 0) {
+      const scene: Scene = {
+        elements: sceneResult.processed
+      };
 
-  // Create separate scenes for each video (this allows transitions between them)
-  if (parameters.mergeVideos.videoElements && parameters.mergeVideos.videoElements.length > 0) {
-    parameters.mergeVideos.videoElements.forEach((videoElement, index) => {
-      if (videoElement && videoElement.src) {
-        const element = {
-          type: 'video',
-          ...videoElement
+      // Apply transition settings if specified and not the last scene
+      if (parameters.operationSettings?.transition && 
+          parameters.operationSettings.transition !== 'none' &&
+          index < sceneGroups.length - 1) {
+        scene.transition = {
+          style: parameters.operationSettings.transition as any,
+          duration: parameters.operationSettings.transitionDuration || 1
         };
-
-        // Process the video element
-        try {
-          const processedElement = processElement(element);
-          
-          const scene: Scene = {
-            elements: [processedElement as SceneElement]
-          };
-
-          // Add transition to all scenes except the first
-          if (index > 0 && parameters.mergeVideos!.transition && parameters.mergeVideos!.transition !== 'none') {
-            scene.transition = {
-              style: parameters.mergeVideos!.transition as any,
-              duration: parameters.mergeVideos!.transitionDuration || 1
-            };
-          }
-
-          request.scenes.push(scene);
-          
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown processing error';
-          result.errors.push(`Video ${index + 1} processing failed: ${errorMessage}`);
-        }
       }
-    });
-  }
 
-  if (request.scenes.length === 0) {
-    result.errors.push('No valid video elements found for mergeVideos');
-  } else if (request.scenes.length < 2) {
-    result.warnings.push('mergeVideos workflow typically requires at least 2 videos');
-  }
+      request.scenes.push(scene);
+    }
+  });
 
-  return request;
+  // Special handling for single video
+  if (request.scenes.length === 1) {
+    result.warnings.push('mergeVideos with single video - consider using mergeVideoAudio for audio overlay');
+  }
+}
+
+/**
+ * Group scene elements for mergeVideos operation
+ */
+function groupElementsForMergeVideos(sceneElements: any[]): any[][] {
+  // For mergeVideos, each video element becomes its own scene
+  // Unless sceneIndex is specified (for future grouping support)
+  const groups: any[][] = [];
+  
+  sceneElements.forEach(element => {
+    if (element.sceneIndex !== undefined) {
+      // Use specified scene grouping
+      if (!groups[element.sceneIndex]) {
+        groups[element.sceneIndex] = [];
+      }
+      groups[element.sceneIndex].push(element);
+    } else {
+      // Each element gets its own scene
+      groups.push([element]);
+    }
+  });
+
+  return groups.filter(group => group.length > 0);
+}
+
+/**
+ * Handle cases where no scenes were created
+ */
+function handleEmptyScenes(
+  request: JSON2VideoRequest,
+  parameters: CollectedParameters,
+  result: RequestBuildResult
+): void {
+
+  switch (parameters.action) {
+    case 'createMovie':
+      if (parameters.movieElements.length > 0) {
+        // Has movie elements but no scene elements - create empty scene
+        result.warnings.push('No scene elements provided, creating empty scene with movie elements');
+        request.scenes.push({ elements: [] });
+      } else {
+        // No elements at all
+        result.warnings.push('No elements provided, creating empty scene');
+        request.scenes.push({ elements: [] });
+      }
+      break;
+    
+    case 'mergeVideoAudio':
+    case 'mergeVideos':
+      // These operations should have scene elements - errors already reported in validation
+      result.warnings.push(`No scenes created for ${parameters.action} operation`);
+      request.scenes.push({ elements: [] });
+      break;
+  }
 }
 
 // =============================================================================
-// COMMON REQUEST PROPERTIES
+// UTILITY FUNCTIONS
 // =============================================================================
 
 /**
- * Apply common properties to all requests regardless of mode
+ * Apply common request properties that affect all operations
  */
 function applyCommonRequestProperties(
   request: JSON2VideoRequest,
   parameters: CollectedParameters
 ): void {
-
-  // Set record ID for correlation/webhooks
-  if (parameters.recordId) {
-    request.id = parameters.recordId;
+  
+  // Apply export configurations (replaces webhook comment hack)
+  if (parameters.exportConfigs && parameters.exportConfigs.length > 0) {
+    request.exports = parameters.exportConfigs;
   }
 
-  // Note: webhookUrl is typically handled at the API call level, not in the request body
-  // It's passed as a query parameter: ?webhook=encodeURIComponent(webhookUrl)
+  // Apply record ID if specified (as comment for correlation)
+  if (parameters.recordId) {
+    const recordComment = `RecordID: ${parameters.recordId}`;
+    if (request.comment) {
+      request.comment += ` | ${recordComment}`;
+    } else {
+      request.comment = recordComment;
+    }
+  }
 }

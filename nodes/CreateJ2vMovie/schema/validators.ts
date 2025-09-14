@@ -333,7 +333,6 @@ export function validateJSON2VideoRequest(request: any): ValidationResult {
   const numericFields = [
     { field: 'width', range: API_RULES.VALIDATION_RANGES.width },
     { field: 'height', range: API_RULES.VALIDATION_RANGES.height },
-    { field: 'fps', range: API_RULES.VALIDATION_RANGES.fps }
   ];
 
   numericFields.forEach(({ field, range }) => {

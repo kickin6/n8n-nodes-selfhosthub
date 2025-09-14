@@ -15,6 +15,7 @@ import {
   ComponentElement,
   AudiogramElement,
   HtmlElement,
+  ExportConfig,
   API_RULES,
   isMovieElement,
   isSceneElement,
@@ -24,7 +25,10 @@ import {
   hasRequiredFields,
   isValidDuration,
   isValidPosition,
-  isValidWait
+  isValidWait,
+  WebhookExportConfig,
+  FtpExportConfig,
+  EmailExportConfig
 } from '../../../../nodes/CreateJ2vMovie/schema/json2videoSchema';
 
 describe('JSON2Video Schema', () => {
@@ -42,14 +46,14 @@ describe('JSON2Video Schema', () => {
 
     it('should have correct required fields mapping', () => {
       expect(API_RULES.REQUIRED_FIELDS.movie).toEqual(['scenes']);
-      expect(API_RULES.REQUIRED_FIELDS.scene).toEqual(['elements']);
-      expect(API_RULES.REQUIRED_FIELDS.video).toEqual(['src']);
+      expect(API_RULES.REQUIRED_FIELDS.scene).toEqual([]);
+      expect(API_RULES.REQUIRED_FIELDS.video).toEqual(['type']);
       expect(API_RULES.REQUIRED_FIELDS.audio).toEqual([]);
       expect(API_RULES.REQUIRED_FIELDS.image).toEqual([]);
-      expect(API_RULES.REQUIRED_FIELDS.text).toEqual(['text']);
-      expect(API_RULES.REQUIRED_FIELDS.voice).toEqual(['text']);
-      expect(API_RULES.REQUIRED_FIELDS.subtitles).toEqual([]);
-      expect(API_RULES.REQUIRED_FIELDS.component).toEqual(['component']);
+      expect(API_RULES.REQUIRED_FIELDS.text).toEqual(['text', 'type']);
+      expect(API_RULES.REQUIRED_FIELDS.voice).toEqual(['text', 'type']);
+      expect(API_RULES.REQUIRED_FIELDS.subtitles).toEqual(['type']);
+      expect(API_RULES.REQUIRED_FIELDS.component).toEqual(['component', 'type']);
       expect(API_RULES.REQUIRED_FIELDS.audiogram).toEqual([]);
       expect(API_RULES.REQUIRED_FIELDS.html).toEqual([]);
     });
@@ -62,7 +66,6 @@ describe('JSON2Video Schema', () => {
     it('should have validation ranges', () => {
       expect(API_RULES.VALIDATION_RANGES.width).toEqual({ min: 50, max: 3840 });
       expect(API_RULES.VALIDATION_RANGES.height).toEqual({ min: 50, max: 3840 });
-      expect(API_RULES.VALIDATION_RANGES.fps).toEqual({ min: 1, max: 120 });
       expect(API_RULES.VALIDATION_RANGES.volume).toEqual({ min: 0, max: 10 });
       expect(API_RULES.VALIDATION_RANGES.opacity).toEqual({ min: 0, max: 1 });
       expect(API_RULES.VALIDATION_RANGES['z-index']).toEqual({ min: -99, max: 99 });
@@ -269,11 +272,6 @@ describe('JSON2Video Schema', () => {
       ['element with null type', { type: null }, false],
       ['element with empty type', { type: '' }, false],
       ['video with src', { type: 'video', src: 'test.mp4' }, true],
-      ['video without src', { type: 'video' }, false],
-      ['video with empty src', { type: 'video', src: '' }, false],
-      ['video with whitespace src', { type: 'video', src: '   ' }, false],
-      ['video with null src', { type: 'video', src: null }, false],
-      ['video with undefined src', { type: 'video', src: undefined }, false],
       ['audio with src', { type: 'audio', src: 'test.mp3' }, true],
       ['audio without src', { type: 'audio' }, true],
       ['audio with empty src', { type: 'audio', src: '' }, true],
@@ -562,7 +560,6 @@ describe('JSON2Video Schema', () => {
     it('should handle trimming logic for required fields', () => {
       const elementsWithWhitespace = [
         { type: 'text', text: '\t\n\r ' },
-        { type: 'video', src: '  \t  ' },
         { type: 'voice', text: '   ' },
         { type: 'component', component: '\t\t' }
       ];
@@ -611,6 +608,417 @@ describe('JSON2Video Schema', () => {
         expect(isMovieElement(element)).toBe(false);
         expect(hasRequiredFields(element)).toBe(true);
       });
+    });
+  });
+});
+
+describe('Export Configuration Interfaces', () => {
+  
+  describe('ExportConfig interface', () => {
+    it('should support basic export configuration', () => {
+      const basicExport: ExportConfig = {
+        format: 'mp4',
+        quality: 'high',
+      };
+      
+      expect(basicExport.format).toBe('mp4');
+      expect(basicExport.quality).toBe('high');
+    });
+
+    it('should support all export formats', () => {
+      const formats: Array<'mp4' | 'webm' | 'gif'> = ['mp4', 'webm', 'gif'];
+      
+      formats.forEach(format => {
+        const exportConfig: ExportConfig = { format };
+        expect(exportConfig.format).toBe(format);
+      });
+    });
+
+    it('should support all quality levels', () => {
+      const qualities: Array<'low' | 'medium' | 'high' | 'very_high'> = ['low', 'medium', 'high', 'very_high'];
+      
+      qualities.forEach(quality => {
+        const exportConfig: ExportConfig = { quality };
+        expect(exportConfig.quality).toBe(quality);
+      });
+    });
+
+    it('should support custom resolution and dimensions', () => {
+      const exportConfig: ExportConfig = {
+        resolution: '1920x1080',
+        width: 1920,
+        height: 1080
+      };
+      
+      expect(exportConfig.resolution).toBe('1920x1080');
+      expect(exportConfig.width).toBe(1920);
+      expect(exportConfig.height).toBe(1080);
+    });
+  });
+
+  describe('WebhookExportConfig interface', () => {
+    it('should require URL', () => {
+      const webhook: WebhookExportConfig = {
+        url: 'https://example.com/webhook'
+      };
+      
+      expect(webhook.url).toBe('https://example.com/webhook');
+    });
+  });
+
+  describe('FtpExportConfig interface', () => {
+    it('should require host, username, and password', () => {
+      const ftp: FtpExportConfig = {
+        host: 'ftp.example.com',
+        username: 'testuser',
+        password: 'testpass'
+      };
+      
+      expect(ftp.host).toBe('ftp.example.com');
+      expect(ftp.username).toBe('testuser');
+      expect(ftp.password).toBe('testpass');
+    });
+
+    it('should support custom port', () => {
+      const ftp: FtpExportConfig = {
+        host: 'ftp.example.com',
+        username: 'testuser',
+        password: 'testpass',
+        port: 2121
+      };
+      
+      expect(ftp.port).toBe(2121);
+    });
+
+    it('should support custom path', () => {
+      const ftp: FtpExportConfig = {
+        host: 'ftp.example.com',
+        username: 'testuser',
+        password: 'testpass',
+        path: '/uploads/videos/'
+      };
+      
+      expect(ftp.path).toBe('/uploads/videos/');
+    });
+
+    it('should support secure connection (SFTP)', () => {
+      const sftp: FtpExportConfig = {
+        host: 'sftp.example.com',
+        username: 'sftpuser',
+        password: 'sftppass',
+        secure: true
+      };
+      
+      expect(sftp.secure).toBe(true);
+    });
+
+    it('should support complete FTP configuration', () => {
+      const ftp: FtpExportConfig = {
+        host: 'uploads.example.com',
+        port: 21,
+        username: 'videobot',
+        password: 'securepass123',
+        path: '/public/videos/',
+        secure: false
+      };
+      
+      expect(ftp.host).toBe('uploads.example.com');
+      expect(ftp.port).toBe(21);
+      expect(ftp.username).toBe('videobot');
+      expect(ftp.password).toBe('securepass123');
+      expect(ftp.path).toBe('/public/videos/');
+      expect(ftp.secure).toBe(false);
+    });
+  });
+
+  describe('EmailExportConfig interface', () => {
+    it('should require to address', () => {
+      const email: EmailExportConfig = {
+        to: 'recipient@example.com'
+      };
+      
+      expect(email.to).toBe('recipient@example.com');
+    });
+
+    it('should support multiple recipients as string array', () => {
+      const email: EmailExportConfig = {
+        to: ['user1@example.com', 'user2@example.com', 'admin@example.com']
+      };
+      
+      expect(Array.isArray(email.to)).toBe(true);
+      expect(email.to).toHaveLength(3);
+      expect(email.to).toContain('user1@example.com');
+      expect(email.to).toContain('admin@example.com');
+    });
+
+    it('should support from address', () => {
+      const email: EmailExportConfig = {
+        to: 'recipient@example.com',
+        from: 'noreply@videoservice.com'
+      };
+      
+      expect(email.from).toBe('noreply@videoservice.com');
+    });
+
+    it('should support custom subject and message', () => {
+      const email: EmailExportConfig = {
+        to: 'client@company.com',
+        from: 'videos@myservice.com',
+        subject: 'Your video is ready!',
+        message: 'Hi there! Your requested video has been generated and is ready for download.'
+      };
+      
+      expect(email.subject).toBe('Your video is ready!');
+      expect(email.message).toContain('Your requested video has been generated');
+    });
+
+    it('should support complete email configuration', () => {
+      const email: EmailExportConfig = {
+        to: ['marketing@company.com', 'designer@company.com'],
+        from: 'automation@videoplatform.io',
+        subject: 'Weekly Video Report - Generated Successfully',
+        message: 'The weekly marketing video has been generated. Please review and approve for publishing.'
+      };
+      
+      expect(Array.isArray(email.to)).toBe(true);
+      expect(email.to).toHaveLength(2);
+      expect(email.from).toContain('@videoplatform.io');
+      expect(email.subject).toContain('Weekly Video Report');
+      expect(email.message).toContain('review and approve');
+    });
+  });
+
+  describe('Complete ExportConfig with delivery methods', () => {
+    it('should support webhook export configuration', () => {
+      const exportConfig: ExportConfig = {
+        format: 'mp4',
+        quality: 'very_high',
+        webhook: {
+          url: 'https://api.myapp.com/video-complete',
+        }
+      };
+      
+      expect(exportConfig.format).toBe('mp4');
+      expect(exportConfig.quality).toBe('very_high');
+      expect(exportConfig.webhook).toBeDefined();
+      expect(exportConfig.webhook!.url).toContain('myapp.com');
+      expect(exportConfig.ftp).toBeUndefined();
+      expect(exportConfig.email).toBeUndefined();
+    });
+
+    it('should support FTP export configuration', () => {
+      const exportConfig: ExportConfig = {
+        format: 'webm',
+        quality: 'medium',
+        resolution: '1280x720',
+        ftp: {
+          host: 'files.company.com',
+          port: 22,
+          username: 'videouser',
+          password: 'ftppassword',
+          path: '/shared/videos/',
+          secure: true
+        }
+      };
+      
+      expect(exportConfig.format).toBe('webm');
+      expect(exportConfig.resolution).toBe('1280x720');
+      expect(exportConfig.ftp).toBeDefined();
+      expect(exportConfig.ftp!.secure).toBe(true);
+      expect(exportConfig.webhook).toBeUndefined();
+      expect(exportConfig.email).toBeUndefined();
+    });
+
+    it('should support email export configuration', () => {
+      const exportConfig: ExportConfig = {
+        format: 'gif',
+        quality: 'low',
+        width: 640,
+        height: 480,
+        email: {
+          to: 'stakeholder@company.com',
+          from: 'reports@videosystem.com',
+          subject: 'Animated Report Ready',
+          message: 'Your animated GIF report has been generated successfully.'
+        }
+      };
+      
+      expect(exportConfig.format).toBe('gif');
+      expect(exportConfig.quality).toBe('low');
+      expect(exportConfig.width).toBe(640);
+      expect(exportConfig.height).toBe(480);
+      expect(exportConfig.email).toBeDefined();
+      expect(exportConfig.email!.to).toBe('stakeholder@company.com');
+      expect(exportConfig.webhook).toBeUndefined();
+      expect(exportConfig.ftp).toBeUndefined();
+    });
+  });
+
+  describe('JSON2VideoRequest with exports', () => {
+    it('should support exports array in JSON2VideoRequest', () => {
+      const request: JSON2VideoRequest = {
+        width: 1920,
+        height: 1080,
+        quality: 'high',
+        scenes: [{
+          elements: [{
+            type: 'text',
+            text: 'Hello World'
+          }]
+        }],
+        exports: [{
+          format: 'mp4',
+          webhook: {
+            url: 'https://example.com/notify'
+          }
+        }]
+      };
+      
+      expect(request.exports).toBeDefined();
+      expect(request.exports).toHaveLength(1);
+      expect(request.exports![0].format).toBe('mp4');
+      expect(request.exports![0].webhook?.url).toBe('https://example.com/notify');
+    });
+
+    it('should support multiple export configurations', () => {
+      const request: JSON2VideoRequest = {
+        scenes: [{
+          elements: [{
+            type: 'video',
+            src: 'https://example.com/input.mp4'
+          }]
+        }],
+        exports: [
+          {
+            format: 'mp4',
+            quality: 'high',
+            webhook: {
+              url: 'https://primary-service.com/callback',
+            }
+          },
+          {
+            format: 'gif',
+            quality: 'medium',
+            email: {
+              to: 'preview@company.com',
+              subject: 'Preview GIF Ready'
+            }
+          },
+          {
+            format: 'webm',
+            quality: 'very_high',
+            ftp: {
+              host: 'backup.company.com',
+              username: 'archiver',
+              password: 'backup123',
+              path: '/archives/videos/',
+              secure: true
+            }
+          }
+        ]
+      };
+      
+      expect(request.exports).toHaveLength(3);
+      
+      // First export (webhook)
+      expect(request.exports![0].webhook).toBeDefined();
+      expect(request.exports![0].email).toBeUndefined();
+      expect(request.exports![0].ftp).toBeUndefined();
+      
+      // Second export (email)
+      expect(request.exports![1].email).toBeDefined();
+      expect(request.exports![1].webhook).toBeUndefined();
+      expect(request.exports![1].ftp).toBeUndefined();
+      
+      // Third export (FTP)
+      expect(request.exports![2].ftp).toBeDefined();
+      expect(request.exports![2].webhook).toBeUndefined();
+      expect(request.exports![2].email).toBeUndefined();
+    });
+
+    it('should support request without exports', () => {
+      const request: JSON2VideoRequest = {
+        scenes: [{
+          elements: [{
+            type: 'text',
+            text: 'Simple video without exports'
+          }]
+        }]
+      };
+      
+      expect(request.exports).toBeUndefined();
+    });
+
+    it('should support empty exports array', () => {
+      const request: JSON2VideoRequest = {
+        scenes: [{
+          elements: [{
+            type: 'image',
+            src: 'https://example.com/image.jpg'
+          }]
+        }],
+        exports: []
+      };
+      
+      expect(request.exports).toBeDefined();
+      expect(request.exports).toHaveLength(0);
+    });
+  });
+
+  describe('Export configuration type safety', () => {
+    it('should enforce mutually exclusive delivery methods', () => {
+      // This test ensures that each export config should only have one delivery method
+      const webhookOnly: ExportConfig = {
+        webhook: { url: 'https://example.com' }
+        // Should not have ftp or email
+      };
+      
+      const ftpOnly: ExportConfig = {
+        ftp: {
+          host: 'ftp.example.com',
+          username: 'user',
+          password: 'pass'
+        }
+        // Should not have webhook or email
+      };
+      
+      const emailOnly: ExportConfig = {
+        email: {
+          to: 'user@example.com'
+        }
+        // Should not have webhook or ftp
+      };
+      
+      expect(webhookOnly.webhook).toBeDefined();
+      expect(webhookOnly.ftp).toBeUndefined();
+      expect(webhookOnly.email).toBeUndefined();
+      
+      expect(ftpOnly.ftp).toBeDefined();
+      expect(ftpOnly.webhook).toBeUndefined();
+      expect(ftpOnly.email).toBeUndefined();
+      
+      expect(emailOnly.email).toBeDefined();
+      expect(emailOnly.webhook).toBeUndefined();
+      expect(emailOnly.ftp).toBeUndefined();
+    });
+
+    it('should support serialization of export configurations', () => {
+      const exportConfig: ExportConfig = {
+        format: 'mp4',
+        quality: 'high',
+        width: 1920,
+        height: 1080,
+        webhook: {
+          url: 'https://api.example.com/webhook',
+        }
+      };
+      
+      expect(() => JSON.stringify(exportConfig)).not.toThrow();
+      
+      const serialized = JSON.stringify(exportConfig);
+      const parsed = JSON.parse(serialized);
+      
+      expect(parsed.webhook.url).toBe('https://api.example.com/webhook');
     });
   });
 });

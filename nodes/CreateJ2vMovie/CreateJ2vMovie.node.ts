@@ -16,31 +16,31 @@ import { getAllNodeProperties, isValidOperation } from './presentation/nodePrope
 
 // CORE LAYER: Import business logic functions (implementation agnostic)
 import { collectParameters, validateCollectedParameters, CollectedParameters } from './core/parameterCollector';
-import { buildRequest } from './core/requestBuilder';
-import { validateRequest, createValidationSummary, extractActionableErrors } from './core/schemaValidator';
+import { buildRequest, RequestBuildResult } from './core/requestBuilder';
+import { validateBuildResult, RequestValidationResult } from './core/schemaValidator';
 
 export class CreateJ2vMovie implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'Self-Host Hub (JSON2Video)',
+    displayName: 'Create J2V Movie',
     name: 'createJ2vMovie',
     icon: 'file:createJ2vMovie.png',
-    group: [],
+    group: ['transform'],
     version: 1,
-    subtitle: '=',
+    subtitle: '={{$parameter["operation"]}}',
     description: 'Create videos with the JSON2Video API',
     defaults: {
-      name: 'Self-Host Hub (JSON2Video)',
+      name: 'Create J2V Movie',
     },
     inputs: [
       {
-        type: 'main' as NodeConnectionType,
-        displayName: 'Input',
+        displayName: '',
+        type: NodeConnectionType.Main,
       },
     ],
     outputs: [
       {
-        type: 'main' as NodeConnectionType,
-        displayName: 'Output',
+        displayName: '',
+        type: NodeConnectionType.Main,
       },
     ],
     credentials: [
@@ -49,33 +49,25 @@ export class CreateJ2vMovie implements INodeType {
         required: true,
       },
     ],
-    // AUTONOMOUS: Get all properties from presentation layer without knowing specifics
+    requestDefaults: {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    },
     properties: getAllNodeProperties(),
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
+
+    if (items.length === 0) {
+      return [[]];
+    }
+
     const returnData: INodeExecutionData[] = [];
 
-    // If there are no items, short-circuit early (do not fetch credentials)
-    if (!items || items.length === 0) {
-      return [returnData];
-    }
-
-    // Fetch credentials once, wrap as tests expect on failure
-    let apiKey: string;
-    try {
-      const credentials = await this.getCredentials('json2VideoApiCredentials');
-      apiKey = credentials.apiKey as string;
-    } catch (e: any) {
-      const msg = extractErrorMessage(e);
-      if (this.continueOnFail()) {
-        return [[{ json: { error: msg }, pairedItem: { item: 0 } }]];
-      }
-      throw new Error(`Item 1 processing failed: ${msg}`);
-    }
-
-    // Process each item using the clean architecture pipeline
+    // Process each input item through the unified architecture pipeline
     for (let i = 0; i < items.length; i++) {
       try {
         // =============================================================================
@@ -92,138 +84,113 @@ export class CreateJ2vMovie implements INodeType {
           throw new Error(`Invalid operation: ${operation}`);
         }
 
-        // Safe to cast since we validated above
-        const action = operation as CollectedParameters['action'];
-
         // =============================================================================
         // STEP 2: COLLECT PARAMETERS (IMPLEMENTATION AGNOSTIC)
         // =============================================================================
-        let collectedParameters: CollectedParameters;
-        try {
-          collectedParameters = collectParameters(this, i, action);
-        } catch (error) {
-          const msg = extractParameterErrorMessage(error);
-          if (msg) {
-            throw new Error(`Failed to collect parameters for operation '${operation}': ${msg}`);
-          } else {
-            throw error;
-          }
-        }
+        const collectedParameters = collectParameters.call(this, i);
 
         // Validate collected parameters (core layer enforces rules)
-        const parameterErrors = validateCollectedParameters(collectedParameters);
-        if (parameterErrors.length > 0) {
-          throw new Error(`Parameter validation failed: ${parameterErrors.join('; ')}`);
-        }
+        const parameterValidation = validateCollectedParameters(collectedParameters);
 
         // =============================================================================
         // STEP 3: BUILD REQUEST (WORKFLOW AGNOSTIC)
         // =============================================================================
         const buildResult = buildRequest(collectedParameters);
 
-        // Check for build errors
-        if (buildResult.errors.length > 0) {
-          const errorMessage = `Request building failed: ${buildResult.errors.join('; ')}`;
-          throw new Error(errorMessage);
-        }
-
-        if (!buildResult.request) {
-          throw new Error('Request building failed: No request generated');
-        }
-
-        // Extra guard: avoid sending an *empty* object as a request
-        if (isEmptyRequest(buildResult.request)) {
-          throw new Error('Request building failed: Empty request generated');
-        }
-
         // =============================================================================
-        // STEP 4: VALIDATE REQUEST (SCHEMA DRIVEN)
+        // STEP 4: VALIDATE REQUEST (EXPLICIT ACTION VALIDATION)
         // =============================================================================
-        const validationResult = validateRequest(
-          buildResult.request,
-          collectedParameters.action,  // Pass explicit action
+        const validationResult: RequestValidationResult = validateBuildResult(
+          buildResult,
+          collectedParameters.action,
           {
             level: 'complete',
             strictMode: true,
             includeWarnings: true,
             validateElements: true,
-            skipActionRules: collectedParameters.isAdvancedMode  // Skip action rules for advanced mode
+            skipActionRules: collectedParameters.isAdvancedMode
           }
         );
 
-        // Handle validation failures (fail fast principle)
-        if (!validationResult.canProceed) {
-          const actionableErrors = extractActionableErrors(validationResult);
-          const errorMessage = buildValidationErrorMessage(operation, actionableErrors);
-          throw new Error(errorMessage);
+        // =============================================================================
+        // STEP 5: EXECUTE API REQUEST (GENERIC)
+        // =============================================================================
+        const credentials = await this.getCredentials('json2VideoApiCredentials');
+        if (!credentials || !credentials.apiKey) {
+          throw new Error('JSON2Video API credentials are required');
         }
 
-        // =============================================================================
-        // STEP 5: PREPARE API REQUEST (GENERIC)
-        // =============================================================================
+        // Build API URL with optional query parameters
+        const baseUrl = 'https://api.json2video.com/v2/movies';
+        let apiUrl = baseUrl;
 
-        // At this point we have a fully validated JSON2Video request
-        const finalRequest = validationResult.request!;
+        const urlParams = new URLSearchParams();
 
-        // Build API URL with proper parameter encoding (recordId/webhook only if present)
-        const apiUrl = buildApiUrl(collectedParameters);
+        // Add webhook URL if provided
+        const webhookUrl = this.getNodeParameter('webhookUrl', i, '') as string;
+        if (webhookUrl) {
+          urlParams.append('webhook', webhookUrl);
+        }
 
-        // Prepare HTTP request options
+        // Add record ID if provided
+        const recordId = this.getNodeParameter('recordId', i, '') as string;
+        if (recordId) {
+          urlParams.append('id', recordId);
+        }
+
+        if (urlParams.toString()) {
+          apiUrl += '?' + urlParams.toString();
+        }
+
         const requestOptions: IRequestOptions = {
           method: 'POST' as IHttpRequestMethods,
           url: apiUrl,
-          body: finalRequest,
           headers: {
+            'x-api-key': credentials.apiKey as string,
             'Content-Type': 'application/json',
-            'x-api-key': apiKey,
           },
+          body: buildResult.request,
           json: true,
         };
 
-        // =============================================================================
-        // STEP 6: EXECUTE API REQUEST (OPERATION AGNOSTIC)
-        // =============================================================================
-
-        const responseData = await this.helpers.request(requestOptions);
+        const response = await this.helpers.request(requestOptions);
 
         // =============================================================================
-        // STEP 7: PROCESS API RESPONSE (GENERIC)
+        // STEP 6: PROCESS RESPONSE (WORKFLOW AGNOSTIC)
         // =============================================================================
+        const responseData = processApiResponse(response.body);
 
-        const processedResponse = processApiResponse(responseData);
-
-        // Return the API response with execution metadata
-        const executionData = this.helpers.constructExecutionMetaData(
-          this.helpers.returnJsonArray(processedResponse),
-          { itemData: { item: i } },
-        );
-
-        returnData.push(...executionData);
-      } catch (error: any) {
-        // =============================================================================
-        // ERROR HANDLING (OPERATION AGNOSTIC)
-        // =============================================================================
-        const errorMessage = extractMainErrorMessage(error);
-        console.error(`Error processing item ${i + 1}:`, errorMessage);
-
-        if (this.continueOnFail()) {
-          // Add error as json to output
+        // Add to return data with execution metadata
+        for (const responseItem of responseData) {
           returnData.push({
             json: {
-              error: errorMessage,
-              operation: String(this.getNodeParameter('operation', i, 'unknown')),
+              ...responseItem,
+              operation: collectedParameters.action,
               itemIndex: i,
               timestamp: new Date().toISOString(),
             },
-            pairedItem: {
-              item: i,
-            },
+            pairedItem: { item: i },
           });
-          continue;
         }
 
-        // Re-throw error to stop execution
-        throw new Error(`Item ${i + 1} processing failed: ${errorMessage}`);
+      } catch (error) {
+        const errorMessage = extractMainErrorMessage(extractErrorMessage(error));
+
+        if (this.continueOnFail()) {
+          // Add error to results but continue processing
+          returnData.push({
+            json: {
+              error: errorMessage,
+              operation: this.getNodeParameter('operation', i, 'unknown') as string,
+              itemIndex: i,
+              timestamp: new Date().toISOString(),
+            },
+            pairedItem: { item: i },
+          });
+        } else {
+          // Re-throw error to stop execution
+          throw new Error(`Item ${i + 1} processing failed: ${errorMessage}`);
+        }
       }
     }
 
@@ -232,129 +199,102 @@ export class CreateJ2vMovie implements INodeType {
 }
 
 // =============================================================================
-// ERROR MESSAGE EXTRACTION FUNCTIONS
+// UTILITY FUNCTIONS (EXTRACTED FOR TESTABILITY)
 // =============================================================================
 
 /**
- * Extract error message from credentials errors
+ * Extract error message from various error types
  */
-function extractErrorMessage(error: any): string {
-  if (!error) {
-    return 'Unknown error occurred';
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message || 'Unknown error occurred';
   }
-
-  if (!error.message) {
-    return 'Unknown error occurred';
-  }
-
-  const trimmedMessage = String(error.message).trim();
-  if (!trimmedMessage) {
-    return 'Unknown error occurred';
-  }
-
-  return error.message;
+  return 'Unknown error occurred';
 }
 
 /**
- * Extract error message from parameter collection errors
+ * Extract parameter-specific error messages
  */
-function extractParameterErrorMessage(error: any): string | null {
-  if (!(error instanceof Error)) {
-    return null;
+export function extractParameterErrorMessage(error: unknown): string {
+  const message = extractErrorMessage(error);
+  const parameterErrorPrefix = 'Parameter validation failed: ';
+  if (message.startsWith(parameterErrorPrefix)) {
+    return message.substring(parameterErrorPrefix.length);
   }
-
-  if (!error.message) {
-    return null;
-  }
-
-  const trimmedMessage = error.message.trim();
-  if (!trimmedMessage) {
-    return null;
-  }
-
-  return error.message;
+  return message;
 }
 
 /**
- * Extract error message from main catch block
+ * Extract main error from prefixed error messages
  */
-function extractMainErrorMessage(error: any): string {
-  let errorMessage = '';
+export function extractMainErrorMessage(message: string): string {
+  // List of error prefixes to strip
+  const errorPrefixes = [
+    'Request building failed: ',
+    'Request validation failed: ',
+    'Failed to collect parameters for operation \'',
+    'Processing failed: ',
+    'API error: ',
+    'Network error: ',
+    'Authentication failed: ',
+    'Invalid operation: ',
+    'Build failed: ',
+    'Validation failed: ',
+    'Parameter validation failed: ',
+  ];
 
-  if (error && error.message) {
-    errorMessage = error.message;
+  for (const prefix of errorPrefixes) {
+    if (message.startsWith(prefix)) {
+      let cleaned = message.substring(prefix.length);
+      // Handle cases like "Failed to collect parameters for operation 'createMovie': actual error"
+      if (prefix.includes('operation') && cleaned.includes('\': ')) {
+        cleaned = cleaned.split('\': ')[1];
+      }
+      return cleaned;
+    }
   }
 
-  if (!String(errorMessage).trim()) {
-    return 'Unknown error occurred';
-  }
-
-  return errorMessage;
+  return message;
 }
 
 /**
- * Check if a request object is empty
+ * Check if request is effectively empty
  */
-function isEmptyRequest(request: any): boolean {
-  if (typeof request !== 'object') {
-    return false;
+export function isEmptyRequest(request: any): boolean {
+  if (!request || Object.keys(request).length === 0) {
+    return true;
   }
 
-  if (request === null) {
-    return false;
+  if (request.scenes && Array.isArray(request.scenes)) {
+    if (request.scenes.length === 0) {
+      return true;
+    }
+
+    // Check if all scenes are empty
+    const hasContent = request.scenes.some((scene: any) =>
+      scene.elements && Array.isArray(scene.elements) && scene.elements.length > 0
+    );
+
+    if (!hasContent) {
+      return true;
+    }
   }
 
-  return Object.keys(request as object).length === 0;
+  return false;
 }
 
 /**
- * Build validation error message
+ * Create base return array structure
  */
-function buildValidationErrorMessage(operation: string, actionableErrors: any): string {
-  let errorMessage = `Request validation failed for operation '${operation}'`;
-
-  if (actionableErrors.critical.length > 0) {
-    errorMessage += ` - Critical errors: ${actionableErrors.critical.join('; ')}`;
-  }
-
-  if (actionableErrors.fixable.length > 0) {
-    errorMessage += ` - Fixable errors: ${actionableErrors.fixable.join('; ')}`;
-  }
-
-  return errorMessage;
-}
-
-// =============================================================================
-// UTILITY FUNCTIONS (IMPLEMENTATION AGNOSTIC)
-// =============================================================================
-
-/**
- * Build API URL with proper parameter encoding
- * AUTONOMOUS: Doesn't need to know specific parameter names
- */
-function buildApiUrl(parameters: CollectedParameters): string {
-  let apiUrl = 'https://api.json2video.com/v2/movies';
-  const urlParams = new URLSearchParams();
-
-  // recordId is optional — include only if provided
-  if (parameters.recordId) {
-    urlParams.set('id', parameters.recordId);
-  }
-  if (parameters.webhookUrl) {
-    urlParams.set('webhook', parameters.webhookUrl);
-  }
-
-  if (urlParams.toString()) {
-    apiUrl += '?' + urlParams.toString();
-  }
-
-  return apiUrl;
+export function createBaseArray(): INodeExecutionData[][] {
+  return [[]];
 }
 
 /**
- * Create safe base array from response data
+ * Process API response in a generic way
+ * - Return raw response items by default
  */
-function createBaseArray(responseData: any): IDataObject[] {
+function processApiResponse(responseData: any): IDataObject[] {
   if (Array.isArray(responseData)) {
     return responseData as IDataObject[];
   }
@@ -365,19 +305,3 @@ function createBaseArray(responseData: any): IDataObject[] {
 
   return [{}];
 }
-
-/**
- * Process API response in a generic way
- * - Return raw response items by default
- */
-function processApiResponse(responseData: any): IDataObject[] {
-  return createBaseArray(responseData);
-}
-
-export {
-  extractErrorMessage,
-  isEmptyRequest,
-  createBaseArray,
-  extractParameterErrorMessage,
-  extractMainErrorMessage
-};

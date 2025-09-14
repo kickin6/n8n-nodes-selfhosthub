@@ -1,676 +1,1055 @@
 // __tests__/nodes/CreateJ2vMovie/core/parameterCollector.test.ts
 
-import { IExecuteFunctions } from 'n8n-workflow';
-import {
-  collectParameters,
+import { 
+  collectParameters, 
   validateCollectedParameters,
-  getSafeParameter,
-  sanitizeParametersForLogging,
   CollectedParameters,
+  OperationSettings,
+  ParameterValidationResult
 } from '../../../../nodes/CreateJ2vMovie/core/parameterCollector';
 
-const createMockExecute = (parameters: Record<string, any> = {}): IExecuteFunctions => {
+interface ExportConfig {
+  type?: string;
+  webhook?: {
+    url: string;
+    method?: string;
+  };
+  ftp?: {
+    host: string;
+    username: string;
+    password: string;
+    port: number;
+    path: string;
+    secure: boolean;
+  };
+  email?: {
+    to: string;
+    from?: string;
+    subject?: string;
+    message?: string;
+  };
+}
+
+function createMockExecute(params: Record<string, any>) {
   return {
-    getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-      if (parameters.hasOwnProperty(paramName)) {
-        return parameters[paramName];
-      }
-      if (defaultValue !== undefined) {
-        return defaultValue;
-      }
-      return undefined;
-    })
-  } as unknown as IExecuteFunctions;
-};
+    getNodeParameter: (paramName: string, itemIndex: number, defaultValue?: any) => {
+      return params[paramName] !== undefined ? params[paramName] : defaultValue;
+    }
+  } as any;
+}
 
-describe('parameterCollector', () => {
+describe('core/parameterCollector', () => {
+  describe('collectParameters', () => {
+    describe('basic functionality', () => {
+      it('should collect basic createMovie parameters', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          movieElements: { elementValues: [{ type: 'subtitles', captions: 'test.srt' }] },
+          sceneElements: { elementValues: [{ type: 'image', src: 'test.jpg' }] }
+        });
 
-  describe('collectParameters - createMovie workflow', () => {
-    it('should process basic mode minimal parameters', () => {
-      const mockExecute = createMockExecute({ advancedMode: false });
-      const result = collectParameters(mockExecute, 0, 'createMovie');
-
-      expect(result.action).toBe('createMovie');
-      expect(result.isAdvancedMode).toBe(false);
-      expect(result.movieElements).toEqual([]);
-      expect(result.sceneElements).toEqual([]);
-    });
-
-    it('should process basic mode with full config', () => {
-      const mockExecute = createMockExecute({
-        advancedMode: false,
-        output_width: 1920,
-        output_height: 1080,
-        framerate: 30,
-        quality: 'high',
-        'movieElements.elementValues': [{ type: 'text', text: 'Movie title' }],
-        'elements.elementValues': [{ type: 'video', src: 'video.mp4' }]
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('createMovie');
+        expect(result.isAdvancedMode).toBe(false);
+        expect(result.movieElements).toEqual([{ type: 'subtitles', captions: 'test.srt' }]);
+        expect(result.sceneElements).toEqual([{ type: 'image', src: 'test.jpg' }]);
       });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should collect advanced mode parameters', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: true,
+          jsonTemplate: '{"width": 1920, "height": 1080}'
+        });
 
-      expect(result.width).toBe(1920);
-      expect(result.height).toBe(1080);
-      expect(result.fps).toBe(30);
-      expect(result.quality).toBe('high');
-      expect(result.movieElements).toHaveLength(1);
-      expect(result.sceneElements).toHaveLength(1);
-    });
-
-    it('should process advanced mode with template', () => {
-      const mockExecute = createMockExecute({
-        advancedMode: true,
-        jsonTemplate: '{"scenes":[]}',
-        outputWidth: 1280,
-        quality: 'medium'
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('createMovie');
+        expect(result.isAdvancedMode).toBe(true);
+        expect(result.jsonTemplate).toBe('{"width": 1920, "height": 1080}');
       });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should use default itemIndex when not provided', () => {
+        const mockExecute = {
+          getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
+            // Verify that itemIndex 0 is used when no argument provided
+            expect(itemIndex).toBe(0);
+            
+            const params: Record<string, any> = {
+              operation: 'createMovie',
+              advancedMode: false,
+              movieElements: { elementValues: [{ type: 'text', text: 'test' }] }
+            };
+            return params[paramName] !== undefined ? params[paramName] : defaultValue;
+          })
+        } as any;
 
-      expect(result.isAdvancedMode).toBe(true);
-      expect(result.jsonTemplate).toBe('{"scenes":[]}');
-      expect(result.advancedOverrides).toEqual({
-        width: 1280,
-        quality: 'medium'
+        // Call without itemIndex argument to test default parameter value
+        const result = collectParameters.call(mockExecute);
+        
+        expect(result.operation).toBe('createMovie');
+        expect(result.isAdvancedMode).toBe(false);
+        expect(result.movieElements).toEqual([{ type: 'text', text: 'test' }]);
+        
+        // Verify that getNodeParameter was called with itemIndex 0
+        expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('operation', 0, 'createMovie');
       });
     });
-  });
 
-  describe('collectParameters - mergeVideoAudio workflow', () => {
-    it('should process basic mode complete', () => {
-      const mockExecute = createMockExecute({
-        advancedModeMergeAudio: false,
-        'videoElement.videoDetails': { src: 'video.mp4', volume: 1 },
-        'audioElement.audioDetails': { src: 'audio.mp3', volume: 0.8 },
-        'outputSettings.outputDetails': { width: 1920, height: 1080 }
-      });
-
-      const result = collectParameters(mockExecute, 0, 'mergeVideoAudio');
-
-      expect(result.action).toBe('mergeVideoAudio');
-      expect(result.mergeVideoAudio?.videoElement?.src).toBe('video.mp4');
-      expect(result.mergeVideoAudio?.audioElement?.src).toBe('audio.mp3');
-    });
-
-    it('should process advanced mode', () => {
-      const mockExecute = createMockExecute({
-        advancedModeMergeAudio: true,
-        jsonTemplateMergeAudio: '{"scenes":[]}',
-        framerate: 25
-      });
-
-      const result = collectParameters(mockExecute, 0, 'mergeVideoAudio');
-
-      expect(result.isAdvancedMode).toBe(true);
-      expect(result.jsonTemplate).toBe('{"scenes":[]}');
-      expect(result.advancedOverrides?.fps).toBe(25);
-    });
-  });
-
-  describe('collectParameters - mergeVideos workflow', () => {
-    it('should process basic mode complete', () => {
-      const mockExecute = createMockExecute({
-        advancedModeMergeVideos: false,
-        'videoElements.videoDetails': [{ src: 'video1.mp4' }, { src: 'video2.mp4' }],
-        transition: 'fade',
-        transitionDuration: 2
-      });
-
-      const result = collectParameters(mockExecute, 0, 'mergeVideos');
-
-      expect(result.action).toBe('mergeVideos');
-      expect(result.mergeVideos?.videoElements).toHaveLength(2);
-      expect(result.mergeVideos?.transition).toBe('fade');
-      expect(result.mergeVideos?.transitionDuration).toBe(2);
-    });
-
-    it('should process advanced mode', () => {
-      const mockExecute = createMockExecute({
-        advancedModeMergeVideos: true,
-        jsonTemplateMergeVideos: '{"scenes":[]}',
-        resolution: 'hd'
-      });
-
-      const result = collectParameters(mockExecute, 0, 'mergeVideos');
-
-      expect(result.isAdvancedMode).toBe(true);
-      expect(result.jsonTemplate).toBe('{"scenes":[]}');
-      expect(result.advancedOverrides?.resolution).toBe('hd');
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle unknown workflow type', () => {
-      const mockExecute = createMockExecute({});
-
-      expect(() => collectParameters(mockExecute, 0, 'unknownWorkflow' as any))
-        .toThrow('Unsupported action type: unknownWorkflow');
-    });
-
-    it('should handle parameter access errors', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn(() => {
-          throw new Error('Parameter access failed');
-        })
-      } as unknown as IExecuteFunctions;
-
-      expect(() => collectParameters(mockExecute, 0, 'createMovie'))
-        .toThrow('Parameter access failed');
-    });
-
-    it('should default to basic mode when advanced mode parameter missing', () => {
-      const mockExecute = createMockExecute({});
-      const result = collectParameters(mockExecute, 0, 'createMovie');
-
-      expect(result.isAdvancedMode).toBe(false);
-    });
-
-    it('should handle collection parameter errors gracefully', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-          if (paramName.includes('elementValues') || paramName.includes('Details')) {
-            throw new Error('Collection parameter access failed');
+    describe('createMovie operation', () => {
+      it('should collect createMovie parameters with resolution mapping', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          outputSettings: {
+            outputDetails: { resolution: 'hd', width: 1280, height: 720 }
           }
-          return defaultValue;
-        })
-      } as unknown as IExecuteFunctions;
+        });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('createMovie');
+        expect(result.isAdvancedMode).toBe(false);
+        expect(result.movieElements).toEqual([]);
+        expect(result.sceneElements).toEqual([]);
+        expect(result.operationSettings?.outputSettings?.resolution).toBe('hd');
+        expect(result.operationSettings?.outputSettings?.width).toBe(1280);
+        expect(result.operationSettings?.outputSettings?.height).toBe(720);
+      });
 
-      expect(result.movieElements).toEqual([]);
-      expect(result.sceneElements).toEqual([]);
-    });
-
-    it('should handle mergeVideoAudio collection errors gracefully', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-          if (paramName.includes('Details')) {
-            throw new Error('Collection parameter access failed');
+      it('should handle single element values as arrays', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          movieElements: {
+            elementValues: { type: 'subtitles', captions: 'Single subtitle' }
+          },
+          sceneElements: {
+            elementValues: { type: 'video', src: 'single-video.mp4' }
           }
-          return defaultValue;
-        })
-      } as unknown as IExecuteFunctions;
+        });
 
-      const result = collectParameters(mockExecute, 0, 'mergeVideoAudio');
+        const result = collectParameters.call(mockExecute, 0);
 
-      expect(result.mergeVideoAudio?.videoElement).toEqual({});
-      expect(result.mergeVideoAudio?.audioElement).toEqual({});
-      expect(result.mergeVideoAudio?.outputSettings).toEqual({});
+        expect(result.movieElements).toEqual([{ type: 'subtitles', captions: 'Single subtitle' }]);
+        expect(result.sceneElements).toEqual([{ type: 'video', src: 'single-video.mp4' }]);
+      });
     });
 
-    it('should handle mergeVideos collection errors gracefully', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-          if (paramName.includes('Details')) {
-            throw new Error('Collection parameter access failed');
+    describe('mergeVideoAudio operation', () => {
+      it('should collect mergeVideoAudio parameters correctly', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideoAudio',
+          advancedModeMergeVideoAudio: false,
+          videoElement: { 
+            videoDetails: { src: 'video.mp4', volume: 1 } 
+          },
+          audioElement: { 
+            audioDetails: { src: 'audio.mp3', volume: 0.8 } 
+          },
+          outputSettings: {
+            outputDetails: { width: 1920, height: 1080, quality: 'high' }
           }
-          return defaultValue;
-        })
-      } as unknown as IExecuteFunctions;
+        });
 
-      const result = collectParameters(mockExecute, 0, 'mergeVideos');
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('mergeVideoAudio');
+        expect(result.sceneElements).toHaveLength(2);
+        expect(result.sceneElements[0]).toEqual({ type: 'video', src: 'video.mp4', volume: 1 });
+        expect(result.sceneElements[1]).toEqual({ type: 'audio', src: 'audio.mp3', volume: 0.8 });
+        expect(result.movieElements).toEqual([]);
+      });
 
-      expect(result.mergeVideos?.videoElements).toEqual([]);
-      expect(result.mergeVideos?.outputSettings).toEqual({});
+      it('should handle missing element collections', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideoAudio',
+          advancedModeMergeVideoAudio: false
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toEqual([]);
+      });
+
+      it('should handle missing videoElement', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideoAudio',
+          advancedModeMergeVideoAudio: false,
+          audioElement: { 
+            audioDetails: { src: 'audio.mp3', volume: 0.8 } 
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toHaveLength(1);
+        expect(result.sceneElements[0]).toEqual({ type: 'audio', src: 'audio.mp3', volume: 0.8 });
+      });
+
+      it('should handle missing audioElement', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideoAudio',
+          advancedModeMergeVideoAudio: false,
+          videoElement: { 
+            videoDetails: { src: 'video.mp4', volume: 1 } 
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toHaveLength(1);
+        expect(result.sceneElements[0]).toEqual({ type: 'video', src: 'video.mp4', volume: 1 });
+      });
     });
 
-    it('should handle advanced mode parameter collection errors', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-          // Return basic values needed for workflow setup
-          if (paramName === 'jsonTemplate') return '{}';
-          if (paramName === 'advancedMode') return true;
-          if (paramName === 'recordId') return '';
-          if (paramName === 'webhookUrl') return '';
+    describe('mergeVideos operation', () => {
+      it('should collect mergeVideos parameters correctly', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideos',
+          advancedModeMergeVideos: false,
+          videoElements: { 
+            elementValues: [
+              { src: 'video1.mp4', duration: 5 },
+              { src: 'video2.mp4', duration: 3 }
+            ] 
+          },
+          transition: 'fade',
+          transitionDuration: 1.5,
+          outputSettings: {
+            outputDetails: { width: 1920, height: 1080 }
+          }
+        });
 
-          // These should work
-          if (paramName === 'outputWidth') return 1920;
-          if (paramName === 'framerate') return 30;
-          if (paramName === 'quality') return 'high';
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toHaveLength(2);
+        expect(result.sceneElements[0]).toEqual({ type: 'video', src: 'video1.mp4', duration: 5 });
+        expect(result.sceneElements[1]).toEqual({ type: 'video', src: 'video2.mp4', duration: 3 });
+        expect(result.operationSettings?.transition).toBe('fade');
+        expect(result.operationSettings?.transitionDuration).toBe(1.5);
+      });
 
-          // These should fail and be caught by try-catch blocks
-          if (paramName === 'outputHeight') throw new Error('Height access failed');
-          if (paramName === 'resolution') throw new Error('Resolution access failed');
-          if (paramName === 'cache') throw new Error('Cache access failed');
-          if (paramName === 'draft') throw new Error('Draft access failed');
+      it('should handle single video element not in array for mergeVideos', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideos',
+          advancedModeMergeVideos: false,
+          videoElements: { 
+            elementValues: { src: 'single-video.mp4', duration: 5 }
+          }
+        });
 
-          return defaultValue;
-        })
-      } as unknown as IExecuteFunctions;
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toHaveLength(1);
+        expect(result.sceneElements[0]).toEqual({ type: 'video', src: 'single-video.mp4', duration: 5 });
+      });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should handle missing videoElements collection', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideos',
+          advancedModeMergeVideos: false,
+          transition: 'fade',
+          transitionDuration: 1.0
+        });
 
-      // Should have parameters that worked
-      expect(result.advancedOverrides?.width).toBe(1920);
-      expect(result.advancedOverrides?.fps).toBe(30);
-      expect(result.advancedOverrides?.quality).toBe('high');
-
-      // Should not have parameters that failed (caught by try-catch)
-      expect(result.advancedOverrides?.height).toBeUndefined();
-      expect(result.advancedOverrides?.resolution).toBeUndefined();
-      expect(result.advancedOverrides?.cache).toBeUndefined();
-      expect(result.advancedOverrides?.draft).toBeUndefined();
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.sceneElements).toEqual([]);
+        expect(result.operationSettings?.transition).toBe('fade');
+        expect(result.operationSettings?.transitionDuration).toBe(1.0);
+      });
     });
 
-    it('should handle undefined values in advanced mode parameters', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-          if (paramName === 'jsonTemplate') return '{}';
-          if (paramName === 'advancedMode') return true;
-          if (paramName === 'recordId') return '';
-          if (paramName === 'webhookUrl') return '';
+    describe('action parameter mapping', () => {
+      it('should handle operation to operation mapping', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false
+        });
 
-          // Return undefined for all advanced override parameters to test line 365 and 377-380
-          return undefined;
-        })
-      } as unknown as IExecuteFunctions;
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('createMovie');
+      });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should prefer operation parameter (standard n8n convention)', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideos',
+          advancedModeMergeVideos: false
+        });
 
-      // Should have empty advancedOverrides object when all parameters are undefined
-      expect(result.advancedOverrides).toEqual({});
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operation).toBe('mergeVideos');
+      });
+    });
+
+    describe('advanced mode JSON template mapping', () => {
+      it('should map jsonTemplateMergeVideoAudio correctly', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideoAudio',
+          advancedModeMergeVideoAudio: true,
+          jsonTemplateMergeVideoAudio: '{"audio": {"volume": 0.5}}'
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.jsonTemplate).toBe('{"audio": {"volume": 0.5}}');
+      });
+
+      it('should map jsonTemplateMergeVideos correctly', () => {
+        const mockExecute = createMockExecute({
+          operation: 'mergeVideos',
+          advancedModeMergeVideos: true,
+          jsonTemplateMergeVideos: '{"transition": "crossfade"}'
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.jsonTemplate).toBe('{"transition": "crossfade"}');
+      });
+
+      it('should handle missing action-specific template', () => {
+        const mockExecute = createMockExecute({
+          operation: 'unknownAction',
+          advancedMode: true
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.jsonTemplate).toBeUndefined();
+      });
+    });
+
+    describe('export configurations', () => {
+      it('should collect webhook export correctly', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [{
+              exportType: 'webhook',
+              webhookUrl: 'https://api.example.com/webhook',
+              webhookMethod: 'POST'
+            }]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(1);
+        expect(result.exportConfigs![0]).toMatchObject({
+          webhook: {
+            url: 'https://api.example.com/webhook'
+          }
+        });
+      });
+
+      it('should handle single export value (not in array)', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: {  // Single object, not array - tests line 247 branch
+              exportType: 'webhook',
+              webhookUrl: 'https://api.example.com/webhook'
+            }
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(1);
+        expect(result.exportConfigs![0]).toMatchObject({
+          webhook: { url: 'https://api.example.com/webhook' }
+        });
+      });
+
+      it('should collect FTP export with secure defaults', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [{
+              exportType: 'ftp',
+              ftpHost: 'ftp.example.com',
+              ftpUsername: 'user',
+              ftpPassword: 'pass',
+              ftpPort: 21,
+              ftpSecure: true
+            }]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        const expectedConfig: ExportConfig = {
+          ftp: {
+            host: 'ftp.example.com',
+            username: 'user',
+            password: 'pass',
+            port: 21,
+            path: '/',
+            secure: true
+          }
+        };
+
+        expect(result.exportConfigs).toHaveLength(1);
+        expect(result.exportConfigs![0]).toMatchObject(expectedConfig);
+      });
+
+      it('should use default values for missing FTP fields', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [{
+              exportType: 'ftp',
+              ftpHost: 'ftp.example.com'
+            }]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(1);
+        expect(result.exportConfigs![0]).toMatchObject({
+          ftp: {
+            host: 'ftp.example.com',
+            username: '',
+            password: '',
+            port: 21,
+            path: '/',
+            secure: false
+          }
+        });
+      });
+
+      it('should collect email export with optional fields', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [{
+              exportType: 'email',
+              emailTo: 'recipient@example.com',
+              emailFrom: 'sender@example.com',
+              emailSubject: 'Video Complete',
+              emailMessage: 'Your video is ready!'
+            }]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(1);
+        expect(result.exportConfigs![0]).toMatchObject({
+          email: {
+            to: 'recipient@example.com',
+            from: 'sender@example.com',
+            subject: 'Video Complete',
+            message: 'Your video is ready!'
+          }
+        });
+      });
+
+      it('should filter out invalid export configurations', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [
+              { exportType: 'webhook' },
+              { exportType: 'ftp' },
+              { exportType: 'email' }
+            ]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(0);
+      });
+
+      it('should handle missing export settings', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toEqual([]);
+      });
+
+      it('should handle unknown export type', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [{
+              exportType: 'unknown',
+              someField: 'value'
+            }]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(0);
+      });
+
+      it('should handle null export config', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          exportSettings: {
+            exportValues: [null]
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toHaveLength(0);
+      });
+
+      it('should handle exception when collectExportConfigs throws', () => {
+        const mockExecute = {
+          getNodeParameter: (paramName: string, itemIndex: number, defaultValue?: any) => {
+            if (paramName === 'exportSettings') {
+              throw new Error('Export settings error');
+            }
+            if (paramName === 'operation') return 'createMovie';
+            if (paramName === 'advancedMode') return false;
+            return defaultValue;
+          }
+        } as any;
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.exportConfigs).toEqual([]);
+      });
+    });
+
+    describe('resolution mapping', () => {
+      it.each([
+        ['hd', 1280, 720],
+        ['fhd', 1920, 1080],
+        ['4k', 3840, 2160]
+      ])('should map %s resolution to %dx%d', (preset, expectedWidth, expectedHeight) => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          outputSettings: {
+            outputDetails: { resolution: preset }
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.operationSettings?.outputSettings?.width).toBe(expectedWidth);
+        expect(result.operationSettings?.outputSettings?.height).toBe(expectedHeight);
+      });
+
+      it('should handle unknown resolution preset', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          outputSettings: {
+            outputDetails: { resolution: 'unknown-preset' }
+          }
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.operationSettings?.outputSettings?.resolution).toBe('unknown-preset');
+        expect(result.operationSettings?.outputSettings?.width).toBeUndefined();
+        expect(result.operationSettings?.outputSettings?.height).toBeUndefined();
+      });
+    });
+
+    describe('advanced mode overrides', () => {
+      it('should collect override parameters', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: true,
+          jsonTemplate: '{"width": 1024}',
+          width: 1920,
+          height: 1080,
+          quality: 'high'
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.advancedOverrides).toEqual({
+          width: 1920,
+          height: 1080,
+          quality: 'high'
+        });
+      });
+
+      it('should ignore null/undefined/empty override values', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: true,
+          jsonTemplate: '{"width": 1024}',
+          width: 1920,
+          height: null,
+          quality: '',
+          cache: undefined
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.advancedOverrides).toEqual({
+          width: 1920
+        });
+      });
+    });
+
+    describe('common properties', () => {
+      it('should collect recordId when available', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          recordId: 'test-record-123'
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.recordId).toBe('test-record-123');
+      });
+
+      it('should collect cache and draft settings', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false,
+          cache: false,
+          draft: true
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.cache).toBe(false);
+        expect(result.draft).toBe(true);
+      });
+
+      it('should handle missing optional parameters gracefully', () => {
+        const mockExecute = createMockExecute({
+          operation: 'createMovie',
+          advancedMode: false
+        });
+
+        const result = collectParameters.call(mockExecute, 0);
+
+        expect(result.recordId).toBe('');
+        expect(result.cache).toBe(true);
+        expect(result.draft).toBe(false);
+        expect(result.exportConfigs).toEqual([]);
+      });
     });
   });
 
   describe('validateCollectedParameters', () => {
-    it('should validate valid createMovie basic parameters', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [{ type: 'text', text: 'Hello' }],
-        sceneElements: []
-      };
+    describe('element collection validation', () => {
+      it.each([
+        ['createMovie with movie elements', { operation: 'createMovie', movieElements: [{ type: 'text', text: 'test' }], sceneElements: [], operationSettings: { outputSettings: { width: 1920 } } }, true, [], []],
+        ['createMovie with scene elements', { operation: 'createMovie', movieElements: [], sceneElements: [{ type: 'image', src: 'test.jpg' }], operationSettings: { outputSettings: { width: 1920 } } }, true, [], []],
+        ['createMovie with no elements', { operation: 'createMovie', movieElements: [], sceneElements: [] }, false, ['createMovie operation requires either movie elements or scene elements'], ['No operation settings found']],
+        ['mergeVideoAudio with elements', { operation: 'mergeVideoAudio', movieElements: [], sceneElements: [{ type: 'video', src: 'test.mp4' }], operationSettings: { outputSettings: { width: 1920 } } }, true, [], []],
+        ['mergeVideoAudio with no elements', { operation: 'mergeVideoAudio', movieElements: [], sceneElements: [] }, false, ['mergeVideoAudio operation requires at least a video or audio element'], ['No operation settings found']],
+        ['mergeVideos with elements', { operation: 'mergeVideos', movieElements: [], sceneElements: [{ type: 'video', src: 'test.mp4' }], operationSettings: { outputSettings: { width: 1920 } } }, true, [], []],
+        ['mergeVideos with no elements', { operation: 'mergeVideos', movieElements: [], sceneElements: [] }, true, [], ['mergeVideos operation requires at least one video element', 'No operation settings found']],
+        ['unknown action', { operation: 'unknownAction', movieElements: [], sceneElements: [] }, false, ['Invalid operation: unknownAction'], ['No operation settings found']]
+      ])('should validate %s', (_, parametersInput, expectedValid, expectedErrors, expectedWarnings) => {
+        const parameters = { 
+          isAdvancedMode: false, 
+          ...parametersInput 
+        } as CollectedParameters;
+        
+        const result = validateCollectedParameters(parameters);
 
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should validate valid advanced mode parameters', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: true,
-        jsonTemplate: '{"scenes":[]}'
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should require workflow type', () => {
-      const parameters = {
-        isAdvancedMode: false
-      } as any;
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['Action type is required']);
-    });
-
-    it('should require JSON template in advanced mode', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: true
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('JSON template is required in advanced mode');
-    });
-
-    it('should validate JSON template format', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: true,
-        jsonTemplate: 'invalid json {'
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('JSON template must be valid JSON');
-    });
-
-    it('should require content in basic createMovie mode', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [],
-        sceneElements: []
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('At least one movie element or scene element is required');
-    });
-
-    it('should allow createMovie with only movie elements', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [{ type: 'text', text: 'Hello' }],
-        sceneElements: []
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should allow createMovie with only scene elements', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [],
-        sceneElements: [{ type: 'video', src: 'video.mp4' }]
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should require video and audio sources for mergeVideoAudio', () => {
-      const parameters = {
-        action: 'mergeVideoAudio' as const,
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          videoElement: {},
-          audioElement: {}
-        }
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['Both video and audio sources are required for mergeVideoAudio action']);
-    });
-
-    it('should allow mergeVideoAudio with both sources', () => {
-      const parameters = {
-        action: 'mergeVideoAudio' as const,
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          videoElement: { src: 'video.mp4' },
-          audioElement: { src: 'audio.mp3' }
-        }
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should handle missing mergeVideoAudio object', () => {
-      const parameters = {
-        action: 'mergeVideoAudio' as const,
-        isAdvancedMode: false
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['Both video and audio sources are required for mergeVideoAudio action']);
-    });
-
-    it('should require sufficient videos for mergeVideos', () => {
-      const parameters = {
-        action: 'mergeVideos' as const,
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'video1.mp4' }]
-        }
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['At least 2 video sources are required for mergeVideos action']);
-    });
-
-    it('should allow mergeVideos with sufficient videos', () => {
-      const parameters = {
-        action: 'mergeVideos' as const,
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'v1.mp4' }, { src: 'v2.mp4' }]
-        }
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual([]);
-    });
-
-    it('should handle missing mergeVideos object', () => {
-      const parameters = {
-        action: 'mergeVideos' as const,
-        isAdvancedMode: false
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['At least 2 video sources are required for mergeVideos action']);
-    });
-
-    it('should validate recordId type', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [{ type: 'text', text: 'Hello' }],
-        recordId: 123 as any
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('Invalid type for recordId: must be a string');
-    });
-
-    it('should validate webhookUrl type', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: [{ type: 'text', text: 'Hello' }],
-        webhookUrl: true as any
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('Invalid type for webhookUrl: must be a string');
-    });
-  });
-
-  describe('getSafeParameter', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it('should return existing parameter value', () => {
-      const mockExecute = createMockExecute({ testParam: 'expected' });
-      const result = getSafeParameter(mockExecute, 'testParam', 0, 'default');
-      expect(result).toBe('expected');
-    });
-
-    it('should return parameter with type validation', () => {
-      const mockExecute = createMockExecute({ numberParam: 42 });
-      const result = getSafeParameter(mockExecute, 'numberParam', 0, 0, 'number');
-      expect(result).toBe(42);
-    });
-
-    it('should use default for missing parameter', () => {
-      const mockExecute = createMockExecute({});
-      const result = getSafeParameter(mockExecute, 'missingParam', 0, 'default');
-      expect(result).toBe('default');
-    });
-
-    it('should use default for wrong type parameter', () => {
-      const mockExecute = createMockExecute({ wrongType: 'string-value' });
-
-      const result = getSafeParameter(mockExecute, 'wrongType', 0, 'default', 'number');
-
-      expect(result).toBe('default');
-    });
-
-    it('should use default when parameter access throws error', () => {
-      const mockExecute = {
-        getNodeParameter: jest.fn(() => {
-          throw new Error('Access error');
-        })
-      } as unknown as IExecuteFunctions;
-
-      const result = getSafeParameter(mockExecute, 'errorParam', 0, 'default');
-
-      expect(result).toBe('default');
-    });
-  });
-
-  describe('sanitizeParametersForLogging', () => {
-    it('should truncate long JSON template and preserve original', () => {
-      const input = {
-        action: 'createMovie' as const,
-        isAdvancedMode: true,
-        jsonTemplate: 'x'.repeat(300),
-        webhookUrl: 'https://sensitive.com'
-      };
-      const originalTemplate = input.jsonTemplate;
-
-      const result = sanitizeParametersForLogging(input);
-
-      expect(result.jsonTemplate).toBe('x'.repeat(200) + '...[truncated]');
-      expect(result.webhookUrl).toBe('[WEBHOOK_URL]');
-      expect(input.jsonTemplate).toBe(originalTemplate);
-    });
-
-    it('should preserve short JSON template', () => {
-      const input = {
-        action: 'createMovie' as const,
-        isAdvancedMode: true,
-        jsonTemplate: '{"scenes":[]}',
-        recordId: 'safe-id'
-      };
-
-      const result = sanitizeParametersForLogging(input);
-
-      expect(result.jsonTemplate).toBe('{"scenes":[]}');
-      expect(result.recordId).toBe('safe-id');
-      expect(result.action).toBe('createMovie');
-    });
-
-    it('should handle parameters without sensitive data', () => {
-      const input = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        recordId: 'public-id'
-      };
-
-      const result = sanitizeParametersForLogging(input);
-
-      expect(result.action).toBe('createMovie');
-      expect(result.recordId).toBe('public-id');
-      expect(result.isAdvancedMode).toBe(false);
-    });
-  });
-
-  describe('edge cases and boundary conditions', () => {
-    it('should handle empty strings for recordId and webhookUrl', () => {
-      const mockExecute = createMockExecute({ recordId: '', webhookUrl: '   ' });
-      const result = collectParameters(mockExecute, 0, 'createMovie');
-
-      expect(result.recordId).toBeUndefined();
-      expect(result.webhookUrl).toBeUndefined();
-    });
-
-    it('should handle non-empty recordId and webhookUrl', () => {
-      const mockExecute = createMockExecute({
-        recordId: '  test-123  ',
-        webhookUrl: '  https://example.com  '
+        expect(result.isValid).toBe(expectedValid);
+        expect(result.errors).toEqual(expectedErrors);
+        expect(result.warnings).toEqual(expectedWarnings);
       });
-      const result = collectParameters(mockExecute, 0, 'createMovie');
-
-      expect(result.recordId).toBe('test-123');
-      expect(result.webhookUrl).toBe('https://example.com');
     });
 
-    it('should handle mergeVideoAudio with missing videoElement', () => {
-      const parameters = {
-        action: 'mergeVideoAudio' as const,
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          audioElement: { src: 'audio.mp3' }
-          // Missing videoElement entirely
-        }
-      };
+    describe('missing operation validation', () => {
+      it('should validate missing operation parameter', () => {
+        const parameters: CollectedParameters = {
+          operation: '',
+          isAdvancedMode: false,
+          movieElements: [],
+          sceneElements: []
+        };
 
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['Both video and audio sources are required for mergeVideoAudio action']);
-    });
+        const result = validateCollectedParameters(parameters);
 
-    it('should validate mergeVideoAudio when video src exists but audio src missing', () => {
-      const parameters = {
-        action: 'mergeVideoAudio' as const,
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          videoElement: { src: 'video.mp4' }
-        }
-      };
-
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toEqual(['Both video and audio sources are required for mergeVideoAudio action']);
-    });
-
-    it('should handle high item indices', () => {
-      const mockExecute = createMockExecute({ advancedMode: false });
-      const result = collectParameters(mockExecute, 999, 'createMovie');
-
-      expect(result.action).toBe('createMovie');
-    });
-
-    it('should preserve parameter types during collection', () => {
-      const mockExecute = createMockExecute({
-        advancedMode: false,
-        output_width: 1920,
-        cache: true,
-        quality: 'high',
-        'movieElements.elementValues': [{ type: 'text' }]
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Missing operation parameter');
       });
 
-      const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should validate undefined operation parameter', () => {
+        const parameters: CollectedParameters = {
+          operation: undefined as any,
+          isAdvancedMode: false,
+          movieElements: [],
+          sceneElements: []
+        };
 
-      expect(typeof result.width).toBe('number');
-      expect(typeof result.cache).toBe('boolean');
-      expect(typeof result.quality).toBe('string');
-      expect(Array.isArray(result.movieElements)).toBe(true);
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Missing operation parameter');
+      });
+
+      it('should validate null operation parameter', () => {
+        const parameters: CollectedParameters = {
+          operation: null as any,
+          isAdvancedMode: false,
+          movieElements: [],
+          sceneElements: []
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Missing operation parameter');
+      });
     });
 
-    it('should handle undefined movieElements and sceneElements', () => {
-      const parameters = {
-        action: 'createMovie' as const,
-        isAdvancedMode: false,
-        movieElements: undefined,
-        sceneElements: undefined
-      };
+    describe('advanced mode validation', () => {
+      it('should require JSON template in advanced mode', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: true,
+          movieElements: [],
+          sceneElements: []
+        };
 
-      const errors = validateCollectedParameters(parameters);
-      expect(errors).toContain('At least one movie element or scene element is required');
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('JSON template is required in advanced mode');
+      });
+
+      it('should validate JSON template syntax', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: 'invalid json',
+          movieElements: [],
+          sceneElements: []
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Invalid JSON template syntax');
+      });
+
+      it('should accept valid JSON template', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: '{"width": 1920, "height": 1080}',
+          movieElements: [],
+          sceneElements: []
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
     });
-  });
 
-  it('should handle successful advanced mode parameter retrieval', () => {
-    const mockExecute = {
-      getNodeParameter: jest.fn((paramName: string, itemIndex: number, defaultValue?: any) => {
-        if (paramName === 'jsonTemplate') return '{}';
-        if (paramName === 'advancedMode') return true;
-        if (paramName === 'recordId') return '';
-        if (paramName === 'webhookUrl') return '';
+    describe('operation settings validation', () => {
+      it('should validate invalid width', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          operationSettings: {
+            outputSettings: { width: 0 }
+          }
+        };
 
-        // These should successfully return values (covering the success branches)
-        if (paramName === 'outputHeight') return 720;    // Line 368-369
-        if (paramName === 'resolution') return 'hd';     // Lines 388-389
-        if (paramName === 'cache') return false;         // Lines 391-392
-        if (paramName === 'draft') return true;          // Lines 393-394
+        const result = validateCollectedParameters(parameters);
 
-        return defaultValue;
-      })
-    } as unknown as IExecuteFunctions;
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual(['Output width must be between 1 and 4096 pixels']);
+      });
 
-    const result = collectParameters(mockExecute, 0, 'createMovie');
+      it('should validate invalid height', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          operationSettings: {
+            outputSettings: { height: 5000 }
+          }
+        };
 
-    expect(result.advancedOverrides?.height).toBe(720);
-    expect(result.advancedOverrides?.resolution).toBe('hd');
-    expect(result.advancedOverrides?.cache).toBe(false);
-    expect(result.advancedOverrides?.draft).toBe(true);
-  });
+        const result = validateCollectedParameters(parameters);
 
-  it('should sanitize webhookUrl in logging', () => {
-    const input = {
-      action: 'createMovie' as const,
-      isAdvancedMode: false,
-      webhookUrl: 'https://webhook.example.com/secret'  // Ensure this triggers line 437
-    };
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual(['Output height must be between 1 and 4096 pixels']);
+      });
 
-    const result = sanitizeParametersForLogging(input);
+      it.each([
+        ['transition duration - negative', -1, 'Transition duration must be between 0 and 10 seconds'],
+        ['transition duration - above maximum', 15, 'Transition duration must be between 0 and 10 seconds']
+      ])('should validate %s', (_, transitionDuration, expectedError) => {
+        const parameters: CollectedParameters = {
+          operation: 'mergeVideos',
+          isAdvancedMode: false,
+          movieElements: [],
+          sceneElements: [{ type: 'video', src: 'test.mp4' }],
+          operationSettings: {
+            transitionDuration
+          }
+        };
 
-    expect(result.webhookUrl).toBe('[WEBHOOK_URL]');
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual([expectedError]);
+      });
+
+      it.each([
+        ['transition duration - minimum valid', 0],
+        ['transition duration - maximum valid', 10],
+        ['transition duration - middle range', 2.5]
+      ])('should accept %s', (_, transitionDuration) => {
+        const parameters: CollectedParameters = {
+          operation: 'mergeVideos',
+          isAdvancedMode: false,
+          movieElements: [],
+          sceneElements: [{ type: 'video', src: 'test.mp4' }],
+          operationSettings: {
+            transitionDuration
+          }
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it.each([
+        ['output width - below minimum', { width: 0 }, 'Output width must be between 1 and 4096 pixels'],
+        ['output width - above maximum', { width: 5000 }, 'Output width must be between 1 and 4096 pixels'],
+        ['output height - below minimum', { height: 0 }, 'Output height must be between 1 and 4096 pixels'],
+        ['output height - above maximum', { height: 5000 }, 'Output height must be between 1 and 4096 pixels']
+      ])('should validate %s', (_, outputSettings, expectedError) => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          operationSettings: {
+            outputSettings
+          }
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual([expectedError]);
+      });
+
+      it.each([
+        ['output dimensions - minimum valid', { width: 1, height: 1 }],
+        ['output dimensions - maximum valid', { width: 4096, height: 4096 }],
+        ['output dimensions - typical values', { width: 1920, height: 1080 }]
+      ])('should accept %s', (_, outputSettings) => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          operationSettings: {
+            outputSettings
+          }
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toEqual([]);
+      });
+
+      it('should warn when no operation settings found', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: []
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.warnings).toContain('No operation settings found');
+      });
+    });
+
+    describe('export configuration validation', () => {
+      it.each([
+        ['webhook missing URL', [{ webhook: { url: '' } }], ['Export config 1: Webhook URL is required']],
+        ['webhook non-HTTPS URL', [{ webhook: { url: 'http://example.com' } }], ['Export config 1: Webhook URL must use HTTPS']],
+        ['FTP missing host', [{ ftp: { host: '', username: 'user', password: 'pass', port: 21, path: '/', secure: false } }], ['Export config 1: FTP host is required']],
+        ['FTP missing username', [{ ftp: { host: 'ftp.example.com', username: '', password: 'pass', port: 21, path: '/', secure: false } }], ['Export config 1: FTP username is required']],
+        ['FTP missing password', [{ ftp: { host: 'ftp.example.com', username: 'user', password: '', port: 21, path: '/', secure: false } }], ['Export config 1: FTP password is required']],
+        ['email missing recipient', [{ email: { to: '' } }], ['Export config 1: Email recipient is required']],
+        ['email invalid recipient', [{ email: { to: 'invalid-email' } }], ['Export config 1: Invalid email address at position 1: invalid-email']],
+        ['email invalid from address', [{ email: { to: 'valid@example.com', from: 'invalid-from' } }], ['Export config 1: Invalid from email address: invalid-from']]
+      ])('should validate %s', (_, exportConfigs, expectedErrors) => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter((e: string) => e.includes('Export config'))).toEqual(expectedErrors);
+      });
+
+      it('should validate multiple email recipients', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: [{
+            email: {
+              to: ['user1@example.com', 'user2@example.com', 'invalid-email']  // Tests line 545 branch
+            }
+          }]
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter(e => e.includes('Export config'))).toContain(
+          'Export config 1: Invalid email address at position 3: invalid-email'
+        );
+      });
+
+      it('should validate invalid export configuration format - null', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: [null as any]
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors).toContain('Export config 1: Invalid export configuration format');
+      });
+
+      it('should validate invalid export configuration format - string', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: ['invalid' as any]
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors).toContain('Export config 1: Invalid export configuration format');
+      });
+
+      it.each([
+        ['FTP invalid port - zero', [{ ftp: { host: 'ftp.example.com', username: 'user', password: 'pass', port: 0, path: '/', secure: false } }], ['Export config 1: FTP port must be between 1 and 65535']],
+        ['FTP invalid port - above max', [{ ftp: { host: 'ftp.example.com', username: 'user', password: 'pass', port: 70000, path: '/', secure: false } }], ['Export config 1: FTP port must be between 1 and 65535']]
+      ])('should validate %s', (_, exportConfigs, expectedErrors) => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter((e: string) => e.includes('Export config'))).toEqual(expectedErrors);
+      });
+
+      it('should validate FTP with no port specified (should pass)', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: [{
+            ftp: {
+              host: 'ftp.example.com',
+              username: 'user',
+              password: 'pass',
+              path: '/',
+              secure: false
+            }
+          }]
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter((e: string) => e.includes('Export config'))).toEqual([]);
+      });
+
+      it('should handle multiple valid export configurations', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: [
+            {
+              webhook: {
+                url: 'https://api.example.com/webhook'
+              }
+            },
+            {
+              email: {
+                to: 'user@example.com'
+              }
+            }
+          ] as any
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter((e: string) => e.includes('Export config'))).toEqual([]);
+      });
+
+      it('should handle empty export configuration array', () => {
+        const parameters: CollectedParameters = {
+          operation: 'createMovie',
+          isAdvancedMode: false,
+          movieElements: [{ type: 'text', text: 'test' }],
+          sceneElements: [],
+          exportConfigs: []
+        };
+
+        const result = validateCollectedParameters(parameters);
+
+        expect(result.errors.filter((e: string) => e.includes('Export config'))).toEqual([]);
+      });
+    });
   });
 });

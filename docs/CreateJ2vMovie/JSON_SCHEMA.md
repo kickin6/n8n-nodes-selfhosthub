@@ -1,6 +1,11 @@
 # JSON2Video API Complete Documentation
 
-This document defines the complete JSON2Video API schema based on the official API documentation and JSON_SCHEMA.md. It serves as the authoritative reference for the JSON2Video n8n node development.
+This document defines the complete JSON2Video API schema based on the official API documentation and serves as the authoritative reference for the JSON2Video n8n node development.
+
+**API Documentation References:**
+- Main API Documentation: https://json2video.com/docs/api/
+- Movie Schema: https://json2video.com/docs/api/#schema-movie
+- Scene Schema: https://json2video.com/docs/api/#schema-scene
 
 ---
 
@@ -20,6 +25,8 @@ Movie (top-level container)
 ---
 
 ## Movie Object (Root)
+
+**API Reference:** https://json2video.com/docs/api/#schema-movie
 
 The top-level movie object defines the overall structure and settings.
 
@@ -56,6 +63,8 @@ The top-level movie object defines the overall structure and settings.
 ---
 
 ## Scene Object
+
+**API Reference:** https://json2video.com/docs/api/#schema-scene
 
 Represents a distinct segment of video content within the movie.
 
@@ -102,6 +111,8 @@ All elements share these base properties:
 
 ### 1. Video Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-video
+
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "video" |
@@ -110,7 +121,7 @@ All elements share these base properties:
 | `volume` | number | No | 1 | Volume multiplier (0-10) |
 | `muted` | boolean | No | false | Mute audio track |
 | `loop` | number | No | - | Loop count (-1=infinite, positive=repeat count) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `position` | string | No | "custom" | Positioning preset or "custom" |
 | `x` | number | No | 0 | X coordinate (when position="custom") |
 | `y` | number | No | 0 | Y coordinate (when position="custom") |
@@ -130,6 +141,8 @@ All elements share these base properties:
 
 ### 2. Audio Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-audio
+
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "audio" |
@@ -141,12 +154,14 @@ All elements share these base properties:
 
 ### 3. Image Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-image
+
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "image" |
 | `src` | string | No | - | Image URL (if not using AI generation) |
 | `prompt` | string | No | - | AI generation text prompt |
-| `model` | string | No | - | AI model: "flux-pro", "flux-schnell", "freepik-classic" |
+| `model` | string | No | "flux-schnell" | AI model: "flux-pro", "flux-schnell", "freepik-classic" |
 | `aspect-ratio` | string | No | "horizontal" | AI generation: "horizontal", "vertical", "squared" |
 | `connection` | string | No | - | Connection ID for custom AI API key |
 | `model-settings` | object | No | - | AI model-specific settings |
@@ -155,7 +170,7 @@ All elements share these base properties:
 | `y` | number | No | 0 | Y coordinate |
 | `width` | number | No | -1 | Width in pixels (-1=auto) |
 | `height` | number | No | -1 | Height in pixels (-1=auto) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `crop` | object | No | - | Cropping settings |
 | `rotate` | object | No | - | Rotation settings |
 | `pan` | string | No | - | Pan direction |
@@ -170,6 +185,8 @@ All elements share these base properties:
 
 ### 4. Text Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-text
+
 **Note**: Text elements use a complex `settings` object with kebab-case properties for styling.
 
 | Property | Type | Required | Default | Description |
@@ -182,35 +199,44 @@ All elements share these base properties:
 | `y` | number | No | 0 | Y coordinate |
 | `width` | number | No | -1 | Width in pixels (-1=auto) |
 | `height` | number | No | -1 | Height in pixels (-1=auto) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `settings` | object | No | {} | Text styling object (see below) |
 
 #### Text Settings Object (kebab-case properties)
 
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `font-family` | string | No | - | Google Fonts name or custom font URL |
-| `font-size` | string | No | - | Font size with units (e.g., "32px", "2em") |
-| `font-weight` | string | No | - | Font weight: "300" to "800" |
-| `font-color` | string | No | - | Text color (hex code) |
-| `background-color` | string | No | - | Background color (hex or rgba) |
-| `text-align` | string | No | - | "left", "center", "right", "justify" |
-| `vertical-position` | string | No | - | Textbox vertical alignment: "top", "center", "bottom" |
-| `horizontal-position` | string | No | - | Textbox horizontal alignment: "left", "center", "right" |
+| Property | Type | Required | Default | Valid Values | Description |
+|----------|------|----------|---------|--------------|-------------|
+| `font-family` | string | No | "Arial" | "Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana", "Courier New", "Roboto", "Open Sans", "Lato", "Montserrat", "Source Sans Pro", "Raleway", "Ubuntu", "Nunito", "Playfair Display", "Merriweather", custom URL | Google Fonts name or custom font URL |
+| `font-size` | string/number | No | 32 | 8-500 | Font size with units (e.g., "32px", "2em") or number |
+| `font-weight` | string/number | No | "400" | "100", "200", "300", "400", "500", "600", "700", "800", "900" | Font weight |
+| `font-color` | string | No | "#ffffff" | Hex, rgb, rgba, "transparent" | Text color |
+| `background-color` | string | No | "transparent" | Hex, rgb, rgba, "transparent" | Background color |
+| `text-align` | string | No | "center" | "left", "center", "right", "justify" | Text alignment |
+| `vertical-position` | string | No | "center" | "top", "center", "bottom" | Textbox vertical alignment |
+| `horizontal-position` | string | No | "center" | "left", "center", "right" | Textbox horizontal alignment |
+| `line-height` | number | No | 1.2 | 0.5-3.0 | Line spacing multiplier |
+| `letter-spacing` | number | No | 0 | Any number | Letter spacing in pixels |
+| `text-shadow` | string | No | - | CSS shadow format | CSS text-shadow property |
+| `text-decoration` | string | No | "none" | "none", "underline", "overline", "line-through" | Text decoration |
+| `text-transform` | string | No | "none" | "none", "uppercase", "lowercase", "capitalize" | Text case transformation |
 
 ### 5. Voice Element
+
+**API Reference:** https://json2video.com/docs/api/#schema-voice
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "voice" |
 | `text` | string | **Yes** | - | Text to synthesize into speech |
-| `voice` | string | No | - | Voice name/ID to use |
-| `model` | string | No | - | TTS model: "azure", "elevenlabs", "elevenlabs-flash-v2-5" |
+| `voice` | string | No | "en-US-AriaNeural" | Voice name/ID to use |
+| `model` | string | No | "azure" | TTS model: "azure", "elevenlabs", "elevenlabs-flash-v2-5" |
 | `connection` | string | No | - | Connection ID for custom API key |
 | `volume` | number | No | 1 | Volume multiplier (0-10) |
 | `muted` | boolean | No | false | Mute generated audio |
 
 ### 6. Component Element
+
+**API Reference:** https://json2video.com/docs/api/#schema-component
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
@@ -222,7 +248,7 @@ All elements share these base properties:
 | `y` | number | No | 0 | Y coordinate |
 | `width` | number | No | -1 | Width in pixels (-1=auto) |
 | `height` | number | No | -1 | Height in pixels (-1=auto) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `crop` | object | No | - | Cropping settings |
 | `rotate` | object | No | - | Rotation settings |
 | `pan` | string | No | - | Pan direction |
@@ -237,10 +263,12 @@ All elements share these base properties:
 
 ### 7. Audiogram Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-audiogram
+
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "audiogram" |
-| `color` | string | No | - | Wave color (hex code, e.g., "#FF0000") |
+| `color` | string | No | "#ffffff" | Wave color (hex code, e.g., "#FF0000") |
 | `opacity` | number | No | 0.5 | Opacity (0.0-1.0) |
 | `amplitude` | number | No | 5 | Wave amplitude scaling (0-10) |
 | `position` | string | No | "custom" | Positioning preset or "custom" |
@@ -248,7 +276,7 @@ All elements share these base properties:
 | `y` | number | No | 0 | Y coordinate |
 | `width` | number | No | -1 | Width in pixels (-1=inherit movie width) |
 | `height` | number | No | -1 | Height in pixels (-1=inherit movie height) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `crop` | object | No | - | Cropping settings |
 | `rotate` | object | No | - | Rotation settings |
 | `pan` | string | No | - | Pan direction |
@@ -263,6 +291,8 @@ All elements share these base properties:
 
 ### 8. HTML Element
 
+**API Reference:** https://json2video.com/docs/api/#schema-html
+
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "html" |
@@ -275,7 +305,7 @@ All elements share these base properties:
 | `y` | number | No | 0 | Y coordinate |
 | `width` | number | No | -1 | Width in pixels (-1=auto) |
 | `height` | number | No | -1 | Height in pixels (-1=auto) |
-| `resize` | string | No | - | "cover", "fill", "fit", "contain" |
+| `resize` | string | No | "cover" | "cover", "fill", "fit", "contain" |
 | `crop` | object | No | - | Cropping settings |
 | `rotate` | object | No | - | Rotation settings |
 | `pan` | string | No | - | Pan direction |
@@ -290,6 +320,8 @@ All elements share these base properties:
 
 ### 9. Subtitles Element (Movie-Level ONLY)
 
+**API Reference:** https://json2video.com/docs/api/#schema-subtitles
+
 **Critical**: Subtitles can ONLY exist in the movie `elements` array, never in scene elements.
 
 | Property | Type | Required | Default | Description |
@@ -302,26 +334,26 @@ All elements share these base properties:
 
 #### Subtitle Settings Object
 
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `style` | string | No | "classic" | Subtitle style |
-| `all-caps` | boolean | No | false | Make subtitles uppercase |
-| `font-family` | string | No | "Arial" | Font family name |
-| `font-size` | number | No | - | Font size (defaults to 5% of movie width) |
-| `font-url` | string | No | - | Custom font URL (TTF format) |
-| `position` | string | No | "bottom-center" | Position on canvas |
-| `word-color` | string | No | "#FFFF00" | Color of current word |
-| `line-color` | string | No | "#FFFFFF" | Color of other words |
-| `box-color` | string | No | "#000000" | Background box color |
-| `outline-color` | string | No | "#000000" | Text outline color |
-| `outline-width` | number | No | 0 | Outline width |
-| `shadow-color` | string | No | "#000000" | Shadow color |
-| `shadow-offset` | number | No | 0 | Shadow offset |
-| `max-words-per-line` | number | No | 4 | Maximum words per line |
-| `x` | number | No | 0 | X coordinate (when position="custom") |
-| `y` | number | No | 0 | Y coordinate (when position="custom") |
-| `keywords` | array | No | - | Keywords for transcription accuracy |
-| `replace` | object | No | - | Word replacement mapping |
+| Property | Type | Required | Default | Valid Values | Description |
+|----------|------|----------|---------|--------------|-------------|
+| `style` | string | No | "classic" | Any string | Subtitle style |
+| `all-caps` | boolean | No | false | true, false | Make subtitles uppercase |
+| `font-family` | string | No | "Arial" | "Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana", "Courier New", "Roboto", "Open Sans", "Lato", "Montserrat", "Source Sans Pro", "Raleway", "Ubuntu", "Nunito", custom URL | Font family name |
+| `font-size` | number | No | - | 8-200 | Font size (defaults to 5% of movie width) |
+| `font-url` | string | No | - | Valid URL | Custom font URL (TTF format) |
+| `position` | string | No | "bottom-center" | "top-left", "top-center", "top-right", "center-left", "center-center", "center-right", "bottom-left", "bottom-center", "bottom-right", "custom" | Position on canvas |
+| `word-color` | string | No | "#FFFF00" | Hex, rgb, rgba | Color of current word |
+| `line-color` | string | No | "#FFFFFF" | Hex, rgb, rgba | Color of other words |
+| `box-color` | string | No | "#000000" | Hex, rgb, rgba | Background box color |
+| `outline-color` | string | No | "#000000" | Hex, rgb, rgba | Text outline color |
+| `outline-width` | number | No | 0 | 0-10 | Outline width |
+| `shadow-color` | string | No | "#000000" | Hex, rgb, rgba | Shadow color |
+| `shadow-offset` | number | No | 0 | 0-20 | Shadow offset |
+| `max-words-per-line` | number | No | 4 | 1-20 | Maximum words per line |
+| `x` | number | No | 0 | Any number | X coordinate (when position="custom") |
+| `y` | number | No | 0 | Any number | Y coordinate (when position="custom") |
+| `keywords` | array | No | - | Array of strings | Keywords for transcription accuracy |
+| `replace` | object | No | - | Key-value pairs | Word replacement mapping |
 
 ---
 

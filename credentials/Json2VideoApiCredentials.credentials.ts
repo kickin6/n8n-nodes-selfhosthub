@@ -1,3 +1,5 @@
+// credentials/Json2VideoApiCredentials.credentials.ts
+
 import {
   IAuthenticateGeneric,
   ICredentialTestRequest,
@@ -40,7 +42,6 @@ export class Json2VideoApiCredentials implements ICredentialType {
           id: `test-${Date.now()}`,
           width: 640,
           height: 360,
-          fps: 25,
           scenes: [{ elements: [] }]
         },
         quality: 'low'

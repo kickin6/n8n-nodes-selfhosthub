@@ -1,678 +1,689 @@
 // __tests__/nodes/CreateJ2vMovie/core/requestBuilder.test.ts
 
-import {
-  buildRequest
-} from '../../../../nodes/CreateJ2vMovie/core/requestBuilder';
+import { buildRequest, RequestBuildResult } from '../../../../nodes/CreateJ2vMovie/core/requestBuilder';
 import { CollectedParameters } from '../../../../nodes/CreateJ2vMovie/core/parameterCollector';
 
-// Mock the element processor functions
-jest.mock('../../../../nodes/CreateJ2vMovie/core/elementProcessor', () => ({
-  processMovieElements: jest.fn((elements) => ({
-    processed: elements.map((el: any) => ({ ...el, processed: true })),
-    errors: elements.some((el: any) => el.error) ? ['Processing error'] : []
-  })),
-  processSceneElements: jest.fn((elements) => ({
-    processed: elements.map((el: any) => ({ ...el, processed: true })),
-    errors: elements.some((el: any) => el.error) ? ['Processing error'] : []
-  })),
-  processElement: jest.fn((element) => {
-    if (element.error) {
-      throw new Error('Processing error for test');
-    }
-    return { ...element, processed: true };
-  })
-}));
-
-describe('requestBuilder', () => {
+describe('core/requestBuilder', () => {
   
+  function createBaseParameters(overrides: Partial<CollectedParameters> = {}): CollectedParameters {
+    return {
+      action: 'createMovie',
+      isAdvancedMode: false,
+      movieElements: [],
+      sceneElements: [],
+      ...overrides
+    };
+  }
+
   describe('buildRequest', () => {
-    it.each([
-      // createMovie action - basic mode
-      ['createMovie basic minimal',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: false,
-          sceneElements: [{ type: 'text', text: 'Hello World' }]
-        },
-        {
-          request: { scenes: [{ elements: [{ type: 'text', text: 'Hello World', processed: true }] }] },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['createMovie basic with config',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: false,
-          width: 1920,
-          height: 1080,
-          fps: 30,
-          quality: 'high' as const,
-          cache: true,
-          movieElements: [{ type: 'subtitles', captions: 'Movie subtitles' }],
-          sceneElements: [{ type: 'video', src: 'video.mp4' }]
-        },
-        {
-          request: {
+    
+    describe('basic request building', () => {
+      it.each([
+        [
+          'createMovie with config',
+          {
+            action: 'createMovie' as const,
+            movieElements: [{ type: 'subtitles', captions: 'Movie subtitles' }],
+            sceneElements: [{ type: 'video', src: 'video.mp4' }],
+            operationSettings: {
+              outputSettings: { width: 1920, height: 1080, quality: 'high', cache: true }
+            }
+          },
+          {
             width: 1920,
             height: 1080,
-            fps: 30,
             quality: 'high',
             cache: true,
-            elements: [{ type: 'subtitles', captions: 'Movie subtitles', processed: true }],
-            scenes: [{ elements: [{ type: 'video', src: 'video.mp4', processed: true }] }]
-          },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['createMovie basic no scene elements',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: false,
-          movieElements: [{ type: 'text', text: 'Movie title' }]
-        },
-        {
-          request: {
-            elements: [{ type: 'text', text: 'Movie title', processed: true }],
-            scenes: [{ elements: [] }]
-          },
-          errorCount: 0,
-          warningCount: 1
-        }],
-      
-      ['createMovie basic processing errors',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: false,
-          movieElements: [{ type: 'text', text: 'Valid' }],
-          sceneElements: [{ type: 'video', src: 'video.mp4', error: true }]
-        },
-        {
-          request: {
-            elements: [{ type: 'text', text: 'Valid', processed: true }],
-            scenes: [{ elements: [{ type: 'video', src: 'video.mp4', error: true, processed: true }] }]
-          },
-          errorCount: 1,
-          warningCount: 0
-        }],
-      
-      // createMovie action - advanced mode
-      ['createMovie advanced valid template',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: true,
-          jsonTemplate: '{"scenes":[{"elements":[{"type":"text","text":"Template text"}]}],"width":800}',
-          advancedOverrides: { width: 1200, quality: 'medium' as const }
-        },
-        {
-          request: {
-            scenes: [{ elements: [{ type: 'text', text: 'Template text' }] }],
-            width: 1200,
-            quality: 'medium'
-          },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['createMovie advanced missing scenes',
-        {
-          action: 'createMovie' as const,
-          isAdvancedMode: true,
-          jsonTemplate: '{"width":800,"height":600}'
-        },
-        {
-          request: {
-            width: 800,
-            height: 600,
-            scenes: []
-          },
-          errorCount: 0,
-          warningCount: 1
-        }],
-      
-      // mergeVideoAudio action
-      ['mergeVideoAudio basic valid',
-        {
-          action: 'mergeVideoAudio' as const,
-          isAdvancedMode: false,
-          mergeVideoAudio: {
-            videoElement: { src: 'video.mp4', volume: 1 },
-            audioElement: { src: 'audio.mp3', volume: 0.8 },
-            outputSettings: { width: 1920, height: 1080, quality: 'high' as const }
+            elements: [{ type: 'subtitles', captions: 'Movie subtitles' }],
+            scenes: [{ elements: [{ type: 'video', src: 'video.mp4' }] }]
           }
-        },
-        {
-          request: {
+        ],
+        [
+          'createMovie with only scene elements',
+          {
+            action: 'createMovie' as const,
+            sceneElements: [{ type: 'text', text: 'Hello World' }]
+          },
+          {
+            scenes: [{ elements: [{ type: 'text', text: 'Hello World' }] }]
+          }
+        ],
+        [
+          'mergeVideoAudio basic valid',
+          {
+            action: 'mergeVideoAudio' as const,
+            sceneElements: [
+              { type: 'video', src: 'video.mp4', volume: 1 },
+              { type: 'audio', src: 'audio.mp3', volume: 0.8 }
+            ],
+            operationSettings: {
+              outputSettings: { width: 1920, height: 1080, quality: 'high' }
+            }
+          },
+          {
             width: 1920,
             height: 1080,
             quality: 'high',
-            scenes: [{ elements: [
-              { type: 'video', src: 'video.mp4', volume: 1, processed: true },
-              { type: 'audio', src: 'audio.mp3', volume: 0.8, processed: true }
-            ]}]
-          },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['mergeVideoAudio basic missing video',
-        {
-          action: 'mergeVideoAudio' as const,
-          isAdvancedMode: false,
-          mergeVideoAudio: {
-            videoElement: {},
-            audioElement: { src: 'audio.mp3' },
-            outputSettings: {}
+            scenes: [{
+              elements: [
+                { type: 'video', src: 'video.mp4', volume: 1 },
+                { type: 'audio', src: 'audio.mp3', volume: 0.8 }
+              ]
+            }]
           }
-        },
-        {
-          request: {
-            scenes: [{ elements: [{ type: 'audio', src: 'audio.mp3', processed: true }] }]
+        ],
+        [
+          'mergeVideoAudio missing video',
+          {
+            action: 'mergeVideoAudio' as const,
+            sceneElements: [{ type: 'audio', src: 'audio.mp3' }]
           },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['mergeVideoAudio advanced',
-        {
-          action: 'mergeVideoAudio' as const,
-          isAdvancedMode: true,
-          jsonTemplate: '{"scenes":[{"elements":[{"type":"video","src":"vid.mp4"},{"type":"audio","src":"aud.mp3"}]}]}',
-          advancedOverrides: { fps: 25 }
-        },
-        {
-          request: {
-            scenes: [{ elements: [{ type: 'video', src: 'vid.mp4' }, { type: 'audio', src: 'aud.mp3' }] }],
-            fps: 25
-          },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      // mergeVideos action
-      ['mergeVideos basic with transitions',
-        {
-          action: 'mergeVideos' as const,
-          isAdvancedMode: false,
-          mergeVideos: {
-            videoElements: [
-              { src: 'video1.mp4', duration: 10 },
-              { src: 'video2.mp4', duration: 8 },
-              { src: 'video3.mp4', duration: 12 }
+          {
+            scenes: [{ elements: [{ type: 'audio', src: 'audio.mp3' }] }]
+          }
+        ]
+      ])('should build request for %s', (_, params, expectedRequest) => {
+        const parameters = createBaseParameters(params);
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject(expectedRequest);
+        expect(result.errors).toHaveLength(0);
+        expect(result.warnings).toHaveLength(0);
+      });
+    });
+
+    describe('mergeVideos operation', () => {
+      it.each([
+        [
+          'basic with transitions using 3 videos',
+          {
+            action: 'mergeVideos' as const,
+            sceneElements: [
+              { type: 'video', src: 'video1.mp4', duration: 10 },
+              { type: 'video', src: 'video2.mp4', duration: 8 },
+              { type: 'video', src: 'video3.mp4', duration: 12 }
             ],
-            transition: 'fade' as const,
-            transitionDuration: 2,
-            outputSettings: { width: 1280, height: 720 }
-          }
-        },
-        {
-          request: {
+            operationSettings: {
+              transition: 'fade',
+              transitionDuration: 2,
+              outputSettings: { width: 1280, height: 720 }
+            }
+          },
+          {
             width: 1280,
             height: 720,
             scenes: [
-              { elements: [{ type: 'video', src: 'video1.mp4', duration: 10, processed: true }] },
+              { elements: [{ type: 'video', src: 'video1.mp4', duration: 10 }] },
               { 
-                elements: [{ type: 'video', src: 'video2.mp4', duration: 8, processed: true }],
+                elements: [{ type: 'video', src: 'video2.mp4', duration: 8 }],
                 transition: { style: 'fade', duration: 2 }
               },
-              { 
-                elements: [{ type: 'video', src: 'video3.mp4', duration: 12, processed: true }],
-                transition: { style: 'fade', duration: 2 }
-              }
+              { elements: [{ type: 'video', src: 'video3.mp4', duration: 12 }] }
             ]
           },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['mergeVideos basic no transitions',
-        {
-          action: 'mergeVideos' as const,
-          isAdvancedMode: false,
-          mergeVideos: {
-            videoElements: [{ src: 'video1.mp4' }, { src: 'video2.mp4' }],
-            transition: 'none' as const,
-            outputSettings: {}
-          }
-        },
-        {
-          request: {
+          []
+        ],
+        [
+          'no transitions',
+          {
+            action: 'mergeVideos' as const,
+            sceneElements: [
+              { type: 'video', src: 'video1.mp4' },
+              { type: 'video', src: 'video2.mp4' }
+            ]
+          },
+          {
             scenes: [
-              { elements: [{ type: 'video', src: 'video1.mp4', processed: true }] },
-              { elements: [{ type: 'video', src: 'video2.mp4', processed: true }] }
+              { elements: [{ type: 'video', src: 'video1.mp4' }] },
+              { elements: [{ type: 'video', src: 'video2.mp4' }] }
             ]
           },
-          errorCount: 0,
-          warningCount: 0
-        }],
-      
-      ['mergeVideos basic single video',
-        {
-          action: 'mergeVideos' as const,
-          isAdvancedMode: false,
-          mergeVideos: {
-            videoElements: [{ src: 'video1.mp4' }],
-            transition: 'fade' as const,
-            outputSettings: {}
-          }
-        },
-        {
-          request: {
-            scenes: [{ elements: [{ type: 'video', src: 'video1.mp4', processed: true }] }]
+          []
+        ],
+        [
+          'single video with warning',
+          {
+            action: 'mergeVideos' as const,
+            sceneElements: [{ type: 'video', src: 'video1.mp4' }]
           },
-          errorCount: 0,
-          warningCount: 1
-        }]
-    ])('should build request for %s', (_, parameters, expected) => {
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toMatchObject(expected.request);
-      expect(result.errors).toHaveLength(expected.errorCount);
-      expect(result.warnings).toHaveLength(expected.warningCount);
+          {
+            scenes: [{ elements: [{ type: 'video', src: 'video1.mp4' }] }]
+          },
+          ['mergeVideos with single video - consider using mergeVideoAudio for audio overlay']
+        ],
+        [
+          'with sceneIndex grouping',
+          {
+            action: 'mergeVideos' as const,
+            sceneElements: [
+              { type: 'video', src: 'video1.mp4', sceneIndex: 0 },
+              { type: 'video', src: 'video2.mp4', sceneIndex: 0 },
+              { type: 'video', src: 'video3.mp4', sceneIndex: 1 }
+            ],
+            operationSettings: { transition: 'fade', transitionDuration: 2 }
+          },
+          {
+            scenes: [
+              { 
+                elements: [
+                  { type: 'video', src: 'video1.mp4', 'scene-index': 0 },
+                  { type: 'video', src: 'video2.mp4', 'scene-index': 0 }
+                ],
+                transition: { style: 'fade', duration: 2 }
+              },
+              { elements: [{ type: 'video', src: 'video3.mp4', 'scene-index': 1 }] }
+            ]
+          },
+          []
+        ]
+      ])('should build request for mergeVideos %s', (_, params, expectedRequest, expectedWarnings) => {
+        const parameters = createBaseParameters(params);
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject(expectedRequest);
+        expect(result.warnings).toEqual(expectedWarnings);
+      });
+
+      it('should handle transition duration defaulting', () => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideos',
+          sceneElements: [
+            { type: 'video', src: 'video1.mp4' },
+            { type: 'video', src: 'video2.mp4' },
+            { type: 'video', src: 'video3.mp4' }
+          ],
+          operationSettings: { transition: 'fade' }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.scenes[1].transition).toEqual({
+          style: 'fade',
+          duration: 1
+        });
+        expect(result.request?.scenes[2].transition).toBeUndefined();
+      });
+
+      it('should handle transition none setting', () => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideos',
+          sceneElements: [
+            { type: 'video', src: 'video1.mp4' },
+            { type: 'video', src: 'video2.mp4' }
+          ],
+          operationSettings: { transition: 'none' }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.scenes[0].transition).toBeUndefined();
+        expect(result.request?.scenes[1].transition).toBeUndefined();
+      });
+
+      it('should handle sceneIndex grouping with gaps', () => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideos',
+          sceneElements: [
+            { type: 'video', src: 'video1.mp4', sceneIndex: 0 },
+            { type: 'video', src: 'video2.mp4', sceneIndex: 2 }
+          ]
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.scenes).toHaveLength(2);
+        expect(result.request?.scenes[0].elements).toEqual([
+          { type: 'video', src: 'video1.mp4', 'scene-index': 0 }
+        ]);
+        expect(result.request?.scenes[1].elements).toEqual([
+          { type: 'video', src: 'video2.mp4', 'scene-index': 2 }
+        ]);
+      });
     });
 
-    it.each([
-      ['missing mergeVideoAudio config',
-        { action: 'mergeVideoAudio' as const, isAdvancedMode: false },
-        { request: { scenes: [] }, errorCount: 1, warningCount: 1 }],
-      
-      ['no valid mergeVideoAudio elements',
-        {
-          action: 'mergeVideoAudio' as const,
-          isAdvancedMode: false,
-          mergeVideoAudio: { videoElement: {}, audioElement: {}, outputSettings: {} }
-        },
-        { request: { scenes: [] }, errorCount: 1, warningCount: 1 }],
-      
-      ['no mergeVideos videos',
-        {
-          action: 'mergeVideos' as const,
-          isAdvancedMode: false,
-          mergeVideos: { videoElements: [], transition: 'fade' as const, outputSettings: {} }
-        },
-        { request: { scenes: [] }, errorCount: 1, warningCount: 1 }],
-      
-      ['missing mergeVideos config',
-        { action: 'mergeVideos' as const, isAdvancedMode: false },
-        { request: { scenes: [] }, errorCount: 1, warningCount: 1 }]
-    ])('should handle error case: %s', (_, parameters, expected) => {
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toMatchObject(expected.request);
-      expect(result.errors).toHaveLength(expected.errorCount);
-      expect(result.warnings).toHaveLength(expected.warningCount);
+    describe('error cases', () => {
+      it.each([
+        [
+          'mergeVideoAudio empty elements',
+          { action: 'mergeVideoAudio' as const, sceneElements: [] },
+          { scenes: [{ elements: [] }] },
+          ['No valid video or audio elements found for mergeVideoAudio'],
+          ['No scenes created for mergeVideoAudio operation']
+        ],
+        [
+          'mergeVideos empty elements',
+          { action: 'mergeVideos' as const, sceneElements: [] },
+          { scenes: [{ elements: [] }] },
+          ['No video elements found for mergeVideos'],
+          ['No scenes created for mergeVideos operation']
+        ],
+        [
+          'unsupported action',
+          { action: 'unsupportedAction' as any },
+          { scenes: [] },
+          ['Unsupported operation: unsupportedAction'],
+          ['Request has no scenes - video will be empty']
+        ],
+        [
+          'createMovie no elements',
+          { action: 'createMovie' as const, movieElements: [], sceneElements: [] },
+          { scenes: [{ elements: [] }] },
+          [],
+          ['No elements provided, creating empty scene']
+        ],
+        [
+          'createMovie only movie elements',
+          { 
+            action: 'createMovie' as const,
+            movieElements: [{ type: 'audio', src: 'background.mp3' }],
+            sceneElements: []
+          },
+          {
+            elements: [{ type: 'audio', src: 'background.mp3' }],
+            scenes: [{ elements: [] }]
+          },
+          [],
+          ['No scene elements provided, creating empty scene with movie elements']
+        ]
+      ])('should handle %s', (_, params, expectedRequest, expectedErrors, expectedWarnings) => {
+        const parameters = createBaseParameters(params);
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject(expectedRequest);
+        expect(result.errors).toEqual(expectedErrors);
+        expect(result.warnings).toEqual(expectedWarnings);
+      });
     });
 
-    it.each([
-      ['invalid JSON template',
-        { action: 'createMovie' as const, isAdvancedMode: true, jsonTemplate: 'invalid json {' },
-        null],
-      
-      ['missing JSON template',
-        { action: 'createMovie' as const, isAdvancedMode: true },
-        null],
-      
-      ['unsupported action',
-        { action: 'unsupported' as any, isAdvancedMode: false },
-        null]
-    ])('should return null request for %s', (_, parameters, expectedRequest) => {
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toBe(expectedRequest);
-      expect(result.errors.length).toBeGreaterThan(0);
+    describe('advanced mode', () => {
+      it.each([
+        [
+          'valid JSON template',
+          {
+            action: 'createMovie' as const,
+            isAdvancedMode: true,
+            jsonTemplate: JSON.stringify({
+              width: 1024,
+              height: 768,
+              scenes: [{ elements: [{ type: 'text', text: 'Advanced mode text' }] }]
+            })
+          },
+          {
+            width: 1024,
+            height: 768,
+            scenes: [{ elements: [{ type: 'text', text: 'Advanced mode text' }] }]
+          },
+          [],
+          []
+        ],
+        [
+          'JSON template with overrides',
+          {
+            action: 'createMovie' as const,
+            isAdvancedMode: true,
+            jsonTemplate: JSON.stringify({ width: 1024, height: 768, scenes: [] }),
+            advancedOverrides: { width: 1920, quality: 'ultra' }
+          },
+          {
+            width: 1920,
+            height: 768,
+            quality: 'ultra',
+            scenes: []
+          },
+          [],
+          ['Request has no scenes - video will be empty']
+        ],
+        [
+          'all override properties',
+          {
+            action: 'createMovie' as const,
+            isAdvancedMode: true,
+            jsonTemplate: JSON.stringify({ scenes: [] }),
+            advancedOverrides: {
+              width: 1920,
+              height: 1080,
+              quality: 'high',
+              resolution: 'full-hd',
+              cache: false
+            }
+          },
+          {
+            width: 1920,
+            height: 1080,
+            quality: 'high',
+            resolution: 'full-hd',
+            cache: false,
+            scenes: []
+          },
+          [],
+          ['Request has no scenes - video will be empty']
+        ]
+      ])('should handle %s', (_, params, expectedRequest, expectedErrors, expectedWarnings) => {
+        const parameters = createBaseParameters(params);
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject(expectedRequest);
+        expect(result.errors).toEqual(expectedErrors);
+        expect(result.warnings).toEqual(expectedWarnings);
+      });
+
+      it.each([
+        [
+          'missing JSON template',
+          { isAdvancedMode: true, jsonTemplate: '' },
+          ['Advanced mode requires a JSON template']
+        ],
+        [
+          'whitespace only JSON template',
+          { isAdvancedMode: true, jsonTemplate: '   \n\t  ' },
+          ['Advanced mode requires a JSON template']
+        ],
+        [
+          'invalid JSON template',
+          { isAdvancedMode: true, jsonTemplate: '{ invalid json' },
+          ['Invalid JSON template']
+        ]
+      ])('should handle advanced mode error: %s', (_, params, expectedErrorSubstrings) => {
+        const parameters = createBaseParameters(params);
+        const result = buildRequest(parameters);
+
+        expect(result.request).toBeNull();
+        expectedErrorSubstrings.forEach(errorSubstring => {
+          expect(result.errors.some(error => error.includes(errorSubstring))).toBe(true);
+        });
+      });
+
+      it.each([
+        ['Error object', () => { throw new Error('Explicit JSON parse error'); }, 'Invalid JSON template: Explicit JSON parse error'],
+        ['non-Error exception', () => { throw 'String error'; }, 'Invalid JSON template: Parse error']
+      ])('should handle JSON parsing with %s', (_, mockFn, expectedError) => {
+        jest.spyOn(JSON, 'parse').mockImplementationOnce(mockFn);
+
+        const parameters = createBaseParameters({
+          isAdvancedMode: true,
+          jsonTemplate: '{"scenes": []}'
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toBeNull();
+        expect(result.errors).toContain(expectedError);
+
+        jest.restoreAllMocks();
+      });
+
+      it('should handle missing scenes property in JSON template', () => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: JSON.stringify({ width: 800 })
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject({
+          width: 800,
+          scenes: []
+        });
+        expect(result.warnings).toContain('Request has no scenes - video will be empty');
+      });
+
+      it.each([
+        ['Error object', () => { throw new Error('Proxy access error'); }, 'Advanced mode processing failed: Proxy access error'],
+        ['non-Error exception', () => { throw 'String error'; }, 'Advanced mode processing failed: Unknown error']
+      ])('should handle advanced mode processing exception with %s', (_, proxyFn, expectedError) => {
+        const mockOverrides = new Proxy({}, { get: proxyFn });
+
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: JSON.stringify({ scenes: [] }),
+          advancedOverrides: mockOverrides as any
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toBeNull();
+        expect(result.errors).toContain(expectedError);
+      });
     });
 
-    it.each([
-      ['complete JSON template with overrides',
-        '{"scenes":[{"elements":[{"type":"text","text":"Hello"}]}],"width":800,"height":600,"quality":"medium"}',
-        { width: 1920, quality: 'high' as const, height: 1080, fps: 30, resolution: 'full-hd', cache: false },
-        {
-          scenes: [{ elements: [{ type: 'text', text: 'Hello' }] }],
+    describe('common properties', () => {
+      it('should apply record ID', () => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          sceneElements: [{ type: 'text', text: 'test' }],
+          recordId: 'test-123'
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.comment).toBe('RecordID: test-123');
+      });
+
+      it('should apply export configurations', () => {
+        const exportConfigs = [
+          { format: 'mp4' as const, webhook: { url: 'https://example.com/webhook' } },
+          { format: 'gif' as const, email: { to: 'user@example.com' } },
+          { format: 'webm' as const, ftp: { host: 'ftp.example.com', username: 'user', password: 'pass' } }
+        ] as any[];
+        
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          sceneElements: [{ type: 'text', text: 'test' }],
+          exportConfigs
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.exports).toEqual(exportConfigs);
+      });
+
+      it.each([
+        ['existing comment with record ID', { recordId: 'test-123' }, 'Existing comment | RecordID: test-123']
+      ])('should handle %s', (_, params, expectedComment) => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: JSON.stringify({
+            comment: 'Existing comment',
+            scenes: [{ elements: [{ type: 'text', text: 'test' }] }]
+          }),
+          ...params
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request?.comment).toBe(expectedComment);
+      });
+    });
+
+    describe('output settings handling', () => {
+      it.each([
+        ['undefined operation settings', { operationSettings: undefined }],
+        ['undefined output settings', { operationSettings: {} }],
+        ['undefined individual output settings', { operationSettings: { outputSettings: { width: undefined, height: undefined, quality: undefined } } }]
+      ])('should handle %s', (_, params) => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideoAudio',
+          sceneElements: [{ type: 'video', src: 'video.mp4' }],
+          ...params
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).not.toHaveProperty('width');
+        expect(result.request).not.toHaveProperty('height');
+        expect(result.request).not.toHaveProperty('quality');
+      });
+
+      it('should handle partial output settings', () => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideoAudio',
+          sceneElements: [{ type: 'video', src: 'video.mp4' }],
+          operationSettings: {
+            outputSettings: { width: 1920, quality: 'high' }
+          }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toHaveProperty('width', 1920);
+        expect(result.request).toHaveProperty('quality', 'high');
+      });
+
+      it('should handle draft property in output settings', () => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          sceneElements: [{ type: 'text', text: 'test' }],
+          operationSettings: {
+            outputSettings: {
+              width: 1920,
+              height: 1080,
+              draft: true,
+              resolution: 'full-hd'
+            }
+          }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject({
+          width: 1920,
+          height: 1080,
+          resolution: 'full-hd'
+        });
+        expect(result.request).not.toHaveProperty('draft');
+      });
+
+      it('should handle all advanced override branches', () => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: JSON.stringify({ scenes: [] }),
+          advancedOverrides: {
+            width: 1920,
+            height: 1080,
+            quality: 'high',
+            resolution: 'full-hd',
+            cache: false
+          }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject({
           width: 1920,
           height: 1080,
           quality: 'high',
-          fps: 30,
           resolution: 'full-hd',
-          cache: false
-        }],
-      
-      ['minimal JSON template',
-        '{"scenes":[]}',
-        { fps: 24 },
-        { scenes: [], fps: 24 }],
-      
-      ['complex JSON structure',
-        '{"scenes":[{"elements":[{"type":"video","src":"video.mp4","settings":{"volume":0.8}}],"duration":10}],"elements":[{"type":"subtitles","captions":"Test"}]}',
-        {},
-        {
-          scenes: [{ 
-            elements: [{ type: 'video', src: 'video.mp4', settings: { volume: 0.8 } }],
-            duration: 10
-          }],
-          elements: [{ type: 'subtitles', captions: 'Test' }]
-        }]
-    ])('should process advanced mode template: %s', (_, jsonTemplate, overrides, expected) => {
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: true,
-        jsonTemplate,
-        advancedOverrides: overrides
-      };
-      
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toMatchObject(expected);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    it('should handle general exception in buildRequest', () => {
-      const mockProcessSceneElements = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processSceneElements;
-      mockProcessSceneElements.mockImplementationOnce(() => {
-        throw new Error('Simulated processing error');
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: false,
-        sceneElements: [{ type: 'text', text: 'Test' }]
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toBeNull();
-      expect(result.errors.some(error => error.includes('Failed to build request'))).toBe(true);
-    });
-
-    it('should handle non-Error exceptions in main catch block', () => {
-      const mockProcessSceneElements = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processSceneElements;
-      mockProcessSceneElements.mockImplementationOnce(() => {
-        throw 'String error'; // Non-Error exception
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: false,
-        sceneElements: [{ type: 'text', text: 'Test' }]
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toBeNull();
-      expect(result.errors).toContain('Failed to build request: Unknown request building error');
-    });
-
-    it('should handle non-Error parseError in JSON parsing', () => {
-      const originalParse = JSON.parse;
-      JSON.parse = jest.fn().mockImplementationOnce(() => {
-        throw 'Parse error string'; // Non-Error exception
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: true,
-        jsonTemplate: '{"scenes":[]}'
-      };
-
-      const result = buildRequest(parameters);
-      
-      JSON.parse = originalParse;
-      
-      expect(result.request).toBeNull();
-      expect(result.errors).toContain('Invalid JSON template: Parse error');
-    });
-
-    it('should handle non-Error exception in advanced mode processing', () => {
-      const problematicOverrides = {};
-      
-      Object.defineProperty(problematicOverrides, 'width', {
-        get() {
-          throw 'Property access string error'; // Non-Error exception
-        }
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: true,
-        jsonTemplate: '{"scenes":[]}',
-        advancedOverrides: problematicOverrides
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toBeNull();
-      expect(result.errors).toContain('Advanced mode processing failed: Unknown error');
-    });
-
-    it('should handle mergeVideoAudio outputSettings branches', () => {
-      const parameters: CollectedParameters = {
-        action: 'mergeVideoAudio',
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          videoElement: { src: 'video.mp4' },
-          audioElement: { src: 'audio.mp3' },
-          outputSettings: {
-            width: 1920,
-            height: 1080,
-            fps: 30,
-            quality: 'high' as const
-          }
-        }
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toMatchObject({
-        width: 1920,
-        height: 1080,
-        fps: 30,
-        quality: 'high'
-      });
-    });
-
-    it('should handle mergeVideos outputSettings branches', () => {
-      const parameters: CollectedParameters = {
-        action: 'mergeVideos',
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'video1.mp4' }, { src: 'video2.mp4' }],
-          transition: 'fade',
-          outputSettings: {
-            width: 1280,
-            height: 720,
-            fps: 25,
-            quality: 'medium' as const
-          }
-        }
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toMatchObject({
-        width: 1280,
-        height: 720,
-        fps: 25,
-        quality: 'medium'
-      });
-    });
-
-    it('should handle mergeVideos with transition duration defaulting', () => {
-      const parameters: CollectedParameters = {
-        action: 'mergeVideos',
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'video1.mp4' }, { src: 'video2.mp4' }],
-          transition: 'fade',
-          // No transitionDuration specified
-          outputSettings: {}
-        }
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request?.scenes[1].transition).toEqual({
-        style: 'fade',
-        duration: 1 // Default value
-      });
-    });
-
-    it('should handle non-Error exception in mergeVideos processing', () => {
-      const mockProcessElement = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processElement;
-      
-      mockProcessElement.mockImplementationOnce(() => {
-        throw 'String processing error'; // Non-Error exception
-      });
-      
-      const parameters: CollectedParameters = {
-        action: 'mergeVideos',
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'video1.mp4' }],
-          transition: 'fade',
-          outputSettings: {}
-        }
-      };
-      
-      const result = buildRequest(parameters);
-      
-      expect(result.request?.scenes).toHaveLength(0);
-      expect(result.errors).toContain('Video 1 processing failed: Unknown processing error');
-      expect(result.errors).toContain('No valid video elements found for mergeVideos');
-    });
-
-    it('should handle advanced mode processing exception', () => {
-      // Create a scenario where applyAdvancedOverrides throws an error
-      const problematicOverrides = {};
-      
-      // Define a getter that throws an error when accessed
-      Object.defineProperty(problematicOverrides, 'width', {
-        get() {
-          throw new Error('Property access error');
-        }
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: true,
-        jsonTemplate: '{"scenes":[]}',
-        advancedOverrides: problematicOverrides
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.request).toBeNull();
-      expect(result.errors.some(error => error.includes('Advanced mode processing failed'))).toBe(true);
-      expect(result.errors.some(error => error.includes('Property access error'))).toBe(true);
-    });
-
-    it('should handle mergeVideoAudio processing errors', () => {
-      const mockProcessSceneElements = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processSceneElements;
-      mockProcessSceneElements.mockReturnValueOnce({
-        processed: [],
-        errors: ['Element processing failed']
-      });
-
-      const parameters: CollectedParameters = {
-        action: 'mergeVideoAudio',
-        isAdvancedMode: false,
-        mergeVideoAudio: {
-          videoElement: { src: 'video.mp4' },
-          audioElement: { src: 'audio.mp3' },
-          outputSettings: {}
-        }
-      };
-
-      const result = buildRequest(parameters);
-      
-      expect(result.errors).toContain('Element processing failed');
-      expect(result.request?.scenes).toHaveLength(1);
-    });
-
-    it('should handle mergeVideos processing error', () => {
-      const mockProcessElement = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processElement;
-      
-      mockProcessElement
-        .mockReturnValueOnce({ type: 'video', src: 'video1.mp4', processed: true })
-        .mockImplementationOnce(() => {
-          throw new Error('Processing failed for video 2');
+          cache: false,
+          scenes: []
         });
-      
-      const parameters: CollectedParameters = {
-        action: 'mergeVideos',
-        isAdvancedMode: false,
-        mergeVideos: {
-          videoElements: [{ src: 'video1.mp4' }, { src: 'video2.mp4' }],
-          transition: 'fade',
-          outputSettings: {}
-        }
-      };
-      
-      const result = buildRequest(parameters);
-      
-      expect(result.request?.scenes).toHaveLength(1);
-      expect(result.errors).toContain('Video 2 processing failed: Processing failed for video 2');
-      expect(result.warnings).toHaveLength(1);
+      });
+
+      it('should handle advanced mode with undefined override values', () => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          isAdvancedMode: true,
+          jsonTemplate: JSON.stringify({ 
+            width: 800,
+            height: 600,
+            quality: 'low',
+            resolution: 'sd',
+            cache: true,
+            scenes: []
+          }),
+          advancedOverrides: {
+            width: undefined,
+            height: undefined,
+            quality: undefined,
+            resolution: undefined,
+            cache: undefined
+          }
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.request).toMatchObject({
+          width: 800,
+          height: 600,
+          quality: 'low',
+          resolution: 'sd',
+          cache: true,
+          scenes: []
+        });
+      });
     });
 
-    it.each([
-      ['with record ID', { recordId: 'test-123' }, { id: 'test-123' }],
-      ['without record ID', {}, {}],
-      ['with webhook URL', { webhookUrl: 'https://webhook.example.com' }, {}]
-    ])('should apply common properties %s', (_, parameters, expected) => {
-      const fullParameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: false,
-        sceneElements: [{ type: 'text', text: 'Test' }],
-        ...parameters
-      };
-      
-      const result = buildRequest(fullParameters);
-      
-      if (Object.keys(expected).length > 0) {
-        expect(result.request).toMatchObject(expected);
-      }
-      expect(result.request).not.toHaveProperty('webhookUrl');
+    describe('element processing error handling', () => {
+      it.each([
+        ['movie elements', { movieElements: [null] as any, sceneElements: [{ type: 'text', text: 'test' }] }],
+        ['scene elements in createMovie', { sceneElements: [null] as any }],
+        ['scene elements in mergeVideoAudio', { action: 'mergeVideoAudio' as const, sceneElements: [null] as any }]
+      ])('should handle %s processing errors', (_, params) => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          ...params
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors.some(error => error.includes('Element 0:'))).toBe(true);
+        expect(result.request).toBeDefined();
+      });
+
+      it('should handle scene element processing errors in mergeVideos', () => {
+        const parameters = createBaseParameters({
+          action: 'mergeVideos',
+          sceneElements: [
+            { invalid: 'element1' },
+            { invalid: 'element2' }
+          ] as any
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors.some(error => error.includes('Scene 1:'))).toBe(true);
+        expect(result.errors.some(error => error.includes('Scene 2:'))).toBe(true);
+        expect(result.request).toBeDefined();
+      });
+
+      it.each([
+        ['movie elements', { movieElements: 'not an array' as any, sceneElements: [{ type: 'text', text: 'test' }] }],
+        ['scene elements', { sceneElements: 'not an array' as any }]
+      ])('should handle non-array elements input for %s', (_, params) => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          ...params
+        });
+
+        const result = buildRequest(parameters);
+
+        expect(result.errors).toContain('Elements must be an array');
+        expect(result.request).toBeDefined();
+      });
     });
 
-    it.each([
-      ['element processing errors',
-        { action: 'createMovie' as const, isAdvancedMode: false, movieElements: [{ type: 'text', text: 'Test' }], sceneElements: [] },
-        { processed: [], errors: ['Movie element processing failed'] },
-        'Movie element processing failed'],
-      
-      ['mixed processing results',
-        { action: 'createMovie' as const, isAdvancedMode: false, movieElements: [{ type: 'audio', src: 'bg.mp3' }], sceneElements: [{ type: 'text', text: 'Hello' }] },
-        { processed: [{ type: 'audio', src: 'bg.mp3', processed: true }], errors: ['Some movie element failed'] },
-        'Some movie element failed']
-    ])('should handle %s gracefully', (_, parameters, mockReturn, expectedError) => {
-      const mockProcessMovieElements = jest.requireMock('../../../../nodes/CreateJ2vMovie/core/elementProcessor').processMovieElements;
-      mockProcessMovieElements.mockReturnValueOnce(mockReturn);
-      
-      const result = buildRequest(parameters);
-      
-      expect(result.errors).toContain(expectedError);
-    });
+    describe('exception handling', () => {
+      it.each([
+        ['Error object', () => { throw new Error('Property access error'); }, 'Request building failed: Property access error'],
+        ['non-Error exception', () => { throw 'String error'; }, 'Request building failed: Unknown error']
+      ])('should handle main buildRequest exception with %s', (_, throwFn, expectedError) => {
+        const parameters = createBaseParameters({
+          action: 'createMovie',
+          sceneElements: [{ type: 'text', text: 'test' }]
+        });
 
-    it('should preserve element processing results', () => {
-      const parameters: CollectedParameters = {
-        action: 'createMovie',
-        isAdvancedMode: false,
-        movieElements: [{ type: 'subtitles', captions: 'Test subtitles' }],
-        sceneElements: [{ type: 'video', src: 'video.mp4' }]
-      };
-      
-      const result = buildRequest(parameters);
-      
-      expect(result.request?.elements).toEqual([
-        { type: 'subtitles', captions: 'Test subtitles', processed: true }
-      ]);
-      expect(result.request?.scenes[0].elements).toEqual([
-        { type: 'video', src: 'video.mp4', processed: true }
-      ]);
-    });
-  });
+        Object.defineProperty(parameters, 'movieElements', { get: throwFn });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+        const result = buildRequest(parameters);
+
+        expect(result.request).toBeNull();
+        expect(result.errors).toContain(expectedError);
+      });
+    });
   });
 });

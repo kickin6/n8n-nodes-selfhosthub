@@ -1,262 +1,259 @@
 // nodes/CreateJ2vMovie/presentation/nodeProperties.ts
 
 import { INodeProperties } from 'n8n-workflow';
-import {
-  createMovieAdvancedModeParameter,
-  createMovieAdvancedParameters,
-  createMovieJsonTemplateParameter,
-  createMovieParameters
-} from './createMovieParameters';
-import {
+import { 
+  unifiedParameters,
+  unifiedAdvancedModeParameter,
   mergeVideoAudioAdvancedModeParameter,
-  mergeVideoAudioAdvancedParameters,
-  mergeVideoAudioJsonTemplateParameter,
-  mergeVideoAudioParameters
-} from './mergeVideoAudioParameters';
-import {
   mergeVideosAdvancedModeParameter,
-  mergeVideosAdvancedParameters,
+  unifiedJsonTemplateParameter,
+  mergeVideoAudioJsonTemplateParameter,
   mergeVideosJsonTemplateParameter,
-  mergeVideosParameters
-} from './mergeVideosParameters';
+  unifiedAdvancedParameters
+} from './unifiedParameters';
 
-// =============================================================================
-// AUTONOMOUS NODE PROPERTIES AGGREGATION
-// =============================================================================
-
-/**
- * Get all node properties for the CreateJ2vMovie node
- * This function consolidates all presentation parameters into a single array
- * The main node file uses this to remain autonomous from implementation details
- */
-export function getAllNodeProperties(): INodeProperties[] {
-  return [
-    // =============================================================================
-    // CORE OPERATION SELECTOR (DRIVES ALL OTHER PARAMETERS)
-    // =============================================================================
-    {
-      displayName: 'Operation',
-      name: 'operation',
-      type: 'options',
-      noDataExpression: true,
-      options: getAvailableOperations(),
-      default: 'createMovie',
-      description: 'Choose the video creation operation to perform',
-    },
-
-    // =============================================================================
-    // ADVANCED MODE TOGGLES (ONE PER OPERATION)
-    // =============================================================================
-    createMovieAdvancedModeParameter,
-    mergeVideoAudioAdvancedModeParameter,
-    mergeVideosAdvancedModeParameter,
-
-    // =============================================================================
-    // JSON TEMPLATES (ADVANCED MODE)
-    // =============================================================================
-    createMovieJsonTemplateParameter,
-    mergeVideoAudioJsonTemplateParameter,
-    mergeVideosJsonTemplateParameter,
-
-    // =============================================================================
-    // OPERATION-SPECIFIC PARAMETERS
-    // =============================================================================
-    
-    // Create Movie Operation Parameters
-    ...validateAndFilterParameters(createMovieParameters, 'createMovie'),
-    ...validateAndFilterParameters(createMovieAdvancedParameters, 'createMovie-advanced'),
-    
-    // Merge Video & Audio Operation Parameters  
-    ...validateAndFilterParameters(mergeVideoAudioParameters, 'mergeVideoAudio'),
-    ...validateAndFilterParameters(mergeVideoAudioAdvancedParameters, 'mergeVideoAudio-advanced'),
-    
-    // Merge Videos Operation Parameters
-    ...validateAndFilterParameters(mergeVideosParameters, 'mergeVideos'),
-    ...validateAndFilterParameters(mergeVideosAdvancedParameters, 'mergeVideos-advanced'),
-  ];
-}
-
-// =============================================================================
-// DYNAMIC OPERATION DISCOVERY
-// =============================================================================
-
-/**
- * Get available operations dynamically
- * This allows adding new operations without modifying the main node file
- */
-function getAvailableOperations(): Array<{ name: string; value: string }> {
-  return [
+// Operation parameter - first parameter that determines workflow
+const operationParameter: INodeProperties = {
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  options: [
     {
       name: 'Create Movie',
       value: 'createMovie',
+      description: 'Create a complete movie from movie and scene elements',
+      action: 'Create Movie',
     },
     {
-      name: 'Merge Video and Audio',
+      name: 'Merge Video Audio',
       value: 'mergeVideoAudio',
+      description: 'Merge video and audio files together',
+      action: 'Merge Video and Audio',
     },
     {
       name: 'Merge Videos',
       value: 'mergeVideos',
+      description: 'Merge multiple video files in sequence',
+      action: 'Merge Videos',
     },
+  ],
+  default: 'createMovie',
+  description: 'The type of video operation to perform',
+};
+
+/**
+ * Get all node properties in the correct order
+ */
+export function getAllNodeProperties(): INodeProperties[] {
+  return [
+    operationParameter,
+    
+    // Advanced Mode toggles - operation-specific
+    unifiedAdvancedModeParameter,
+    mergeVideoAudioAdvancedModeParameter,
+    mergeVideosAdvancedModeParameter,
+    
+    // JSON Template parameters - operation-specific
+    unifiedJsonTemplateParameter,
+    mergeVideoAudioJsonTemplateParameter,
+    mergeVideosJsonTemplateParameter,
+    
+    // All unified parameters
+    ...unifiedParameters,
+    
+    // Advanced mode overrides
+    ...unifiedAdvancedParameters,
   ];
 }
 
 /**
- * Get operation names programmatically for validation
- * Used by core layer to validate operations without hard-coding
- */
-export function getValidOperationNames(): string[] {
-  return getAvailableOperations().map(op => op.value);
-}
-
-/**
- * Check if an operation is valid
- * AUTONOMOUS: Core layer can validate operations without knowing specifics
+ * Validate if operation is supported
  */
 export function isValidOperation(operation: string): boolean {
-  return getValidOperationNames().includes(operation);
+  const validOperations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
+  return validOperations.includes(operation);
 }
 
-// =============================================================================
-// PARAMETER VALIDATION AND FILTERING
-// =============================================================================
-
 /**
- * Validate and filter parameters to ensure they're properly formed
- * This prevents runtime errors from malformed parameter definitions
+ * Get operation-specific parameter validation rules
  */
-function validateAndFilterParameters(
-  parameters: INodeProperties[], 
-  source: string
-): INodeProperties[] {
-  return parameters.filter((param, index) => {
-    // Basic validation - ensure parameter has required properties
-    if (!param || typeof param !== 'object') {
-      return false;
-    }
-
-    if (typeof param.name !== 'string' || param.name.trim() === '') {
-      return false;
-    }
-
-    if (typeof param.type !== 'string' || param.type.trim() === '') {
-      return false;
-    }
-
-    // Additional validation for specific parameter types
-    if (param.type === 'options' && (!param.options || !Array.isArray(param.options))) {
-      return false;
-    }
-
-    if (param.type === 'fixedCollection' && (!param.options || !Array.isArray(param.options))) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-// =============================================================================
-// OPERATION METADATA (FOR AUTONOMOUS OPERATION)
-// =============================================================================
-
-/**
- * Get metadata about an operation without knowing implementation details
- */
-export function getOperationMetadata(operation: string): {
-  isValid: boolean;
-  hasAdvancedMode: boolean;
-  advancedModeParamName?: string;
-  jsonTemplateParamName?: string;
-} {
-  const validOps = getValidOperationNames();
+export function getOperationValidationRules(operation: string): string[] {
+  const rules: string[] = [];
   
-  if (!validOps.includes(operation)) {
-    return { isValid: false, hasAdvancedMode: false };
+  switch (operation) {
+    case 'createMovie':
+      rules.push('Requires either movie elements or scene elements');
+      rules.push('Supports export configurations');
+      break;
+    case 'mergeVideoAudio':
+      rules.push('Requires at least one video or audio element');
+      break;
+    case 'mergeVideos':
+      rules.push('Requires at least one video element');
+      rules.push('Supports transition effects');
+      break;
   }
-
-  // Define advanced mode parameter mappings
-  const advancedModeParams: Record<string, string> = {
-    'createMovie': 'advancedMode',
-    'mergeVideoAudio': 'advancedModeMergeAudio',
-    'mergeVideos': 'advancedModeMergeVideos',
-  };
-
-  const jsonTemplateParams: Record<string, string> = {
-    'createMovie': 'jsonTemplate',
-    'mergeVideoAudio': 'jsonTemplateMergeAudio',
-    'mergeVideos': 'jsonTemplateMergeVideos',
-  };
-
-  return {
-    isValid: true,
-    hasAdvancedMode: operation in advancedModeParams,
-    advancedModeParamName: advancedModeParams[operation],
-    jsonTemplateParamName: jsonTemplateParams[operation],
-  };
+  
+  return rules;
 }
 
-// =============================================================================
-// PARAMETER INTROSPECTION (FOR DEBUGGING)
-// =============================================================================
+/**
+ * Get operation-specific default values
+ */
+export function getOperationDefaults(operation: string): Record<string, any> {
+  const defaults: Record<string, any> = {
+    advancedMode: false,
+    advancedModeMergeVideoAudio: false,
+    advancedModeMergeVideos: false,
+    cache: true,
+    draft: false,
+  };
+  
+  switch (operation) {
+    case 'createMovie':
+      defaults.output_width = 1920;
+      defaults.output_height = 1080;
+      break;
+    case 'mergeVideos':
+      defaults.transition = 'fade';
+      defaults.transitionDuration = 1.0;
+      break;
+  }
+  
+  return defaults;
+}
 
 /**
- * Get statistics about the parameter definitions
- * Useful for debugging and ensuring all operations are properly configured
+ * Get the correct advanced mode parameter name for each operation
  */
-export function getParameterStatistics(): {
-  totalParameters: number;
-  parametersByOperation: Record<string, number>;
-  advancedModeParameters: number;
-  jsonTemplateParameters: number;
-  validationErrors: string[];
-} {
-  const allParams = getAllNodeProperties();
-  const operations = getValidOperationNames();
-  const validationErrors: string[] = [];
+export function getAdvancedModeParameterName(operation: string): string {
+  switch (operation) {
+    case 'createMovie':
+      return 'advancedMode';
+    case 'mergeVideoAudio':
+      return 'advancedModeMergeVideoAudio';
+    case 'mergeVideos':
+      return 'advancedModeMergeVideos';
+    default:
+      return 'advancedMode';
+  }
+}
 
-  const stats = {
-    totalParameters: allParams.length,
-    parametersByOperation: {} as Record<string, number>,
-    advancedModeParameters: 0,
-    jsonTemplateParameters: 0,
-    validationErrors
-  };
+/**
+ * Get the correct JSON template parameter name for each operation
+ */
+export function getJsonTemplateParameterName(operation: string): string {
+  switch (operation) {
+    case 'createMovie':
+      return 'jsonTemplate';
+    case 'mergeVideoAudio':
+      return 'jsonTemplateMergeVideoAudio';
+    case 'mergeVideos':
+      return 'jsonTemplateMergeVideos';
+    default:
+      return 'jsonTemplate';
+  }
+}
 
-  // Count parameters by operation
-  operations.forEach(op => {
-    const opParams = allParams.filter(param => {
-      const displayOptions = param.displayOptions;
-      if (!displayOptions || !displayOptions.show) return false;
-      return displayOptions.show.operation && displayOptions.show.operation.includes(op);
-    });
-    stats.parametersByOperation[op] = opParams.length;
-  });
+// Helper functions
+export function getOperationPlaceholder(operation: string): string {
+  switch (operation) {
+    case 'mergeVideoAudio':
+      return 'Add Video or Audio Element';
+    case 'mergeVideos':
+      return 'Add Video Element';
+    case 'createMovie':
+    default:
+      return 'Add Scene Element';
+  }
+}
 
-  // Count advanced mode and template parameters
-  stats.advancedModeParameters = allParams.filter(param => 
-    param.name.includes('advancedMode')
-  ).length;
+export function getOperationDescription(operation: string): string {
+  switch (operation) {
+    case 'mergeVideoAudio':
+      return 'Add video and audio elements to merge together. Typically one video and one audio element.';
+    case 'mergeVideos':
+      return 'Add multiple video elements to merge in sequence with optional transitions.';
+    case 'createMovie':
+    default:
+      return 'Elements that appear in scenes (videos, images, text, audio)';
+  }
+}
 
-  stats.jsonTemplateParameters = allParams.filter(param => 
-    param.name.includes('jsonTemplate')
-  ).length;
-
-  // Validate each operation has required parameters
-  operations.forEach(op => {
-    const metadata = getOperationMetadata(op);
-    if (metadata.hasAdvancedMode) {
-      const hasAdvancedParam = allParams.some(p => p.name === metadata.advancedModeParamName);
-      const hasTemplateParam = allParams.some(p => p.name === metadata.jsonTemplateParamName);
-      
-      if (!hasAdvancedParam) {
-        validationErrors.push(`Operation '${op}' missing advanced mode parameter: ${metadata.advancedModeParamName}`);
-      }
-      if (!hasTemplateParam) {
-        validationErrors.push(`Operation '${op}' missing JSON template parameter: ${metadata.jsonTemplateParamName}`);
+export function getOperationJsonTemplate(operation: string): string {
+  switch (operation) {
+    case 'mergeVideoAudio':
+      return `{
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video.mp4"
+        },
+        {
+          "type": "audio", 
+          "src": "https://example.com/audio.mp3"
+        }
+      ]
+    }
+  ]
+}`;
+    case 'mergeVideos':
+      return `{
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video1.mp4"
+        }
+      ]
+    },
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video2.mp4"
+        }
+      ],
+      "transition": {
+        "style": "fade",
+        "duration": 1
       }
     }
-  });
-
-  return stats;
+  ]
+}`;
+    case 'createMovie':
+    default:
+      return `{
+  "width": 1024,
+  "height": 768,
+  "quality": "high",
+  "elements": [
+    {
+      "type": "subtitles",
+      "src": "https://example.com/subtitles.srt"
+    }
+  ],
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "image",
+          "src": "https://example.com/image.jpg",
+          "duration": 3
+        },
+        {
+          "type": "text",
+          "text": "Hello World",
+          "x": 100,
+          "y": 100
+        }
+      ]
+    }
+  ]
+}`;
+  }
 }

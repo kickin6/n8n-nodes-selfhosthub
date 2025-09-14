@@ -243,7 +243,6 @@ describe('Schema Validators', () => {
     it.each([
       ['minimal request', { scenes: [{ elements: [validElement] }] }],
       ['with dimensions', { width: 1920, height: 1080, scenes: [{ elements: [validElement] }] }],
-      ['with fps', { fps: 30, scenes: [{ elements: [validElement] }] }],
       ['with quality', { quality: 'high', scenes: [{ elements: [validElement] }] }],
       ['with custom resolution', { resolution: 'custom', width: 1920, height: 1080, scenes: [{ elements: [validElement] }] }],
       ['with movie elements', { 
@@ -284,8 +283,6 @@ describe('Schema Validators', () => {
       ['width above maximum', { width: 5000, scenes: [{ elements: [validElement] }] }, 'width must be between'],
       ['height NaN', { height: NaN, scenes: [{ elements: [validElement] }] }, 'height must be a number'],
       ['height out of range', { height: 5000, scenes: [{ elements: [validElement] }] }, 'height must be between'],
-      ['fps NaN', { fps: NaN, scenes: [{ elements: [validElement] }] }, 'fps must be a number'],
-      ['fps out of range', { fps: 200, scenes: [{ elements: [validElement] }] }, 'fps must be between'],
       ['invalid quality', { quality: 'ultra', scenes: [{ elements: [validElement] }] }, 'Quality must be one of'],
       ['invalid resolution', { resolution: 'ultra-hd', scenes: [{ elements: [validElement] }] }, 'Resolution must be one of'],
       ['custom resolution missing width', { resolution: 'custom', scenes: [{ elements: [validElement] }] }, 'Width is required when resolution is "custom"'],

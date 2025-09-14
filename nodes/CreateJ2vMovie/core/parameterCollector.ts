@@ -1,494 +1,564 @@
 // nodes/CreateJ2vMovie/core/parameterCollector.ts
 
 import { IExecuteFunctions } from 'n8n-workflow';
-import { JSON2VideoRequest } from '../schema/json2videoSchema';
+import { ExportConfig } from '../schema/json2videoSchema';
+import { getAdvancedModeParameterName, getJsonTemplateParameterName } from '../presentation/nodeProperties';
 
 // =============================================================================
 // INTERFACES
 // =============================================================================
 
-/**
- * Structured parameters collected from n8n execution context
- * This interface normalizes all action types into a common structure
- */
 export interface CollectedParameters {
-  // Action identification
-  action: 'createMovie' | 'mergeVideoAudio' | 'mergeVideos';
+  operation: string;
   isAdvancedMode: boolean;
 
-  // Correlation parameters (optional in API)
-  recordId?: string;
-  webhookUrl?: string;
-
-  // Movie configuration
+  // Basic mode parameters
   width?: number;
   height?: number;
-  fps?: number;
   quality?: string;
-  resolution?: string;
   cache?: boolean;
   draft?: boolean;
+  resolution?: string;
 
-  // Content arrays
-  movieElements?: any[];
-  sceneElements?: any[];
-  scenes?: any[];
+  // Unified element collections
+  movieElements: any[];
+  sceneElements: any[];
 
-  // Advanced mode
+  // Operation-specific settings
+  operationSettings?: OperationSettings;
+
+  // Advanced mode parameters
   jsonTemplate?: string;
-  advancedOverrides?: {
+  advancedOverrides?: Record<string, any>;
+
+  // Common properties
+  recordId?: string;
+  exportConfigs?: ExportConfig[];
+  sceneDuration?: number;
+}
+
+export interface OperationSettings {
+  outputSettings?: {
     width?: number;
     height?: number;
-    fps?: number;
+    format?: string;
     quality?: string;
-    resolution?: string;
+    frameRate?: number;
     cache?: boolean;
     draft?: boolean;
+    resolution?: string;
   };
+  transition?: string;
+  transitionDuration?: number;
+}
 
-  // Action-specific parameters
-  mergeVideoAudio?: {
-    videoElement?: any;
-    audioElement?: any;
-    outputSettings?: any;
-  };
-
-  mergeVideos?: {
-    videoElements?: any[];
-    transition?: string;
-    transitionDuration?: number;
-    outputSettings?: any;
-  };
+export interface ParameterValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
 // =============================================================================
-// MAIN PARAMETER COLLECTION FUNCTION
+// MAIN COLLECTION FUNCTIONS
 // =============================================================================
 
-/**
- * Collect and normalize parameters from n8n execution context
- * This is the main entry point for parameter extraction
- */
 export function collectParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  action: 'createMovie' | 'mergeVideoAudio' | 'mergeVideos'
+  this: IExecuteFunctions,
+  itemIndex: number = 0
 ): CollectedParameters {
 
+  // CLEAN: Only read 'operation' parameter - no fallback logic needed
+  const operation = this.getNodeParameter('operation', itemIndex, 'createMovie') as string;
+  
+  // Get the correct advanced mode parameter name for this operation
+  const advancedModeParamName = getAdvancedModeParameterName(operation);
+  const isAdvancedMode = this.getNodeParameter(advancedModeParamName, itemIndex, false) as boolean;
+
   const parameters: CollectedParameters = {
-    action,
-    isAdvancedMode: false,
+    operation,
+    isAdvancedMode,
+    movieElements: [],
+    sceneElements: []
   };
 
-  // Collect common parameters first
-  collectCommonParameters(execute, itemIndex, parameters);
-
-  // Determine advanced mode based on action
-  determineAdvancedMode(execute, itemIndex, action, parameters);
-
-  // Collect action-specific parameters
-  switch (action) {
-    case 'createMovie':
-      collectCreateMovieParameters(execute, itemIndex, parameters);
-      break;
-    case 'mergeVideoAudio':
-      collectMergeAudioParameters(execute, itemIndex, parameters);
-      break;
-    case 'mergeVideos':
-      collectMergeVideosParameters(execute, itemIndex, parameters);
-      break;
-    default:
-      throw new Error(`Unsupported action type: ${action}`);
+  if (isAdvancedMode) {
+    collectAdvancedModeParameters.call(this, parameters, itemIndex);
+  } else {
+    collectElementCollections.call(this, parameters, itemIndex);
+    collectOperationSettings.call(this, parameters, itemIndex);
   }
+
+  collectCommonProperties.call(this, parameters, itemIndex);
 
   return parameters;
 }
 
 // =============================================================================
-// COMMON PARAMETER COLLECTION
+// COLLECTION FUNCTIONS
 // =============================================================================
 
-/**
- * Collect parameters that are common across all actions
- */
-function collectCommonParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
+function collectElementCollections(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
 ): void {
 
-  // Correlation parameters are optional — API will auto-generate if omitted
-  const recordId = String(execute.getNodeParameter('recordId', itemIndex, ''));
-  const webhookUrl = String(execute.getNodeParameter('webhookUrl', itemIndex, ''));
-
-  if (recordId.trim()) parameters.recordId = recordId.trim();
-  if (webhookUrl.trim()) parameters.webhookUrl = webhookUrl.trim();
+  switch (parameters.operation) {
+    case 'createMovie':
+      collectCreateMovieElementCollections.call(this, parameters, itemIndex);
+      break;
+    case 'mergeVideoAudio':
+      collectMergeVideoAudioElementCollections.call(this, parameters, itemIndex);
+      break;
+    case 'mergeVideos':
+      collectMergeVideosElementCollections.call(this, parameters, itemIndex);
+      break;
+  }
 }
 
-// =============================================================================
-// ADVANCED MODE DETECTION
-// =============================================================================
-
-/**
- * Determine if action is in advanced mode based on operation-specific parameter names
- */
-function determineAdvancedMode(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  action: string,
-  parameters: CollectedParameters
+function collectOperationSettings(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
 ): void {
 
-  try {
-    let advancedModeParam: string;
+  const operationSettings: OperationSettings = {};
 
-    // Each action has its own advanced mode parameter name
-    switch (action) {
-      case 'createMovie':
-        advancedModeParam = 'advancedMode';
-        break;
-      case 'mergeVideoAudio':
-        advancedModeParam = 'advancedModeMergeAudio';
-        break;
-      case 'mergeVideos':
-        advancedModeParam = 'advancedModeMergeVideos';
-        break;
-      default:
-        throw new Error(`Unknown action for advanced mode detection: ${action}`);
+  switch (parameters.operation) {
+    case 'createMovie':
+      const outputSettings = this.getNodeParameter('outputSettings', itemIndex, {}) as any;
+      if (outputSettings && outputSettings.outputDetails) {
+        operationSettings.outputSettings = outputSettings.outputDetails;
+
+        if (outputSettings.outputDetails.resolution && operationSettings.outputSettings) {
+          const dimensions = mapResolutionToDimensions(outputSettings.outputDetails.resolution);
+          if (dimensions && operationSettings.outputSettings) {
+            operationSettings.outputSettings.width = dimensions.width;
+            operationSettings.outputSettings.height = dimensions.height;
+          }
+        }
+      }
+      break;
+
+    case 'mergeVideoAudio':
+      const mergeAudioOutput = this.getNodeParameter('outputSettings', itemIndex, {}) as any;
+      if (mergeAudioOutput && mergeAudioOutput.outputDetails) {
+        operationSettings.outputSettings = mergeAudioOutput.outputDetails;
+      }
+      break;
+
+    case 'mergeVideos':
+      const transition = this.getNodeParameter('transition', itemIndex, 'none') as string;
+      const transitionDuration = this.getNodeParameter('transitionDuration', itemIndex, 1) as number;
+      const mergeVideosOutput = this.getNodeParameter('outputSettings', itemIndex, {}) as any;
+
+      operationSettings.transition = transition;
+      operationSettings.transitionDuration = transitionDuration;
+
+      if (mergeVideosOutput && mergeVideosOutput.outputDetails) {
+        operationSettings.outputSettings = mergeVideosOutput.outputDetails;
+      }
+      break;
+  }
+
+  parameters.operationSettings = operationSettings;
+}
+
+function collectAdvancedModeParameters(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
+): void {
+
+  // Get the correct JSON template parameter name for this operation
+  const templateParamName = getJsonTemplateParameterName(parameters.operation);
+  
+  try {
+    parameters.jsonTemplate = this.getNodeParameter(templateParamName, itemIndex) as string;
+  } catch {
+    // Parameter doesn't exist, leave undefined
+  }
+
+  const overrideParams = ['width', 'height', 'quality', 'cache', 'resolution', 'recordId'];
+  const overrides: Record<string, any> = {};
+  
+  overrideParams.forEach(paramName => {
+    try {
+      const value = this.getNodeParameter(paramName, itemIndex, null);
+      if (value !== null && value !== undefined && value !== '') {
+        overrides[paramName] = value;
+      }
+    } catch {
+      // Parameter doesn't exist, skip
     }
+  });
 
-    parameters.isAdvancedMode = Boolean(execute.getNodeParameter(advancedModeParam, itemIndex, false));
-
-  } catch (error) {
-    // If advanced mode parameter doesn't exist, default to basic mode
-    parameters.isAdvancedMode = false;
+  if (Object.keys(overrides).length > 0) {
+    parameters.advancedOverrides = overrides;
   }
 }
 
-// =============================================================================
-// ACTION-SPECIFIC PARAMETER COLLECTION
-// =============================================================================
-
-/**
- * Collect parameters specific to createMovie action
- */
-function collectCreateMovieParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
+function collectCommonProperties(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
 ): void {
 
-  if (parameters.isAdvancedMode) {
-    // Advanced mode: JSON template + overrides
-    collectAdvancedModeParameters(execute, itemIndex, parameters, 'createMovie');
-  } else {
-    // Basic mode: Form parameters
-    collectBasicMovieParameters(execute, itemIndex, parameters);
-  }
-}
-
-/**
- * Collect parameters specific to mergeVideoAudio action  
- */
-function collectMergeAudioParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
-): void {
-
-  if (parameters.isAdvancedMode) {
-    // Advanced mode: JSON template + overrides
-    collectAdvancedModeParameters(execute, itemIndex, parameters, 'mergeVideoAudio');
-  } else {
-    // Basic mode: Video + Audio elements + Output settings
-    collectBasicMergeAudioParameters(execute, itemIndex, parameters);
-  }
-}
-
-/**
- * Collect parameters specific to mergeVideos action
- */
-function collectMergeVideosParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
-): void {
-
-  if (parameters.isAdvancedMode) {
-    // Advanced mode: JSON template + overrides  
-    collectAdvancedModeParameters(execute, itemIndex, parameters, 'mergeVideos');
-  } else {
-    // Basic mode: Multiple videos + transitions + Output settings
-    collectBasicMergeVideosParameters(execute, itemIndex, parameters);
-  }
-}
-
-// =============================================================================
-// BASIC MODE PARAMETER COLLECTION
-// =============================================================================
-
-/**
- * Collect basic mode parameters for createMovie action
- */
-function collectBasicMovieParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
-): void {
-
-  // Movie configuration
-  parameters.width = execute.getNodeParameter('output_width', itemIndex, undefined) as number | undefined;
-  parameters.height = execute.getNodeParameter('output_height', itemIndex, undefined) as number | undefined;
-  parameters.fps = execute.getNodeParameter('framerate', itemIndex, undefined) as number | undefined;
-  parameters.quality = execute.getNodeParameter('quality', itemIndex, undefined) as string | undefined;
-  parameters.cache = execute.getNodeParameter('cache', itemIndex, undefined) as boolean | undefined;
-  parameters.draft = execute.getNodeParameter('draft', itemIndex, undefined) as boolean | undefined;
-
-  // Movie elements (global elements across all scenes)
   try {
-    parameters.movieElements = execute.getNodeParameter('movieElements.elementValues', itemIndex, []) as any[];
-  } catch (error) {
+    parameters.recordId = this.getNodeParameter('recordId', itemIndex, '') as string;
+  } catch {
+    // recordId not available for this operation type
+  }
+
+  try {
+    collectExportConfigs.call(this, parameters, itemIndex);
+  } catch {
+    parameters.exportConfigs = [];
+  }
+
+  try {
+    parameters.cache = this.getNodeParameter('cache', itemIndex, true) as boolean;
+  } catch {
+    // cache not available for this operation type
+  }
+
+  try {
+    parameters.draft = this.getNodeParameter('draft', itemIndex, false) as boolean;
+  } catch {
+    // draft not available for this operation type
+  }
+
+  try {
+    parameters.sceneDuration = this.getNodeParameter('sceneDuration', itemIndex, -1) as number;
+  } catch {
+    // sceneDuration not available for this operation type
+  }
+}
+
+function collectExportConfigs(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
+): void {
+
+  const exportSettings = this.getNodeParameter('exportSettings', itemIndex, {}) as any;
+
+  if (exportSettings && exportSettings.exportValues) {
+    const exports = Array.isArray(exportSettings.exportValues)
+      ? exportSettings.exportValues
+      : [exportSettings.exportValues];
+
+    parameters.exportConfigs = exports
+      .map((rawExport: any) => processExportConfig(rawExport))
+      .filter((config: any) => config !== null);
+  } else {
+    parameters.exportConfigs = [];
+  }
+}
+
+// =============================================================================
+// OPERATION-SPECIFIC COLLECTION FUNCTIONS
+// =============================================================================
+
+function collectCreateMovieElementCollections(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
+): void {
+
+  const movieElementsCollection = this.getNodeParameter('movieElements', itemIndex, {}) as any;
+  if (movieElementsCollection && movieElementsCollection.elementValues) {
+    parameters.movieElements = Array.isArray(movieElementsCollection.elementValues)
+      ? movieElementsCollection.elementValues
+      : [movieElementsCollection.elementValues];
+  } else {
     parameters.movieElements = [];
   }
 
-  // Scene elements (elements within specific scenes)
-  try {
-    parameters.sceneElements = execute.getNodeParameter('elements.elementValues', itemIndex, []) as any[];
-  } catch (error) {
+  const sceneElementsCollection = this.getNodeParameter('sceneElements', itemIndex, {}) as any;
+  if (sceneElementsCollection && sceneElementsCollection.elementValues) {
+    parameters.sceneElements = Array.isArray(sceneElementsCollection.elementValues)
+      ? sceneElementsCollection.elementValues
+      : [sceneElementsCollection.elementValues];
+  } else {
     parameters.sceneElements = [];
   }
 }
 
-/**
- * Collect basic mode parameters for mergeVideoAudio action
- */
-function collectBasicMergeAudioParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
-): void {
-
-  parameters.mergeVideoAudio = {};
-
-  // Video element configuration
-  try {
-    parameters.mergeVideoAudio.videoElement = execute.getNodeParameter('videoElement.videoDetails', itemIndex, {}) as any;
-  } catch (error) {
-    parameters.mergeVideoAudio.videoElement = {};
-  }
-
-  // Audio element configuration
-  try {
-    parameters.mergeVideoAudio.audioElement = execute.getNodeParameter('audioElement.audioDetails', itemIndex, {}) as any;
-  } catch (error) {
-    parameters.mergeVideoAudio.audioElement = {};
-  }
-
-  // Output settings
-  try {
-    parameters.mergeVideoAudio.outputSettings = execute.getNodeParameter('outputSettings.outputDetails', itemIndex, {}) as any;
-  } catch (error) {
-    parameters.mergeVideoAudio.outputSettings = {};
-  }
-}
-
-/**
- * Collect basic mode parameters for mergeVideos action  
- */
-function collectBasicMergeVideosParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
-  parameters: CollectedParameters
-): void {
-
-  parameters.mergeVideos = {};
-
-  // Multiple video elements
-  try {
-    parameters.mergeVideos.videoElements = execute.getNodeParameter('videoElements.videoDetails', itemIndex, []) as any[];
-  } catch (error) {
-    parameters.mergeVideos.videoElements = [];
-  }
-
-  // Transition settings
-  parameters.mergeVideos.transition = execute.getNodeParameter('transition', itemIndex, 'none') as string;
-  parameters.mergeVideos.transitionDuration = execute.getNodeParameter('transitionDuration', itemIndex, 1) as number;
-
-  // Output settings
-  try {
-    parameters.mergeVideos.outputSettings = execute.getNodeParameter('outputSettings.outputDetails', itemIndex, {}) as any;
-  } catch (error) {
-    parameters.mergeVideos.outputSettings = {};
-  }
-}
-
-// =============================================================================
-// ADVANCED MODE PARAMETER COLLECTION  
-// =============================================================================
-
-/**
- * Collect advanced mode parameters (JSON template + overrides)
- */
-function collectAdvancedModeParameters(
-  execute: IExecuteFunctions,
-  itemIndex: number,
+function collectMergeVideoAudioElementCollections(
+  this: IExecuteFunctions,
   parameters: CollectedParameters,
-  action: string
+  itemIndex: number
 ): void {
 
-  // Get JSON template based on action
-  let templateParam: string;
-  switch (action) {
-    case 'createMovie':
-      templateParam = 'jsonTemplate';
-      break;
-    case 'mergeVideoAudio':
-      templateParam = 'jsonTemplateMergeAudio';
-      break;
-    case 'mergeVideos':
-    default:
-      templateParam = 'jsonTemplateMergeVideos';
-      break;
+  const sceneElements: any[] = [];
+
+  try {
+    const videoElement = this.getNodeParameter('videoElement', itemIndex, {}) as any;
+    if (videoElement && videoElement.videoDetails) {
+      sceneElements.push({
+        type: 'video',
+        ...videoElement.videoDetails
+      });
+    }
+  } catch {
+    // No video element
   }
 
-  // Extract JSON template
-  parameters.jsonTemplate = execute.getNodeParameter(templateParam, itemIndex, '{}') as string;
-
-  // Collect override parameters that can modify the JSON template
-  parameters.advancedOverrides = {};
-
-  // Optional overrides - only collect if they exist
   try {
-    const outputWidth = execute.getNodeParameter('outputWidth', itemIndex, undefined);
-    if (outputWidth !== undefined) parameters.advancedOverrides.width = outputWidth as number;
-  } catch (error) { }
+    const audioElement = this.getNodeParameter('audioElement', itemIndex, {}) as any;
+    if (audioElement && audioElement.audioDetails) {
+      sceneElements.push({
+        type: 'audio',
+        ...audioElement.audioDetails
+      });
+    }
+  } catch {
+    // No audio element
+  }
 
-  try {
-    const outputHeight = execute.getNodeParameter('outputHeight', itemIndex, undefined);
-    if (outputHeight !== undefined) parameters.advancedOverrides.height = outputHeight as number;
-  } catch (error) { }
+  parameters.sceneElements = sceneElements;
+  parameters.movieElements = [];
+}
 
-  try {
-    const framerate = execute.getNodeParameter('framerate', itemIndex, undefined);
-    if (framerate !== undefined) parameters.advancedOverrides.fps = framerate as number;
-  } catch (error) { }
+function collectMergeVideosElementCollections(
+  this: IExecuteFunctions,
+  parameters: CollectedParameters,
+  itemIndex: number
+): void {
 
-  try {
-    const quality = execute.getNodeParameter('quality', itemIndex, undefined);
-    if (quality !== undefined) parameters.advancedOverrides.quality = quality as string;
-  } catch (error) { }
+  const videoElementsCollection = this.getNodeParameter('videoElements', itemIndex, {}) as any;
+  
+  if (videoElementsCollection && videoElementsCollection.elementValues) {
+    const videoElements = Array.isArray(videoElementsCollection.elementValues)
+      ? videoElementsCollection.elementValues
+      : [videoElementsCollection.elementValues];
 
-  try {
-    const resolution = execute.getNodeParameter('resolution', itemIndex, undefined);
-    if (resolution !== undefined) parameters.advancedOverrides.resolution = resolution as string;
-  } catch (error) { }
+    parameters.sceneElements = videoElements.map((video: any) => ({
+      type: 'video',
+      ...video
+    }));
+  } else {
+    parameters.sceneElements = [];
+  }
 
-  try {
-    const cache = execute.getNodeParameter('cache', itemIndex, undefined);
-    if (cache !== undefined) parameters.advancedOverrides.cache = cache as boolean;
-  } catch (error) { }
-
-  try {
-    const draft = execute.getNodeParameter('draft', itemIndex, undefined);
-    if (draft !== undefined) parameters.advancedOverrides.draft = draft as boolean;
-  } catch (error) { }
+  parameters.movieElements = [];
 }
 
 // =============================================================================
-// PARAMETER VALIDATION UTILITIES
+// HELPER FUNCTIONS
 // =============================================================================
 
-/**
- * Validate that required parameters are present
- * This enforces the UI responsibility principle - all required fields must come from UI
- */
-export function validateCollectedParameters(parameters: CollectedParameters): string[] {
-  const errors: string[] = [];
+function mapResolutionToDimensions(resolution: string): { width: number; height: number } | null {
+  const resolutionMap: Record<string, { width: number; height: number }> = {
+    'hd': { width: 1280, height: 720 },
+    'fhd': { width: 1920, height: 1080 },
+    '4k': { width: 3840, height: 2160 },
+    'square': { width: 1080, height: 1080 },
+    'portrait': { width: 1080, height: 1920 },
+  };
+  
+  return resolutionMap[resolution] || null;
+}
 
-  // Action type is always required
-  if (!parameters.action) {
-    errors.push('Action type is required');
+function processExportConfig(rawExport: any): ExportConfig | null {
+  if (!rawExport || !rawExport.exportType) return null;
+
+  const config: ExportConfig = {};
+
+  switch (rawExport.exportType) {
+    case 'webhook':
+      if (!rawExport.webhookUrl) return null;
+
+      config.webhook = {
+        url: rawExport.webhookUrl
+      };
+      break;
+
+    case 'ftp':
+      if (!rawExport.ftpHost) return null;
+
+      config.ftp = {
+        host: rawExport.ftpHost,
+        port: rawExport.ftpPort || 21,
+        username: rawExport.ftpUsername || '',
+        password: rawExport.ftpPassword || '',
+        path: rawExport.ftpPath || '/',
+        secure: rawExport.ftpSecure || false
+      };
+      break;
+
+    case 'email':
+      if (!rawExport.emailTo) return null;
+
+      config.email = {
+        to: rawExport.emailTo,
+        from: rawExport.emailFrom,
+        subject: rawExport.emailSubject,
+        message: rawExport.emailMessage
+      };
+      break;
+
+    default:
+      return null;
   }
 
-  // Advanced mode validation
+  return config;
+}
+
+// =============================================================================
+// VALIDATION FUNCTIONS
+// =============================================================================
+
+export function validateCollectedParameters(parameters: CollectedParameters): ParameterValidationResult {
+  const result: ParameterValidationResult = {
+    isValid: true,
+    errors: [],
+    warnings: []
+  };
+
+  if (!parameters.operation) {
+    result.errors.push('Missing operation parameter');
+  } else if (!['createMovie', 'mergeVideoAudio', 'mergeVideos'].includes(parameters.operation)) {
+    result.errors.push(`Invalid operation: ${parameters.operation}`);
+  }
+
   if (parameters.isAdvancedMode) {
-    if (!parameters.jsonTemplate) {
-      errors.push('JSON template is required in advanced mode');
+    if (!parameters.jsonTemplate || parameters.jsonTemplate.trim() === '') {
+      result.errors.push('JSON template is required in advanced mode');
     } else {
       try {
         JSON.parse(parameters.jsonTemplate);
-      } catch (error) {
-        errors.push('JSON template must be valid JSON');
+      } catch {
+        result.errors.push('Invalid JSON template syntax');
       }
     }
+  } else {
+    validateBasicModeParameters(parameters, result);
   }
 
-  // Basic mode validation - ensure we have some content
-  if (!parameters.isAdvancedMode) {
-    switch (parameters.action) {
-      case 'createMovie':
-        if ((!parameters.movieElements || parameters.movieElements.length === 0) &&
-          (!parameters.sceneElements || parameters.sceneElements.length === 0)) {
-          errors.push('At least one movie element or scene element is required');
-        }
-        break;
+  if (parameters.exportConfigs) {
+    parameters.exportConfigs.forEach((config: any, index: number) => {
+      const exportErrors = validateExportConfig(config);
+      exportErrors.forEach((error: string) => {
+        result.errors.push(`Export config ${index + 1}: ${error}`);
+      });
+    });
+  }
 
-      case 'mergeVideoAudio':
-        const hasVideoSrc = parameters.mergeVideoAudio?.videoElement?.src;
-        const hasAudioSrc = parameters.mergeVideoAudio?.audioElement?.src;
-        if (!hasVideoSrc || !hasAudioSrc) {
-          errors.push('Both video and audio sources are required for mergeVideoAudio action');
-        }
-        break;
-        
-      case 'mergeVideos':
-        if (!parameters.mergeVideos?.videoElements || parameters.mergeVideos.videoElements.length < 2) {
-          errors.push('At least 2 video sources are required for mergeVideos action');
-        }
-        break;
+  result.isValid = result.errors.length === 0;
+  return result;
+}
+
+function validateBasicModeParameters(
+  parameters: CollectedParameters, 
+  result: ParameterValidationResult
+): void {
+
+  const elementValidation = validateElementCollections(parameters);
+  result.errors.push(...elementValidation.errors);
+  result.warnings.push(...elementValidation.warnings);
+
+  if (!parameters.operationSettings) {
+    result.warnings.push('No operation settings found');
+  } else {
+    const { outputSettings, transitionDuration } = parameters.operationSettings;
+
+    if (outputSettings) {
+      if (outputSettings.width !== undefined && (outputSettings.width < 1 || outputSettings.width > 4096)) {
+        result.errors.push('Output width must be between 1 and 4096 pixels');
+      }
+      if (outputSettings.height !== undefined && (outputSettings.height < 1 || outputSettings.height > 4096)) {
+        result.errors.push('Output height must be between 1 and 4096 pixels');
+      }
+    }
+
+    if (transitionDuration !== undefined && (transitionDuration < 0 || transitionDuration > 10)) {
+      result.errors.push('Transition duration must be between 0 and 10 seconds');
+    }
+  }
+}
+
+function validateElementCollections(parameters: CollectedParameters): { errors: string[], warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  switch (parameters.operation) {
+    case 'createMovie':
+      if (parameters.movieElements.length === 0 && parameters.sceneElements.length === 0) {
+        errors.push('createMovie operation requires either movie elements or scene elements');
+      }
+      break;
+
+    case 'mergeVideoAudio':
+      if (parameters.sceneElements.length === 0) {
+        errors.push('mergeVideoAudio operation requires at least a video or audio element');
+      }
+      break;
+
+    case 'mergeVideos':
+      if (parameters.sceneElements.length === 0) {
+        warnings.push('mergeVideos operation requires at least one video element');
+      }
+      break;
+  }
+
+  return { errors, warnings };
+}
+
+function validateExportConfig(config: any): string[] {
+  const errors: string[] = [];
+
+  if (!config || typeof config !== 'object') {
+    errors.push('Invalid export configuration format');
+    return errors;
+  }
+
+  if (config.webhook) {
+    if (!config.webhook.url) {
+      errors.push('Webhook URL is required');
+    } else if (!config.webhook.url.startsWith('https://')) {
+      errors.push('Webhook URL must use HTTPS');
     }
   }
 
-  // recordId and webhookUrl are optional, only type-check if provided
-  if (parameters.recordId !== undefined && typeof parameters.recordId !== 'string') {
-    errors.push('Invalid type for recordId: must be a string');
+  if (config.ftp) {
+    if (!config.ftp.host) {
+      errors.push('FTP host is required');
+    }
+    if (!config.ftp.username) {
+      errors.push('FTP username is required');
+    }
+    if (!config.ftp.password) {
+      errors.push('FTP password is required');
+    }
+    // FTP port validation
+    if (config.ftp.port !== undefined && (config.ftp.port < 1 || config.ftp.port > 65535)) {
+      errors.push('FTP port must be between 1 and 65535');
+    }
   }
-  if (parameters.webhookUrl !== undefined && typeof parameters.webhookUrl !== 'string') {
-    errors.push('Invalid type for webhookUrl: must be a string');
+
+  if (config.email) {
+    if (!config.email.to) {
+      errors.push('Email recipient is required');
+    } else {
+      const recipients = Array.isArray(config.email.to) ? config.email.to : [config.email.to];
+      recipients.forEach((email: string, index: number) => {
+        if (!isValidEmail(email)) {
+          errors.push(`Invalid email address at position ${index + 1}: ${email}`);
+        }
+      });
+
+      if (config.email.from && !isValidEmail(config.email.from)) {
+        errors.push(`Invalid from email address: ${config.email.from}`);
+      }
+    }
   }
 
   return errors;
 }
 
-// =============================================================================
-// DEBUGGING AND LOGGING UTILITIES
-// =============================================================================
-
-export function getSafeParameter<T>(
-  execute: IExecuteFunctions,
-  paramName: string,
-  itemIndex: number,
-  defaultValue: T,
-  expectedType?: string
-): T {
-  try {
-    const value = execute.getNodeParameter(paramName, itemIndex, defaultValue);
-    if (expectedType && typeof value !== expectedType) {
-      return defaultValue;
-    }
-    return value as T;
-  } catch (error) {
-    return defaultValue;
-  }
-}
-
-export function sanitizeParametersForLogging(parameters: CollectedParameters): any {
-  const sanitized = { ...parameters };
-  if (sanitized.jsonTemplate && sanitized.jsonTemplate.length > 200) {
-    sanitized.jsonTemplate = sanitized.jsonTemplate.substring(0, 200) + '...[truncated]';
-  }
-  if (sanitized.webhookUrl) {
-    sanitized.webhookUrl = '[WEBHOOK_URL]';
-  }
-  return sanitized;
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }

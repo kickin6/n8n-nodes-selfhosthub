@@ -33,116 +33,114 @@ export interface ValidationOptions {
   skipActionRules?: boolean;
 }
 
+/**
+ * Actionable errors categorized by type
+ */
+export interface ActionableErrors {
+  fixable: string[];
+  critical: string[];
+  warnings: string[];
+}
+
 // =============================================================================
 // MAIN VALIDATION FUNCTION
 // =============================================================================
 
 /**
- * Main validation function with explicit action parameter
+ * Comprehensive request validation with action-specific rules
+ * Updated to work with unified element collections from refactor
  */
 export function validateRequest(
-  request: JSON2VideoRequest, 
-  action: 'createMovie' | 'mergeVideoAudio' | 'mergeVideos',
+  request: JSON2VideoRequest,
+  action: string,
   options: ValidationOptions = {}
 ): RequestValidationResult {
 
+  // Set default options
+  const opts: Required<ValidationOptions> = {
+    level: options.level || 'complete',
+    strictMode: options.strictMode !== false,
+    includeWarnings: options.includeWarnings !== false,
+    validateElements: options.validateElements !== false,
+    skipActionRules: options.skipActionRules || false
+  };
+
   const result: RequestValidationResult = {
-    isValid: false,
-    canProceed: false,
+    isValid: true,
     errors: [],
     warnings: [],
-    validationLevel: options.level || 'complete',
+    canProceed: false,
+    validationLevel: opts.level,
+    request
   };
 
   try {
-    performStructuralValidation(request, result, options);
-
-    if ((options.level === 'semantic' || options.level === 'complete') && result.errors.length === 0) {
-      performSemanticValidation(request, result, options, action);
+    // Step 1: Basic structural validation
+    if (!request || typeof request !== 'object') {
+      result.errors.push('Request must be a valid object');
+      result.isValid = false;
+      result.canProceed = false;
+      return result;
     }
 
-    if (options.level === 'complete' && result.errors.length === 0) {
-      performCompleteValidation(request, result, options);
+    // Step 2: Schema validation (structural and semantic)
+    if (opts.level === 'structural' || opts.level === 'semantic' || opts.level === 'complete') {
+      performSchemaValidation(request, result, opts);
     }
+
+    // Step 3: Action-specific business rules validation
+    if (opts.level === 'semantic' || opts.level === 'complete') {
+      validateActionBusinessRules(request, action, result, opts);
+    }
+
+    // Step 4: Complete element validation
+    if (opts.level === 'complete') {
+      performCompleteValidation(request, result, opts);
+    }
+
+    // Determine final status
+    result.isValid = result.errors.length === 0;
+    result.canProceed = result.isValid || !opts.strictMode;
+
+    return result;
 
   } catch (error) {
-    result.errors.push(`Validation failed: ${(error as Error).message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
+    result.errors.push(`Validation failed: ${errorMessage}`);
+    result.isValid = false;
+    result.canProceed = false;
+    return result;
   }
-
-  result.isValid = result.errors.length === 0;
-  result.canProceed = result.isValid;
-  result.request = request;
-
-  return result;
 }
 
 // =============================================================================
-// VALIDATION LEVELS
+// VALIDATION PHASES
 // =============================================================================
 
 /**
- * Level 1: Structural validation - ensures basic JSON structure is correct
+ * Perform basic schema validation using the validators
  */
-function performStructuralValidation(
+function performSchemaValidation(
   request: JSON2VideoRequest,
   result: RequestValidationResult,
-  options: ValidationOptions
+  options: Required<ValidationOptions>
 ): void {
 
-  if (!request || typeof request !== 'object') {
-    result.errors.push('Request must be a valid object');
-    return;
-  }
-
-  if (!Array.isArray(request.scenes)) {
-    result.errors.push('Request must contain a scenes array');
-  }
-
-  const numericFields = ['width', 'height', 'fps'] as const;
-  numericFields.forEach(field => {
-    const value = request[field];
-    if (value !== undefined && (typeof value !== 'number' || isNaN(value))) {
-      result.errors.push(`${field} must be a valid number`);
-    }
-  });
-
-  const booleanFields = ['cache'] as const;
-  booleanFields.forEach(field => {
-    const value = request[field];
-    if (value !== undefined && typeof value !== 'boolean') {
-      result.errors.push(`${field} must be a boolean`);
-    }
-  });
-}
-
-/**
- * Level 2: Semantic validation - ensures JSON structure meets API requirements
- */
-function performSemanticValidation(
-  request: JSON2VideoRequest,
-  result: RequestValidationResult,
-  options: ValidationOptions,
-  action: string
-): void {
-
-  const schemaValidation = validateJSON2VideoRequest(request);
-  
-  result.errors.push(...schemaValidation.errors);
+  const schemaResult = validateJSON2VideoRequest(request);
+  result.errors.push(...schemaResult.errors);
   
   if (options.includeWarnings) {
-    result.warnings.push(...schemaValidation.warnings);
+    result.warnings.push(...schemaResult.warnings);
   }
-
-  validateActionBusinessRules(request, action, result, options);
 }
 
 /**
- * Level 3: Complete validation - deep validation including element processing
+ * Perform complete element validation
  */
 function performCompleteValidation(
   request: JSON2VideoRequest,
   result: RequestValidationResult,
-  options: ValidationOptions
+  options: Required<ValidationOptions>
 ): void {
 
   if (!options.validateElements) {
@@ -167,17 +165,18 @@ function performCompleteValidation(
 }
 
 // =============================================================================
-// SPECIALIZED VALIDATION FUNCTIONS
+// UNIFIED ACTION-SPECIFIC VALIDATION
 // =============================================================================
 
 /**
- * Action-specific business rules validation
+ * Unified action-specific business rules validation
+ * Updated to work with unified JSON2VideoRequest structure after refactor
  */
 function validateActionBusinessRules(
   request: JSON2VideoRequest,
   action: string,
   result: RequestValidationResult,
-  options: ValidationOptions
+  options: Required<ValidationOptions>
 ): void {
   
   if (options.skipActionRules) {
@@ -195,12 +194,16 @@ function validateActionBusinessRules(
       validateMergeVideosRequiredStructure(request, result);
       break;
     default:
+      if (options.strictMode) {
+        result.warnings.push(`Unknown action type: ${action}`);
+      }
       break;
   }
 }
 
 /**
  * Validate createMovie required structure
+ * Updated: Now validates the final JSON2VideoRequest after unified processing
  */
 function validateCreateMovieRequiredStructure(
   request: JSON2VideoRequest,
@@ -208,48 +211,40 @@ function validateCreateMovieRequiredStructure(
 ): void {
 
   const hasMovieElements = request.elements && request.elements.length > 0;
-  const hasSceneElements = request.scenes.some(scene => scene.elements && scene.elements.length > 0);
+  const hasSceneElements = request.scenes && request.scenes.some(scene => scene.elements && scene.elements.length > 0);
 
   if (!hasMovieElements && !hasSceneElements) {
     result.errors.push('createMovie action requires either movie elements or scene elements');
   }
-
-  request.scenes.forEach((scene: Scene, index: number) => {
-    if (scene.elements) {
-      scene.elements.forEach((element: SceneElement, elemIndex: number) => {
-        if ((element as any).type === 'subtitles') {
-          result.errors.push(`Scene ${index + 1} element ${elemIndex + 1}: Subtitles can only be at movie level`);
-        }
-      });
-    }
-  });
 }
 
 /**
  * Validate mergeVideoAudio required structure
+ * Should have exactly one scene with video and audio elements
  */
 function validateMergeVideoAudioRequiredStructure(
   request: JSON2VideoRequest,
   result: RequestValidationResult
 ): void {
 
-  if (request.scenes.length === 0) {
-    result.errors.push('mergeVideoAudio requires at least one scene');
+  if (!request.scenes || request.scenes.length === 0) {
+    result.errors.push('mergeVideoAudio action requires at least one scene');
     return;
   }
 
-  const scene = request.scenes[0];
-  if (!scene.elements || scene.elements.length === 0) {
+  const mainScene = request.scenes[0];
+  if (!mainScene.elements || mainScene.elements.length === 0) {
     result.errors.push('mergeVideoAudio scene must contain elements');
     return;
   }
 
-  const hasVideo = scene.elements.some(el => el.type === 'video');
-  const hasAudio = scene.elements.some(el => el.type === 'audio');
+  const hasVideo = mainScene.elements.some(element => 'type' in element && element.type === 'video');
+  const hasAudio = mainScene.elements.some(element => 'type' in element && element.type === 'audio');
 
   if (!hasVideo) {
     result.errors.push('mergeVideoAudio action requires a video element');
   }
+
   if (!hasAudio) {
     result.errors.push('mergeVideoAudio action requires an audio element');
   }
@@ -257,29 +252,30 @@ function validateMergeVideoAudioRequiredStructure(
 
 /**
  * Validate mergeVideos required structure
+ * Should have multiple scenes with video elements
  */
 function validateMergeVideosRequiredStructure(
   request: JSON2VideoRequest,
   result: RequestValidationResult
 ): void {
 
-  if (request.scenes.length === 0) {
-    result.errors.push('mergeVideos requires at least one scene');
+  if (!request.scenes || request.scenes.length < 2) {
+    result.errors.push('mergeVideos action requires at least two scenes');
     return;
   }
 
-  const hasValidScenes = request.scenes.some(scene => 
-    scene.elements && scene.elements.length > 0
-  );
+  request.scenes.forEach((scene: Scene, index: number) => {
+    if (!scene.elements || scene.elements.length === 0) {
+      result.errors.push(`mergeVideos Scene ${index + 1} must contain elements`);
+      return;
+    }
 
-  if (!hasValidScenes) {
-    result.errors.push('mergeVideos requires scenes with elements');
-  }
+    const hasVideo = scene.elements.some(element => 'type' in element && element.type === 'video');
+    if (!hasVideo) {
+      result.errors.push(`mergeVideos Scene ${index + 1} must contain a video element`);
+    }
+  });
 }
-
-// =============================================================================
-// CROSS-VALIDATION AND CONSISTENCY CHECKS
-// =============================================================================
 
 /**
  * Perform cross-validation between different parts of the request
@@ -287,9 +283,13 @@ function validateMergeVideosRequiredStructure(
 function performCrossValidation(
   request: JSON2VideoRequest,
   result: RequestValidationResult,
-  options: ValidationOptions
+  options: Required<ValidationOptions>
 ): void {
-  // Placeholder for future structural validations
+  // Additional cross-validation logic can be added here
+  // For example, checking compatibility between elements, duration constraints, etc.
+  
+  // Note: Subtitle conflicts are prevented by TypeScript types - 
+  // subtitles can only exist in MovieElement, not SceneElement
 }
 
 // =============================================================================
@@ -300,92 +300,120 @@ function performCrossValidation(
  * Create a human-readable validation summary
  */
 export function createValidationSummary(result: RequestValidationResult): string {
-  const parts = [
-    `Status: ${result.isValid ? 'PASS' : 'FAIL'}`,
-    `Level: ${result.validationLevel}`,
-    `Errors: ${result.errors.length}`,
-    `Warnings: ${result.warnings.length}`,
-    `Can Proceed: ${result.canProceed ? 'YES' : 'NO'}`
-  ];
-
-  return parts.join(' | ');
+  const status = result.isValid ? 'PASS' : 'FAIL';
+  const level = result.validationLevel.toUpperCase();
+  const errorCount = result.errors.length;
+  const warningCount = result.warnings.length;
+  
+  return `${status} - ${level} validation - Errors: ${errorCount}, Warnings: ${warningCount}`;
 }
 
 /**
- * Extract actionable validation messages for user feedback
+ * Extract actionable errors categorized by fixability
  */
-export function extractActionableErrors(result: RequestValidationResult): {
-  critical: string[];
-  fixable: string[];
-  warnings: string[];
-} {
-
-  const critical: string[] = [];
-  const fixable: string[] = [];
+export function extractActionableErrors(result: RequestValidationResult): ActionableErrors {
+  const actionableErrors: ActionableErrors = {
+    fixable: [],
+    critical: [],
+    warnings: [...result.warnings]
+  };
 
   result.errors.forEach(error => {
-    if (error.includes('must be') || error.includes('required') || error.includes('missing')) {
-      fixable.push(error);
+    const fixablePatterns = [
+      /required/i,
+      /missing/i,
+      /must be.*provided/i,
+      /must be.*type/i
+    ];
+
+    const criticalPatterns = [
+      /system failure/i,
+      /fatal/i,
+      /crash/i,
+      /corruption/i,
+      /cannot proceed/i
+    ];
+
+    const isFixable = fixablePatterns.some(pattern => pattern.test(error));
+    const isCritical = criticalPatterns.some(pattern => pattern.test(error));
+
+    if (isFixable) {
+      actionableErrors.fixable.push(error);
+    } else if (isCritical) {
+      actionableErrors.critical.push(error);
     } else {
-      critical.push(error);
+      // Default to critical if we can't categorize
+      actionableErrors.critical.push(error);
     }
   });
 
-  return {
-    critical,
-    fixable,
-    warnings: result.warnings
-  };
+  return actionableErrors;
 }
 
 /**
- * Check if validation errors are recoverable
+ * Determine if validation errors are recoverable
  */
 export function isRecoverable(result: RequestValidationResult): boolean {
-  const hasStructuralErrors = result.errors.some(error => 
-    error.includes('must be an object') ||
-    error.includes('must be an array') ||
-    error.includes('is null or undefined')
+  // If there are warnings but no errors, it's recoverable only if no warnings
+  if (result.errors.length === 0) {
+    return result.warnings.length === 0;
+  }
+
+  // Structural errors are usually not recoverable
+  const structuralPatterns = [
+    /request must be an object/i,
+    /scenes must be an array/i,
+    /request is null or undefined/i
+  ];
+
+  const hasStructuralErrors = result.errors.some(error =>
+    structuralPatterns.some(pattern => pattern.test(error))
   );
 
-  return !hasStructuralErrors && result.warnings.length === 0;
+  if (hasStructuralErrors) {
+    return false;
+  }
+
+  // Action-specific business rule errors might be recoverable
+  const recoverablePatterns = [
+    /requires either movie elements or scene elements/i,
+    /requires a video element/i,
+    /requires an audio element/i,
+    /subtitles can only be at movie level/i
+  ];
+
+  return result.errors.some(error => 
+    recoverablePatterns.some(pattern => pattern.test(error))
+  );
 }
 
-// =============================================================================
-// INTEGRATION WITH REQUEST BUILDER
-// =============================================================================
-
 /**
- * Validate a RequestBuildResult from the request builder
+ * Validate a RequestBuildResult comprehensively
  */
 export function validateBuildResult(
   buildResult: RequestBuildResult,
-  action: 'createMovie' | 'mergeVideoAudio' | 'mergeVideos'
+  action: string,
+  options: ValidationOptions = {}
 ): RequestValidationResult {
-  const result: RequestValidationResult = {
-    isValid: false,
-    errors: [...buildResult.errors],
-    warnings: [...buildResult.warnings],
-    canProceed: false,
-    validationLevel: 'complete'
-  };
 
-  if (buildResult.request) {
-    const validation = validateRequest(buildResult.request, action, { 
-      level: 'complete',
-      strictMode: true,
-      includeWarnings: true 
-    });
-    
-    result.errors.push(...validation.errors);
-    result.warnings.push(...validation.warnings);
-    result.request = validation.request;
-  } else {
-    result.errors.push('Request build failed - no request to validate');
+  if (!buildResult.request) {
+    return {
+      isValid: false,
+      errors: ['Build result contains no request'],
+      warnings: [],
+      canProceed: false,
+      validationLevel: options.level || 'complete',
+      request: undefined
+    };
   }
 
-  result.isValid = result.errors.length === 0;
-  result.canProceed = result.isValid;
+  const validationResult = validateRequest(buildResult.request, action, options);
+  
+  // Merge build errors with validation errors
+  if (buildResult.errors && buildResult.errors.length > 0) {
+    validationResult.errors.unshift(...buildResult.errors);
+    validationResult.isValid = false;
+  }
 
-  return result;
+  return validationResult;
 }
