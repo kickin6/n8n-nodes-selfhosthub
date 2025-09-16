@@ -1,4 +1,5 @@
 // nodes/CreateJ2vMovie/presentation/nodeProperties.ts
+// Updated to use unified parameters with single collection
 
 import { INodeProperties } from 'n8n-workflow';
 import { 
@@ -9,7 +10,6 @@ import {
   unifiedJsonTemplateParameter,
   mergeVideoAudioJsonTemplateParameter,
   mergeVideosJsonTemplateParameter,
-  unifiedAdvancedParameters
 } from './unifiedParameters';
 
 // Operation parameter - first parameter that determines workflow
@@ -22,20 +22,17 @@ const operationParameter: INodeProperties = {
     {
       name: 'Create Movie',
       value: 'createMovie',
-      description: 'Create a complete movie from movie and scene elements',
-      action: 'Create Movie',
+      description: 'Create a complete video from elements with optional subtitles and export',
     },
     {
       name: 'Merge Video Audio',
       value: 'mergeVideoAudio',
       description: 'Merge video and audio files together',
-      action: 'Merge Video and Audio',
     },
     {
       name: 'Merge Videos',
       value: 'mergeVideos',
       description: 'Merge multiple video files in sequence',
-      action: 'Merge Videos',
     },
   ],
   default: 'createMovie',
@@ -47,23 +44,21 @@ const operationParameter: INodeProperties = {
  */
 export function getAllNodeProperties(): INodeProperties[] {
   return [
+    // 1. Operation selector (always first)
     operationParameter,
     
-    // Advanced Mode toggles - operation-specific
+    // 2. Operation-specific advanced mode toggles (right after operation)
     unifiedAdvancedModeParameter,
     mergeVideoAudioAdvancedModeParameter,
     mergeVideosAdvancedModeParameter,
     
-    // JSON Template parameters - operation-specific
+    // 3. All unified parameters (single collection approach)
+    ...unifiedParameters,
+    
+    // 4. Operation-specific JSON template parameters
     unifiedJsonTemplateParameter,
     mergeVideoAudioJsonTemplateParameter,
     mergeVideosJsonTemplateParameter,
-    
-    // All unified parameters
-    ...unifiedParameters,
-    
-    // Advanced mode overrides
-    ...unifiedAdvancedParameters,
   ];
 }
 
@@ -83,7 +78,8 @@ export function getOperationValidationRules(operation: string): string[] {
   
   switch (operation) {
     case 'createMovie':
-      rules.push('Requires either movie elements or scene elements');
+      rules.push('Requires at least one element or subtitles content');
+      rules.push('Supports movie-level subtitles');
       rules.push('Supports export configurations');
       break;
     case 'mergeVideoAudio':
@@ -91,7 +87,7 @@ export function getOperationValidationRules(operation: string): string[] {
       break;
     case 'mergeVideos':
       rules.push('Requires at least one video element');
-      rules.push('Supports transition effects');
+      rules.push('Multiple video elements will be merged in sequence');
       break;
   }
   
@@ -106,21 +102,10 @@ export function getOperationDefaults(operation: string): Record<string, any> {
     advancedMode: false,
     advancedModeMergeVideoAudio: false,
     advancedModeMergeVideos: false,
-    cache: true,
-    draft: false,
+    enableSubtitles: false,
   };
   
-  switch (operation) {
-    case 'createMovie':
-      defaults.output_width = 1920;
-      defaults.output_height = 1080;
-      break;
-    case 'mergeVideos':
-      defaults.transition = 'fade';
-      defaults.transitionDuration = 1.0;
-      break;
-  }
-  
+  // No operation-specific defaults needed for unified architecture
   return defaults;
 }
 
@@ -156,7 +141,7 @@ export function getJsonTemplateParameterName(operation: string): string {
   }
 }
 
-// Helper functions
+// Helper functions for operation-specific UI behavior
 export function getOperationPlaceholder(operation: string): string {
   switch (operation) {
     case 'mergeVideoAudio':
@@ -165,7 +150,7 @@ export function getOperationPlaceholder(operation: string): string {
       return 'Add Video Element';
     case 'createMovie':
     default:
-      return 'Add Scene Element';
+      return 'Add Element';
   }
 }
 
@@ -177,7 +162,7 @@ export function getOperationDescription(operation: string): string {
       return 'Add multiple video elements to merge in sequence with optional transitions.';
     case 'createMovie':
     default:
-      return 'Elements that appear in scenes (videos, images, text, audio)';
+      return 'Create a complete video with any combination of elements (videos, images, text, audio, etc.)';
   }
 }
 
@@ -185,6 +170,8 @@ export function getOperationJsonTemplate(operation: string): string {
   switch (operation) {
     case 'mergeVideoAudio':
       return `{
+  "width": 1920,
+  "height": 1080,
   "scenes": [
     {
       "elements": [
@@ -202,6 +189,8 @@ export function getOperationJsonTemplate(operation: string): string {
 }`;
     case 'mergeVideos':
       return `{
+  "width": 1920,
+  "height": 1080,
   "scenes": [
     {
       "elements": [
@@ -217,20 +206,15 @@ export function getOperationJsonTemplate(operation: string): string {
           "type": "video",
           "src": "https://example.com/video2.mp4"
         }
-      ],
-      "transition": {
-        "style": "fade",
-        "duration": 1
-      }
+      ]
     }
   ]
 }`;
     case 'createMovie':
     default:
       return `{
-  "width": 1024,
-  "height": 768,
-  "quality": "high",
+  "width": 1920,
+  "height": 1080,
   "elements": [
     {
       "type": "subtitles",
@@ -241,9 +225,8 @@ export function getOperationJsonTemplate(operation: string): string {
     {
       "elements": [
         {
-          "type": "image",
-          "src": "https://example.com/image.jpg",
-          "duration": 3
+          "type": "video",
+          "src": "https://example.com/video.mp4"
         },
         {
           "type": "text",

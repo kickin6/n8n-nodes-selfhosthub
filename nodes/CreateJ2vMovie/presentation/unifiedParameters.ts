@@ -1,397 +1,445 @@
 // nodes/CreateJ2vMovie/presentation/unifiedParameters.ts
+// COMPLETE REFACTOR: Added missing movie-level parameters and fixed structure
 
 import { INodeProperties } from 'n8n-workflow';
-import { completeElementFields } from '../shared/elementFields';
-import { qualityParameter } from '../shared/movieParams';
+import { elementCollection } from '../shared/elementFields';
 
 /**
- * Remove displayOptions from element fields to prevent n8n parameter dependency errors
- */
-const elementsWithoutDisplayOptions = completeElementFields.map(field => {
-  const { displayOptions, ...cleanField } = field;
-  return cleanField;
-});
-
-/**
- * Shared output settings collection
- */
-const outputSettingsCollection: INodeProperties = {
-  displayName: 'Output Settings',
-  name: 'outputSettings',
-  type: 'fixedCollection',
-  default: {},
-  placeholder: 'Configure Output Settings',
-  description: 'Configure video output format and quality settings',
-  options: [
-    {
-      name: 'outputDetails',
-      displayName: 'Output Configuration',
-      values: [
-        {
-          displayName: 'Output Width',
-          name: 'width',
-          type: 'number',
-          default: 1920,
-          description: 'Video width in pixels',
-          typeOptions: {
-            minValue: 1,
-            maxValue: 4096,
-          },
-        },
-        {
-          displayName: 'Output Height',
-          name: 'height',
-          type: 'number',
-          default: 1080,
-          description: 'Video height in pixels',
-          typeOptions: {
-            minValue: 1,
-            maxValue: 4096,
-          },
-        },
-        {
-          displayName: 'Format',
-          name: 'format',
-          type: 'options',
-          options: [
-            { name: 'MP4', value: 'mp4' },
-            { name: 'WebM', value: 'webm' },
-            { name: 'MOV', value: 'mov' },
-            { name: 'AVI', value: 'avi' },
-          ],
-          default: 'mp4',
-          description: 'Output video format',
-        },
-        {
-          displayName: 'Quality',
-          name: 'quality',
-          type: 'options',
-          options: [
-            { name: 'Low', value: 'low' },
-            { name: 'Medium', value: 'medium' },
-            { name: 'High', value: 'high' },
-            { name: 'Ultra', value: 'ultra' },
-          ],
-          default: 'high',
-          description: 'Video quality setting',
-        },
-        {
-          displayName: 'Frame Rate',
-          name: 'frameRate',
-          type: 'number',
-          default: 30,
-          description: 'Video frame rate (fps)',
-          typeOptions: {
-            minValue: 1,
-            maxValue: 60,
-          },
-        },
-        {
-          displayName: 'Cache',
-          name: 'cache',
-          type: 'boolean',
-          default: true,
-          description: 'Use cached assets when possible for faster rendering',
-        },
-        {
-          displayName: 'Draft Mode',
-          name: 'draft',
-          type: 'boolean',
-          default: false,
-          description: 'Generate draft quality for faster preview',
-        },
-        {
-          displayName: 'Resolution',
-          name: 'resolution',
-          type: 'string',
-          default: '',
-          description: 'Resolution preset (overrides width/height)',
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * Unified parameters that work for all operations
+ * UNIFIED PARAMETERS - Complete API coverage with movie settings
  */
 export const unifiedParameters: INodeProperties[] = [
-  // Record ID - common to all operations
+  // =============================================================================
+  // BASIC CONFIGURATION
+  // =============================================================================
+  
   {
     displayName: 'Record ID',
     name: 'recordId',
-    type: 'string',
+    type: 'string' as const,
     default: '',
     description: 'Optional record identifier for tracking. If not provided, JSON2Video will auto-generate one.',
   },
 
-  // Movie-level Elements (createMovie only)
+  // =============================================================================
+  // MOVIE SETTINGS TOGGLE → MOVIE SETTINGS FIELDS
+  // =============================================================================
+
   {
-    displayName: 'Movie Elements',
-    name: 'movieElements',
-    type: 'fixedCollection',
+    displayName: 'Movie Settings',
+    name: 'showMovieSettings',
+    type: 'boolean' as const,
+    default: false,
+    description: 'Configure advanced movie-level settings',
+    displayOptions: {
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  // Movie settings fields appear immediately after toggle
+  {
+    displayName: 'Movie ID',
+    name: 'movieId',
+    type: 'string' as const,
+    default: '',
+    description: 'Custom movie identifier (overrides record ID)',
+    displayOptions: {
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Movie Comment',
+    name: 'movieComment',
+    type: 'string' as const,
+    default: '',
+    description: 'Internal notes/memo for this movie',
+    displayOptions: {
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Movie Variables',
+    name: 'movieVariables',
+    type: 'json' as const,
     typeOptions: {
-      multipleValues: true,
-      sortable: true,
+      alwaysOpenEditWindow: true,
     },
-    placeholder: 'Add Movie Element',
-    description: 'Elements that appear across all scenes in the movie (subtitles, background audio, etc.)',
-    default: {},
+    default: '{}',
+    description: 'Movie-level variables as JSON object for template usage',
     displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
-      },
-    },
-    options: [
-      {
-        name: 'elementValues',
-        displayName: 'Element',
-        values: elementsWithoutDisplayOptions,
-      },
-    ],
-  },
-
-  // Scene Elements - universal element collection
-  {
-    displayName: 'Scene Elements',
-    name: 'sceneElements',
-    type: 'fixedCollection',
-    typeOptions: {
-      multipleValues: true,
-      sortable: true,
-    },
-    placeholder: 'Add Scene Element',
-    description: 'Elements that appear in scenes (videos, images, text, audio)',
-    default: {},
-    displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
-      },
-    },
-    options: [
-      {
-        name: 'elementValues',
-        displayName: 'Element',
-        values: elementsWithoutDisplayOptions,
-      },
-    ],
-  },
-
-  // Video Element for mergeVideoAudio
-  {
-    displayName: 'Video Element',
-    name: 'videoElement',
-    type: 'fixedCollection',
-    default: {},
-    placeholder: 'Add Video Element',
-    description: 'Configure the video source for merging with audio',
-    displayOptions: {
-      show: {
-        operation: ['mergeVideoAudio'],
-        advancedModeMergeVideoAudio: [false],
-      },
-    },
-    options: [
-      {
-        name: 'videoDetails',
-        displayName: 'Video Details',
-        values: elementsWithoutDisplayOptions,
-      },
-    ],
-  },
-
-  // Audio Element for mergeVideoAudio
-  {
-    displayName: 'Audio Element',
-    name: 'audioElement',
-    type: 'fixedCollection',
-    default: {},
-    placeholder: 'Add Audio Element',
-    description: 'Configure the audio source for merging with video',
-    displayOptions: {
-      show: {
-        operation: ['mergeVideoAudio'],
-        advancedModeMergeVideoAudio: [false],
-      },
-    },
-    options: [
-      {
-        name: 'audioDetails',
-        displayName: 'Audio Details',
-        values: elementsWithoutDisplayOptions,
-      },
-    ],
-  },
-
-  // Video Elements collection for mergeVideos
-  {
-    displayName: 'Video Elements',
-    name: 'videoElements',
-    type: 'fixedCollection',
-    typeOptions: {
-      multipleValues: true,
-      sortable: true,
-    },
-    placeholder: 'Add Video Element',
-    description: 'Add videos to merge in sequence. Each video will become a separate scene.',
-    default: {},
-    displayOptions: {
-      show: {
-        operation: ['mergeVideos'],
-        advancedModeMergeVideos: [false],
-      },
-    },
-    options: [
-      {
-        name: 'elementValues',
-        displayName: 'Video',
-        values: elementsWithoutDisplayOptions,
-      },
-    ],
-  },
-
-  // Transition Settings (mergeVideos only)
-  {
-    displayName: 'Transition Style',
-    name: 'transition',
-    type: 'options',
-    options: [
-      { name: 'None', value: 'none' },
-      { name: 'Fade', value: 'fade' },
-      { name: 'Slide Left', value: 'slideLeft' },
-      { name: 'Slide Right', value: 'slideRight' },
-      { name: 'Slide Up', value: 'slideUp' },
-      { name: 'Slide Down', value: 'slideDown' },
-      { name: 'Zoom In', value: 'zoomIn' },
-      { name: 'Zoom Out', value: 'zoomOut' },
-    ],
-    default: 'none',
-    description: 'Transition effect between video segments',
-    displayOptions: {
-      show: {
-        operation: ['mergeVideos'],
-        advancedModeMergeVideos: [false],
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
-    displayName: 'Transition Duration',
-    name: 'transitionDuration',
-    type: 'number',
-    default: 1,
-    description: 'Duration of transition effect in seconds',
-    typeOptions: {
-      minValue: 0,
-      maxValue: 10,
-      numberPrecision: 2,
-    },
-    displayOptions: {
-      show: {
-        operation: ['mergeVideos'],
-        advancedModeMergeVideos: [false],
-      },
-    },
-  },
-
-  // Output Settings - consistent across all operations
-  outputSettingsCollection,
-
-  // createMovie specific basic parameters (legacy compatibility)
-  {
-    displayName: 'Output Width',
-    name: 'output_width',
-    type: 'number',
-    default: 1024,
-    description: 'Video width in pixels',
-    displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
-      },
-    },
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-  },
-
-  {
-    displayName: 'Output Height',
-    name: 'output_height',
-    type: 'number',
-    default: 768,
-    description: 'Video height in pixels',
-    displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
-      },
-    },
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-  },
-
-  // Quality parameter - using shared definition
-  {
-    ...qualityParameter,
-    displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
-      },
-    },
-  },
-
-  {
-    displayName: 'Cache',
-    name: 'cache',
-    type: 'boolean',
+    displayName: 'Movie Cache',
+    name: 'movieCache',
+    type: 'boolean' as const,
     default: true,
-    description: 'Use cached assets when possible for faster rendering',
+    description: 'Use cached render if available at movie level',
     displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Draft Mode',
-    name: 'draft',
-    type: 'boolean',
+    name: 'movieDraft',
+    type: 'boolean' as const,
     default: false,
     description: 'Generate draft quality for faster preview',
     displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Client Data',
+    name: 'clientData',
+    type: 'json' as const,
+    default: '{}',
+    description: 'Custom key-value data for webhooks and callbacks',
+    displayOptions: {
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Movie Resolution',
+    name: 'movieResolution',
+    type: 'options' as const,
+    options: [
+      { name: 'Custom (use width/height)', value: 'custom' },
+      { name: 'Standard Definition', value: 'sd' },
+      { name: 'High Definition', value: 'hd' },
+      { name: 'Full HD', value: 'full-hd' },
+      { name: 'Square', value: 'squared' },
+      { name: 'Instagram Story', value: 'instagram-story' },
+      { name: 'Instagram Feed', value: 'instagram-feed' },
+      { name: 'Twitter Landscape', value: 'twitter-landscape' },
+      { name: 'Twitter Portrait', value: 'twitter-portrait' },
+    ],
+    default: 'custom',
+    description: 'Video resolution preset (overrides output settings)',
+    displayOptions: {
+      show: { showMovieSettings: [true] },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
       },
     },
   },
 
-  // Export Settings for createMovie
+  // =============================================================================
+  // MOVIE-LEVEL SUBTITLES (FOR CREATEMOVIE ONLY)
+  // =============================================================================
+
+  {
+    displayName: 'Add Subtitles',
+    name: 'enableSubtitles',
+    type: 'boolean' as const,
+    default: false,
+    description: 'Add subtitles to the video (movie-level, appears across entire video)',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  {
+    displayName: 'Captions',
+    name: 'captions',
+    type: 'string' as const,
+    typeOptions: { rows: 4 },
+    default: '',
+    placeholder: 'https://example.com/subtitles.srt OR paste subtitle content directly',
+    description: 'URL to subtitle file (SRT, VTT, ASS) OR actual subtitle content as text. Leave empty to auto-generate from audio.',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+        enableSubtitles: [true],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  {
+    displayName: 'Comment',
+    name: 'subtitleComment',
+    type: 'string' as const,
+    default: '',
+    placeholder: 'Internal comment about subtitles',
+    description: 'Internal comment or note about the subtitle element',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+        enableSubtitles: [true],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  {
+    displayName: 'Language',
+    name: 'subtitleLanguage',
+    type: 'options' as const,
+    options: [
+      { name: 'Auto-detect', value: 'auto' },
+      { name: 'English', value: 'en' },
+      { name: 'Spanish', value: 'es' },
+      { name: 'French', value: 'fr' },
+      { name: 'German', value: 'de' },
+      { name: 'Italian', value: 'it' },
+      { name: 'Portuguese', value: 'pt' },
+      { name: 'Russian', value: 'ru' },
+      { name: 'Japanese', value: 'ja' },
+      { name: 'Korean', value: 'ko' },
+      { name: 'Chinese (Simplified)', value: 'zh' },
+      { name: 'Arabic', value: 'ar' },
+      { name: 'Hindi', value: 'hi' },
+      { name: 'Dutch', value: 'nl' },
+      { name: 'Swedish', value: 'sv' },
+      { name: 'Norwegian', value: 'no' },
+      { name: 'Danish', value: 'da' },
+      { name: 'Finnish', value: 'fi' },
+      { name: 'Polish', value: 'pl' },
+      { name: 'Czech', value: 'cs' },
+      { name: 'Hungarian', value: 'hu' },
+      { name: 'Romanian', value: 'ro' },
+      { name: 'Bulgarian', value: 'bg' },
+      { name: 'Croatian', value: 'hr' },
+      { name: 'Serbian', value: 'sr' },
+      { name: 'Slovak', value: 'sk' },
+      { name: 'Slovenian', value: 'sl' },
+      { name: 'Estonian', value: 'et' },
+      { name: 'Latvian', value: 'lv' },
+      { name: 'Lithuanian', value: 'lt' },
+      { name: 'Greek', value: 'el' },
+      { name: 'Turkish', value: 'tr' },
+      { name: 'Hebrew', value: 'he' },
+      { name: 'Thai', value: 'th' },
+      { name: 'Vietnamese', value: 'vi' },
+      { name: 'Indonesian', value: 'id' },
+      { name: 'Malay', value: 'ms' },
+      { name: 'Filipino', value: 'fil' },
+    ],
+    default: 'auto',
+    description: 'Language code for subtitles or "auto" for auto-detection',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+        enableSubtitles: [true],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  {
+    displayName: 'Transcription Model',
+    name: 'subtitleModel',
+    type: 'options' as const,
+    options: [
+      { name: 'Default', value: 'default' },
+      { name: 'Whisper', value: 'whisper' },
+    ],
+    default: 'default',
+    description: 'Transcription model to use when auto-generating subtitles from audio',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+        enableSubtitles: [true],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  {
+    displayName: 'Subtitle Settings',
+    name: 'subtitleSettings',
+    type: 'json' as const,
+    typeOptions: {
+      alwaysOpenEditWindow: true,
+    },
+    default: `{
+  "style": "classic",
+  "font-family": "Arial",
+  "font-size": 32,
+  "position": "bottom-center",
+  "word-color": "#FFFF00",
+  "line-color": "#FFFFFF",
+  "box-color": "#000000",
+  "outline-color": "#000000",
+  "outline-width": 2,
+  "max-words-per-line": 4
+}`,
+    description: 'Subtitle styling and appearance settings as JSON object. Complete settings object with kebab-case properties.',
+    displayOptions: {
+      show: {
+        operation: ['createMovie'],
+        enableSubtitles: [true],
+      },
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  // =============================================================================
+  // UNIFIED ELEMENTS COLLECTION
+  // =============================================================================
+
+  // Main unified element collection
+  {
+    ...elementCollection,
+    displayOptions: {
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+  },
+
+  // =============================================================================
+  // OUTPUT SETTINGS
+  // =============================================================================
+
+  {
+    displayName: 'Output Settings',
+    name: 'outputSettings',
+    type: 'fixedCollection' as const,
+    typeOptions: {
+      multipleValues: false,
+    },
+    placeholder: 'Add Output Settings',
+    description: 'Configure output video settings',
+    displayOptions: {
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
+      },
+    },
+    default: {},
+    options: [
+      {
+        name: 'outputValues',
+        displayName: 'Output Configuration',
+        values: [
+          {
+            displayName: 'Output Width',
+            name: 'width',
+            type: 'number' as const,
+            default: 1920,
+            description: 'Video width in pixels',
+          },
+          {
+            displayName: 'Output Height',
+            name: 'height',
+            type: 'number' as const,
+            default: 1080,
+            description: 'Video height in pixels',
+          },
+          {
+            displayName: 'Quality',
+            name: 'quality',
+            type: 'options' as const,
+            options: [
+              { name: 'Low', value: 'low' },
+              { name: 'Medium', value: 'medium' },
+              { name: 'High', value: 'high' },
+              { name: 'Very High', value: 'very_high' },
+            ],
+            default: 'high',
+            description: 'Video quality setting',
+          },
+          {
+            displayName: 'Cache',
+            name: 'cache',
+            type: 'boolean' as const,
+            default: true,
+            description: 'Use cached assets when possible for faster rendering',
+          },
+        ],
+      },
+    ],
+  },
+
+  // =============================================================================
+  // EXPORT SETTINGS
+  // =============================================================================
+
   {
     displayName: 'Export Settings',
     name: 'exportSettings',
-    type: 'fixedCollection',
+    type: 'fixedCollection' as const,
     typeOptions: {
       multipleValues: true,
     },
     placeholder: 'Add Export Configuration',
-    description: 'Configure export destinations (webhook, FTP, email)',
-    default: {},
+    description: 'Configure video delivery methods',
     displayOptions: {
-      show: {
-        operation: ['createMovie'],
-        advancedMode: [false],
+      hide: {
+        advancedMode: [true],
+        advancedModeMergeVideoAudio: [true],
+        advancedModeMergeVideos: [true],
       },
     },
+    default: {},
     options: [
       {
         name: 'exportValues',
@@ -400,7 +448,7 @@ export const unifiedParameters: INodeProperties[] = [
           {
             displayName: 'Export Type',
             name: 'exportType',
-            type: 'options',
+            type: 'options' as const,
             required: true,
             default: 'webhook',
             options: [
@@ -411,11 +459,130 @@ export const unifiedParameters: INodeProperties[] = [
             description: 'Method for delivering the generated video',
           },
           {
+            displayName: 'Format',
+            name: 'format',
+            type: 'options' as const,
+            options: [
+              { name: 'MP4', value: 'mp4' },
+              { name: 'WebM', value: 'webm' },
+              { name: 'GIF', value: 'gif' },
+            ],
+            default: 'mp4',
+            description: 'Video format for export',
+          },
+          {
+            displayName: 'Quality',
+            name: 'quality',
+            type: 'options' as const,
+            options: [
+              { name: 'Low', value: 'low' },
+              { name: 'Medium', value: 'medium' },
+              { name: 'High', value: 'high' },
+              { name: 'Very High', value: 'very_high' },
+            ],
+            default: 'high',
+            description: 'Video quality setting',
+          },
+          // Webhook fields
+          {
             displayName: 'Webhook URL',
             name: 'webhookUrl',
-            type: 'string',
+            type: 'string' as const,
+            required: true,
             default: '',
-            description: 'URL to receive the video when generation completes',
+            displayOptions: {
+              show: { exportType: ['webhook'] },
+            },
+            typeOptions: {
+              validation: [
+                {
+                  type: 'url',
+                  properties: { protocols: ['https'] },
+                },
+              ],
+            },
+            description: 'HTTPS URL to receive webhook notifications when video is complete',
+          },
+          // FTP fields
+          {
+            displayName: 'FTP Host',
+            name: 'ftpHost',
+            type: 'string' as const,
+            required: true,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'FTP server hostname or IP address',
+          },
+          {
+            displayName: 'FTP Username',
+            name: 'ftpUsername',
+            type: 'string' as const,
+            required: true,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'FTP username',
+          },
+          {
+            displayName: 'FTP Password',
+            name: 'ftpPassword',
+            type: 'string' as const,
+            typeOptions: { password: true },
+            required: true,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'FTP password',
+          },
+          {
+            displayName: 'FTP Path',
+            name: 'ftpPath',
+            type: 'string' as const,
+            default: '/',
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'Remote directory path for upload',
+          },
+          // Email fields
+          {
+            displayName: 'Email To',
+            name: 'emailTo',
+            type: 'string' as const,
+            required: true,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['email'] },
+            },
+            typeOptions: {
+              validation: [{ type: 'email' }],
+            },
+            description: 'Recipient email address',
+          },
+          {
+            displayName: 'Email Subject',
+            name: 'emailSubject',
+            type: 'string' as const,
+            default: 'Your video is ready',
+            displayOptions: {
+              show: { exportType: ['email'] },
+            },
+            description: 'Email subject line',
+          },
+          {
+            displayName: 'Email Message',
+            name: 'emailMessage',
+            type: 'string' as const,
+            typeOptions: { rows: 3 },
+            default: '',
+            displayOptions: {
+              show: { exportType: ['email'] },
+            },
+            description: 'Email message body',
           },
         ],
       },
@@ -423,15 +590,16 @@ export const unifiedParameters: INodeProperties[] = [
   },
 ];
 
-/**
- * Operation-specific advanced mode parameters
- */
+// =============================================================================
+// ADVANCED MODE PARAMETERS
+// =============================================================================
+
 export const unifiedAdvancedModeParameter: INodeProperties = {
   displayName: 'Advanced Mode',
   name: 'advancedMode',
-  type: 'boolean',
+  type: 'boolean' as const,
   default: false,
-  description: 'Enable advanced mode to provide raw JSON template instead of using the form fields',
+  description: 'Enable advanced mode for full JSON control (overrides all form settings)',
   displayOptions: {
     show: {
       operation: ['createMovie'],
@@ -442,9 +610,9 @@ export const unifiedAdvancedModeParameter: INodeProperties = {
 export const mergeVideoAudioAdvancedModeParameter: INodeProperties = {
   displayName: 'Advanced Mode',
   name: 'advancedModeMergeVideoAudio',
-  type: 'boolean',
+  type: 'boolean' as const,
   default: false,
-  description: 'Enable advanced mode to provide raw JSON template instead of using the form fields',
+  description: 'Enable advanced mode for full JSON control (overrides all form settings)',
   displayOptions: {
     show: {
       operation: ['mergeVideoAudio'],
@@ -455,9 +623,9 @@ export const mergeVideoAudioAdvancedModeParameter: INodeProperties = {
 export const mergeVideosAdvancedModeParameter: INodeProperties = {
   displayName: 'Advanced Mode',
   name: 'advancedModeMergeVideos',
-  type: 'boolean',
+  type: 'boolean' as const,
   default: false,
-  description: 'Enable advanced mode to provide raw JSON template instead of using the form fields',
+  description: 'Enable advanced mode for full JSON control (overrides all form settings)',
   displayOptions: {
     show: {
       operation: ['mergeVideos'],
@@ -465,255 +633,112 @@ export const mergeVideosAdvancedModeParameter: INodeProperties = {
   },
 };
 
-/**
- * Operation-specific JSON template parameters
- */
+// =============================================================================
+// JSON TEMPLATE PARAMETERS
+// =============================================================================
+
 export const unifiedJsonTemplateParameter: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplate',
-  type: 'json',
-  default: '{}',
-  description: 'Raw JSON2Video API template. Use the basic mode parameters to override specific values.',
+  type: 'json' as const,
   displayOptions: {
     show: {
       operation: ['createMovie'],
       advancedMode: [true],
     },
   },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "elements": [
+    {
+      "type": "subtitles",
+      "captions": "https://example.com/subtitles.srt"
+    }
+  ],
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video.mp4"
+        },
+        {
+          "type": "text",
+          "text": "Hello World",
+          "x": 100,
+          "y": 100
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Complete JSON2Video API request template. This overrides all other settings.',
 };
 
 export const mergeVideoAudioJsonTemplateParameter: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateMergeVideoAudio',
-  type: 'json',
-  default: '{}',
-  description: 'Raw JSON2Video API template. Use the basic mode parameters to override specific values.',
+  type: 'json' as const,
   displayOptions: {
     show: {
       operation: ['mergeVideoAudio'],
       advancedModeMergeVideoAudio: [true],
     },
   },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video.mp4"
+        },
+        {
+          "type": "audio", 
+          "src": "https://example.com/audio.mp3"
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Complete JSON2Video API request template for merging video and audio.',
 };
 
 export const mergeVideosJsonTemplateParameter: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateMergeVideos',
-  type: 'json',
-  default: '{}',
-  description: 'Raw JSON2Video API template. Use the basic mode parameters to override specific values.',
+  type: 'json' as const,
   displayOptions: {
     show: {
       operation: ['mergeVideos'],
       advancedModeMergeVideos: [true],
     },
   },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video1.mp4"
+        }
+      ]
+    },
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "https://example.com/video2.mp4"
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Complete JSON2Video API request template for merging multiple videos.',
 };
-
-/**
- * Unified advanced mode override parameters
- */
-export const unifiedAdvancedParameters: INodeProperties[] = [
-  {
-    displayName: 'Output Width Override',
-    name: 'width',
-    type: 'number',
-    default: undefined,
-    description: 'Override the width specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedMode: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Output Height Override',
-    name: 'height',
-    type: 'number',
-    default: undefined,
-    description: 'Override the height specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedMode: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Quality Override',
-    name: 'quality',
-    type: 'options',
-    options: [
-      { name: 'Low', value: 'low' },
-      { name: 'Medium', value: 'medium' },
-      { name: 'High', value: 'high' },
-      { name: 'Ultra', value: 'ultra' },
-    ],
-    default: undefined,
-    description: 'Override the quality setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedMode: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Cache Override',
-    name: 'cache',
-    type: 'boolean',
-    default: undefined,
-    description: 'Override the caching setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedMode: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Resolution Override',
-    name: 'resolution',
-    type: 'string',
-    default: '',
-    description: 'Override the resolution specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedMode: [true],
-      },
-    },
-  },
-
-  // mergeVideoAudio advanced overrides
-  {
-    displayName: 'Output Width Override',
-    name: 'width',
-    type: 'number',
-    default: undefined,
-    description: 'Override the width specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedModeMergeVideoAudio: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Output Height Override',
-    name: 'height',
-    type: 'number',
-    default: undefined,
-    description: 'Override the height specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedModeMergeVideoAudio: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Quality Override',
-    name: 'quality',
-    type: 'options',
-    options: [
-      { name: 'Low', value: 'low' },
-      { name: 'Medium', value: 'medium' },
-      { name: 'High', value: 'high' },
-      { name: 'Ultra', value: 'ultra' },
-    ],
-    default: undefined,
-    description: 'Override the quality setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedModeMergeVideoAudio: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Cache Override',
-    name: 'cache',
-    type: 'boolean',
-    default: undefined,
-    description: 'Override the caching setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedModeMergeVideoAudio: [true],
-      },
-    },
-  },
-
-  // mergeVideos advanced overrides
-  {
-    displayName: 'Output Width Override',
-    name: 'width',
-    type: 'number',
-    default: undefined,
-    description: 'Override the width specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedModeMergeVideos: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Output Height Override',
-    name: 'height',
-    type: 'number',
-    default: undefined,
-    description: 'Override the height specified in JSON template',
-    typeOptions: {
-      minValue: 1,
-      maxValue: 4096,
-    },
-    displayOptions: {
-      show: {
-        advancedModeMergeVideos: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Quality Override',
-    name: 'quality',
-    type: 'options',
-    options: [
-      { name: 'Low', value: 'low' },
-      { name: 'Medium', value: 'medium' },
-      { name: 'High', value: 'high' },
-      { name: 'Ultra', value: 'ultra' },
-    ],
-    default: undefined,
-    description: 'Override the quality setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedModeMergeVideos: [true],
-      },
-    },
-  },
-  {
-    displayName: 'Cache Override',
-    name: 'cache',
-    type: 'boolean',
-    default: undefined,
-    description: 'Override the caching setting specified in JSON template',
-    displayOptions: {
-      show: {
-        advancedModeMergeVideos: [true],
-      },
-    },
-  },
-];

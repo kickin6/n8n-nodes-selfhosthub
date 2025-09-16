@@ -1,4 +1,5 @@
 // nodes/CreateJ2vMovie/schema/validators.ts
+// COMPLETE REFACTOR: Added image src/prompt validation and movie-level validation
 
 import {
   JSON2VideoRequest,
@@ -26,7 +27,49 @@ export interface ValidationResult {
 }
 
 // =============================================================================
-// ELEMENT PARAMETER VALIDATION
+// ENHANCED IMAGE VALIDATION - SRC OR PROMPT LOGIC
+// =============================================================================
+
+/**
+ * Validate image element with src OR prompt requirement
+ */
+export function validateImageElement(element: any, context: string = ''): string[] {
+  const errors: string[] = [];
+  
+  if (!element || element.type !== 'image') {
+    return errors;
+  }
+
+  const hasSrc = element.src && typeof element.src === 'string' && element.src.trim() !== '';
+  const hasPrompt = element.prompt && typeof element.prompt === 'string' && element.prompt.trim() !== '';
+
+  // FIXED: Either src OR prompt required, never both
+  if (!hasSrc && !hasPrompt) {
+    errors.push(`${context}: Image elements require either a source URL or AI prompt`);
+  } else if (hasSrc && hasPrompt) {
+    errors.push(`${context}: Image elements cannot have both source URL and AI prompt - choose one`);
+  }
+
+  // If using AI generation, validate AI-specific fields
+  if (hasPrompt) {
+    if (element.model && !API_RULES.VALID_AI_MODELS.includes(element.model)) {
+      errors.push(`${context}: Invalid AI model '${element.model}'. Must be one of: ${API_RULES.VALID_AI_MODELS.join(', ')}`);
+    }
+    if (element['aspect-ratio'] && !API_RULES.VALID_ASPECT_RATIOS.includes(element['aspect-ratio'])) {
+      errors.push(`${context}: Invalid aspect ratio '${element['aspect-ratio']}'. Must be one of: ${API_RULES.VALID_ASPECT_RATIOS.join(', ')}`);
+    }
+  }
+
+  // If using source URL, validate URL format
+  if (hasSrc && !isValidUrl(element.src)) {
+    errors.push(`${context}: Invalid source URL format`);
+  }
+
+  return errors;
+}
+
+// =============================================================================
+// ENHANCED ELEMENT PARAMETER VALIDATION
 // =============================================================================
 
 export function validateTextElementParams(params: TextElementParams): string[] {
@@ -129,8 +172,8 @@ export function validateSubtitleElementParams(params: SubtitleElementParams): st
   }
 
   // Language validation
-  if (params.language && !/^[a-z]{2}(-[A-Z]{2})?$/.test(params.language)) {
-    errors.push('Language must be in format "en" or "en-US"');
+  if (params.language && !/^[a-z]{2}(-[A-Z]{2})?$/.test(params.language) && params.language !== 'auto') {
+    errors.push('Language must be in format "en", "en-US", or "auto"');
   }
 
   // Position validation
@@ -179,7 +222,7 @@ export function validateSubtitleElementParams(params: SubtitleElementParams): st
 }
 
 // =============================================================================
-// ELEMENT COLLECTION VALIDATION
+// ENHANCED ELEMENT COLLECTION VALIDATION
 // =============================================================================
 
 export function validateMovieElements(elements: any[]): string[] {
@@ -210,7 +253,7 @@ export function validateMovieElements(elements: any[]): string[] {
       return;
     }
 
-    // Required fields validation - simplified without unreachable code
+    // Required fields validation
     if (!hasRequiredFields(element)) {
       errors.push(`${elementContext}: Missing required fields for ${element.type}`);
     }
@@ -267,7 +310,7 @@ export function validateSceneElements(elements: any[], sceneContext: string = ''
       return;
     }
 
-    // Required fields validation - simplified without unreachable code
+    // Required fields validation
     if (!hasRequiredFields(element)) {
       errors.push(`${elementContext}: Missing required fields for ${element.type}`);
     }
@@ -278,8 +321,14 @@ export function validateSceneElements(elements: any[], sceneContext: string = ''
       errors.push(...textErrors.map(err => `${elementContext}: ${err}`));
     }
 
-    // URL validation for media elements
-    if (['video', 'audio', 'image'].includes(element.type) && element.src && !isValidUrl(element.src)) {
+    // ENHANCED: Image validation with src/prompt logic
+    if (element.type === 'image') {
+      const imageErrors = validateImageElement(element, elementContext);
+      errors.push(...imageErrors);
+    }
+
+    // URL validation for media elements (excluding images - handled above)
+    if (['video', 'audio'].includes(element.type) && element.src && !isValidUrl(element.src)) {
       errors.push(`${elementContext}: Invalid URL for ${element.type} source`);
     }
 
@@ -288,12 +337,25 @@ export function validateSceneElements(elements: any[], sceneContext: string = ''
       errors.push(`${elementContext}: Component ID is required for component elements`);
     }
 
-    // AI image validation
-    if (element.type === 'image' && element.prompt) {
-      if (!element.model) {
-        errors.push(`${elementContext}: AI model is required when using prompt for image generation`);
-      } else if (!API_RULES.VALID_AI_MODELS.includes(element.model)) {
-        errors.push(`${elementContext}: Invalid AI model. Must be one of: ${API_RULES.VALID_AI_MODELS.join(', ')}`);
+    // HTML validation (can have src OR html, but at least one)
+    if (element.type === 'html') {
+      const hasHtmlSrc = element.src && element.src.trim() !== '';
+      const hasHtmlContent = element.html && element.html.trim() !== '';
+      
+      if (!hasHtmlSrc && !hasHtmlContent) {
+        errors.push(`${elementContext}: HTML elements require either source URL or HTML content`);
+      } else if (hasHtmlSrc && !isValidUrl(element.src)) {
+        errors.push(`${elementContext}: Invalid URL for HTML source`);
+      }
+    }
+
+    // Voice element validation
+    if (element.type === 'voice') {
+      if (!element.text || element.text.trim() === '') {
+        errors.push(`${elementContext}: Text content is required for voice elements`);
+      }
+      if (element.model && !API_RULES.VALID_TTS_MODELS.includes(element.model)) {
+        errors.push(`${elementContext}: Invalid TTS model. Must be one of: ${API_RULES.VALID_TTS_MODELS.join(', ')}`);
       }
     }
 
@@ -305,7 +367,7 @@ export function validateSceneElements(elements: any[], sceneContext: string = ''
 }
 
 // =============================================================================
-// COMPLETE REQUEST VALIDATION
+// ENHANCED COMPLETE REQUEST VALIDATION
 // =============================================================================
 
 export function validateJSON2VideoRequest(request: any): ValidationResult {
@@ -406,6 +468,20 @@ export function validateJSON2VideoRequest(request: any): ValidationResult {
     });
   }
 
+  // ENHANCED: Validate movie-level vs scene-level element rules
+  if (request.elements && request.scenes) {
+    // Check for subtitles in scenes (should only be at movie level)
+    request.scenes.forEach((scene: any, sceneIndex: number) => {
+      if (scene.elements && Array.isArray(scene.elements)) {
+        scene.elements.forEach((element: any, elementIndex: number) => {
+          if (element && element.type === 'subtitles') {
+            errors.push(`Scene ${sceneIndex + 1} element ${elementIndex + 1}: Subtitles must be at movie level, not in scenes`);
+          }
+        });
+      }
+    });
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -465,6 +541,27 @@ function validateCommonElementFields(element: any, context: string, errors: stri
   if (element['fade-out'] !== undefined && (typeof element['fade-out'] !== 'number' || element['fade-out'] < 0)) {
     errors.push(`${context}: Fade-out must be a non-negative number`);
   }
+
+  // JSON object field validation
+  const jsonObjectFields = ['crop', 'rotate', 'chroma-key', 'correction'];
+  jsonObjectFields.forEach(field => {
+    if (element[field] && typeof element[field] === 'object') {
+      try {
+        // Validate that JSON objects have the expected structure
+        if (field === 'crop' && element[field]) {
+          const crop = element[field];
+          if (crop.width !== undefined && (typeof crop.width !== 'number' || crop.width <= 0)) {
+            errors.push(`${context}: Crop width must be a positive number`);
+          }
+          if (crop.height !== undefined && (typeof crop.height !== 'number' || crop.height <= 0)) {
+            errors.push(`${context}: Crop height must be a positive number`);
+          }
+        }
+      } catch (e) {
+        errors.push(`${context}: Invalid ${field} object structure`);
+      }
+    }
+  });
 }
 
 function isValidUrl(url: string): boolean {

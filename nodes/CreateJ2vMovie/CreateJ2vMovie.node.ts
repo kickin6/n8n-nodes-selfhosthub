@@ -102,13 +102,13 @@ export class CreateJ2vMovie implements INodeType {
         // =============================================================================
         const validationResult: RequestValidationResult = validateBuildResult(
           buildResult,
-          collectedParameters.action,
+          collectedParameters.operation,
           {
             level: 'complete',
             strictMode: true,
             includeWarnings: true,
             validateElements: true,
-            skipActionRules: collectedParameters.isAdvancedMode
+            skipOperationRules: collectedParameters.isAdvancedMode
           }
         );
 
@@ -165,7 +165,7 @@ export class CreateJ2vMovie implements INodeType {
           returnData.push({
             json: {
               ...responseItem,
-              operation: collectedParameters.action,
+              operation: collectedParameters.operation,
               itemIndex: i,
               timestamp: new Date().toISOString(),
             },

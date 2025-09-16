@@ -30,7 +30,7 @@ export interface ValidationOptions {
   strictMode?: boolean;
   includeWarnings?: boolean;
   validateElements?: boolean;
-  skipActionRules?: boolean;
+  skipOperationRules?: boolean;
 }
 
 /**
@@ -47,12 +47,12 @@ export interface ActionableErrors {
 // =============================================================================
 
 /**
- * Comprehensive request validation with action-specific rules
+ * Comprehensive request validation with operation-specific rules
  * Updated to work with unified element collections from refactor
  */
 export function validateRequest(
   request: JSON2VideoRequest,
-  action: string,
+  operation: string,
   options: ValidationOptions = {}
 ): RequestValidationResult {
 
@@ -62,7 +62,7 @@ export function validateRequest(
     strictMode: options.strictMode !== false,
     includeWarnings: options.includeWarnings !== false,
     validateElements: options.validateElements !== false,
-    skipActionRules: options.skipActionRules || false
+    skipOperationRules: options.skipOperationRules || false
   };
 
   const result: RequestValidationResult = {
@@ -88,9 +88,9 @@ export function validateRequest(
       performSchemaValidation(request, result, opts);
     }
 
-    // Step 3: Action-specific business rules validation
+    // Step 3: Operation-specific business rules validation
     if (opts.level === 'semantic' || opts.level === 'complete') {
-      validateActionBusinessRules(request, action, result, opts);
+      validateOperationBusinessRules(request, operation, result, opts);
     }
 
     // Step 4: Complete element validation
@@ -169,21 +169,21 @@ function performCompleteValidation(
 // =============================================================================
 
 /**
- * Unified action-specific business rules validation
+ * Unified operation-specific business rules validation
  * Updated to work with unified JSON2VideoRequest structure after refactor
  */
-function validateActionBusinessRules(
+function validateOperationBusinessRules(
   request: JSON2VideoRequest,
-  action: string,
+  operation: string,
   result: RequestValidationResult,
   options: Required<ValidationOptions>
 ): void {
   
-  if (options.skipActionRules) {
+  if (options.skipOperationRules) {
     return;
   }
   
-  switch (action) {
+  switch (operation) {
     case 'createMovie':
       validateCreateMovieRequiredStructure(request, result);
       break;
@@ -195,7 +195,7 @@ function validateActionBusinessRules(
       break;
     default:
       if (options.strictMode) {
-        result.warnings.push(`Unknown action type: ${action}`);
+        result.warnings.push(`Unknown operation type: ${operation}`);
       }
       break;
   }
@@ -214,7 +214,7 @@ function validateCreateMovieRequiredStructure(
   const hasSceneElements = request.scenes && request.scenes.some(scene => scene.elements && scene.elements.length > 0);
 
   if (!hasMovieElements && !hasSceneElements) {
-    result.errors.push('createMovie action requires either movie elements or scene elements');
+    result.errors.push('createMovie operation requires either movie elements or scene elements');
   }
 }
 
@@ -228,7 +228,7 @@ function validateMergeVideoAudioRequiredStructure(
 ): void {
 
   if (!request.scenes || request.scenes.length === 0) {
-    result.errors.push('mergeVideoAudio action requires at least one scene');
+    result.errors.push('mergeVideoAudio operation requires at least one scene');
     return;
   }
 
@@ -242,11 +242,11 @@ function validateMergeVideoAudioRequiredStructure(
   const hasAudio = mainScene.elements.some(element => 'type' in element && element.type === 'audio');
 
   if (!hasVideo) {
-    result.errors.push('mergeVideoAudio action requires a video element');
+    result.errors.push('mergeVideoAudio operation requires a video element');
   }
 
   if (!hasAudio) {
-    result.errors.push('mergeVideoAudio action requires an audio element');
+    result.errors.push('mergeVideoAudio operation requires an audio element');
   }
 }
 
@@ -260,7 +260,7 @@ function validateMergeVideosRequiredStructure(
 ): void {
 
   if (!request.scenes || request.scenes.length < 2) {
-    result.errors.push('mergeVideos action requires at least two scenes');
+    result.errors.push('mergeVideos operation requires at least two scenes');
     return;
   }
 
@@ -309,10 +309,10 @@ export function createValidationSummary(result: RequestValidationResult): string
 }
 
 /**
- * Extract actionable errors categorized by fixability
+ * Extract operationable errors categorized by fixability
  */
 export function extractActionableErrors(result: RequestValidationResult): ActionableErrors {
-  const actionableErrors: ActionableErrors = {
+  const operationableErrors: ActionableErrors = {
     fixable: [],
     critical: [],
     warnings: [...result.warnings]
@@ -338,16 +338,16 @@ export function extractActionableErrors(result: RequestValidationResult): Action
     const isCritical = criticalPatterns.some(pattern => pattern.test(error));
 
     if (isFixable) {
-      actionableErrors.fixable.push(error);
+      operationableErrors.fixable.push(error);
     } else if (isCritical) {
-      actionableErrors.critical.push(error);
+      operationableErrors.critical.push(error);
     } else {
       // Default to critical if we can't categorize
-      actionableErrors.critical.push(error);
+      operationableErrors.critical.push(error);
     }
   });
 
-  return actionableErrors;
+  return operationableErrors;
 }
 
 /**
@@ -374,7 +374,7 @@ export function isRecoverable(result: RequestValidationResult): boolean {
     return false;
   }
 
-  // Action-specific business rule errors might be recoverable
+  // Operation-specific business rule errors might be recoverable
   const recoverablePatterns = [
     /requires either movie elements or scene elements/i,
     /requires a video element/i,
@@ -392,7 +392,7 @@ export function isRecoverable(result: RequestValidationResult): boolean {
  */
 export function validateBuildResult(
   buildResult: RequestBuildResult,
-  action: string,
+  operation: string,
   options: ValidationOptions = {}
 ): RequestValidationResult {
 
@@ -407,7 +407,7 @@ export function validateBuildResult(
     };
   }
 
-  const validationResult = validateRequest(buildResult.request, action, options);
+  const validationResult = validateRequest(buildResult.request, operation, options);
   
   // Merge build errors with validation errors
   if (buildResult.errors && buildResult.errors.length > 0) {

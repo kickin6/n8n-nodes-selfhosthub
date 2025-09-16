@@ -1,8 +1,8 @@
 // nodes/CreateJ2vMovie/core/requestBuilder.ts
+// Updated for single-scene architecture
 
-import { JSON2VideoRequest, Scene, MovieElement, SceneElement } from '../schema/json2videoSchema';
+import { JSON2VideoRequest, Scene } from '../schema/json2videoSchema';
 import { CollectedParameters } from './parameterCollector';
-import { processElements, processElement } from './elementProcessor';
 
 // =============================================================================
 // INTERFACES
@@ -23,7 +23,6 @@ export interface RequestBuildResult {
 
 /**
  * Build complete JSON2Video API request from collected parameters
- * This is the main entry point that orchestrates the entire request building process
  */
 export function buildRequest(parameters: CollectedParameters): RequestBuildResult {
   const result: RequestBuildResult = {
@@ -34,11 +33,11 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
 
   try {
     if (parameters.isAdvancedMode) {
-      // Advanced mode: Start with JSON template, apply overrides
+      // Advanced mode: Use JSON template only
       result.request = buildAdvancedModeRequest(parameters, result);
     } else {
-      // Basic mode: Build from form parameters using unified approach
-      result.request = buildUnifiedRequest(parameters, result);
+      // Basic mode: Build from form parameters using single-scene approach
+      result.request = buildBasicModeRequest(parameters, result);
     }
 
     // Apply common request properties
@@ -65,7 +64,7 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
 // =============================================================================
 
 /**
- * Build request from JSON template with parameter overrides
+ * Build request from JSON template only
  */
 function buildAdvancedModeRequest(
   parameters: CollectedParameters,
@@ -88,11 +87,6 @@ function buildAdvancedModeRequest(
       return null;
     }
 
-    // Apply parameter overrides to the parsed template
-    if (parameters.advancedOverrides) {
-      applyAdvancedOverrides(baseRequest, parameters.advancedOverrides);
-    }
-
     // Ensure minimum required structure
     if (!baseRequest.scenes) {
       baseRequest.scenes = [];
@@ -107,43 +101,14 @@ function buildAdvancedModeRequest(
   }
 }
 
-/**
- * Apply parameter overrides to JSON template
- */
-function applyAdvancedOverrides(
-  request: JSON2VideoRequest, 
-  overrides: NonNullable<CollectedParameters['advancedOverrides']>
-): void {
-  
-  // Apply dimensional overrides
-  if (overrides.width !== undefined) {
-    request.width = overrides.width;
-  }
-  if (overrides.height !== undefined) {
-    request.height = overrides.height;
-  }
-
-  // Apply quality/rendering overrides
-  if (overrides.quality !== undefined) {
-    request.quality = overrides.quality as any;
-  }
-  if (overrides.resolution !== undefined) {
-    request.resolution = overrides.resolution;
-  }
-  if (overrides.cache !== undefined) {
-    request.cache = overrides.cache;
-  }
-}
-
 // =============================================================================
-// UNIFIED REQUEST BUILDING
+// BASIC MODE REQUEST BUILDING (SINGLE-SCENE APPROACH)
 // =============================================================================
 
 /**
- * Build request using unified approach for all operations
- * This replaces the operation-specific request builders
+ * Build request from form parameters using single-scene approach
  */
-function buildUnifiedRequest(
+function buildBasicModeRequest(
   parameters: CollectedParameters,
   result: RequestBuildResult
 ): JSON2VideoRequest | null {
@@ -152,233 +117,144 @@ function buildUnifiedRequest(
     scenes: []
   };
 
-  // Apply operation settings to request
-  applyOperationSettings(request, parameters);
+  // Apply output settings to request
+  applyOutputSettings(request, parameters);
 
-  // Process movie-level elements (global across all scenes)
-  if (parameters.movieElements && parameters.movieElements.length > 0) {
-    const movieResult = processElements(parameters.movieElements);
-    if (movieResult.errors.length > 0) {
-      result.errors.push(...movieResult.errors);
-    }
-    if (movieResult.processed.length > 0) {
-      request.elements = movieResult.processed;
-    }
+  // Process movie-level subtitles (for createMovie operation)
+  if (parameters.subtitles && typeof parameters.subtitles === 'object') {
+    request.elements = [parameters.subtitles];
   }
 
-  // Build scenes based on operation type
-  buildScenesForOperation(request, parameters, result);
-
-  // If no scenes were created, handle based on operation
-  if (request.scenes.length === 0) {
-    handleEmptyScenes(request, parameters, result);
-  }
+  // Create single scene with all elements
+  buildSingleScene(request, parameters, result);
 
   return request;
 }
 
 /**
- * Apply operation settings to the request
+ * Apply output settings to the request
  */
-function applyOperationSettings(
+function applyOutputSettings(
   request: JSON2VideoRequest,
   parameters: CollectedParameters
 ): void {
 
-  if (!parameters.operationSettings) {
-    return;
-  }
-
-  const settings = parameters.operationSettings;
-
   // Apply output settings if present
-  if (settings.outputSettings) {
-    const output = settings.outputSettings;
+  if (parameters.outputSettings) {
+    const output = parameters.outputSettings;
     
     if (output.width !== undefined) request.width = output.width;
     if (output.height !== undefined) request.height = output.height;
     if (output.quality !== undefined) request.quality = output.quality as any;
     if (output.cache !== undefined) request.cache = output.cache;
-    // Note: draft property not supported in JSON2VideoRequest schema
-    if (output.resolution !== undefined) request.resolution = output.resolution;
   }
+
+  // Set defaults if no output settings provided
+  if (!request.width) request.width = 1920;
+  if (!request.height) request.height = 1080;
+  if (!request.quality) request.quality = 'high';
 }
 
 /**
- * Build scenes based on operation type using unified element collections
+ * Build single scene with all collected elements
  */
-function buildScenesForOperation(
+function buildSingleScene(
   request: JSON2VideoRequest,
   parameters: CollectedParameters,
   result: RequestBuildResult
 ): void {
 
-  switch (parameters.action) {
-    case 'createMovie':
-      buildCreateMovieScenes(request, parameters, result);
-      break;
-    case 'mergeVideoAudio':
-      buildMergeVideoAudioScenes(request, parameters, result);
-      break;
-    case 'mergeVideos':
-      buildMergeVideosScenes(request, parameters, result);
-      break;
-    default:
-      result.errors.push(`Unsupported operation: ${parameters.action}`);
-  }
-}
+  // Create the single scene
+  const scene: Scene = {
+    elements: []
+  };
 
-/**
- * Build scenes for createMovie operation
- */
-function buildCreateMovieScenes(
-  request: JSON2VideoRequest,
-  parameters: CollectedParameters,
-  result: RequestBuildResult
-): void {
+  // Add all collected elements to the scene
+  if (parameters.elements && parameters.elements.length > 0) {
+    // Process each element
+    parameters.elements.forEach((element, index) => {
+      try {
+        // Basic validation
+        if (!element.type) {
+          result.errors.push(`Element ${index + 1}: missing type`);
+          return;
+        }
 
-  // For createMovie, all scene elements go into a single scene
-  if (parameters.sceneElements && parameters.sceneElements.length > 0) {
-    const sceneResult = processElements(parameters.sceneElements);
-    if (sceneResult.errors.length > 0) {
-      result.errors.push(...sceneResult.errors);
-    }
-    
-    if (sceneResult.processed.length > 0) {
-      const scene: Scene = {
-        elements: sceneResult.processed
-      };
-      request.scenes.push(scene);
-    }
-  }
-}
+        // Add the element (already processed by parameter collector)
+        scene.elements.push(element);
 
-/**
- * Build scenes for mergeVideoAudio operation
- */
-function buildMergeVideoAudioScenes(
-  request: JSON2VideoRequest,
-  parameters: CollectedParameters,
-  result: RequestBuildResult
-): void {
-
-  // For mergeVideoAudio, all elements go into a single scene
-  if (parameters.sceneElements && parameters.sceneElements.length > 0) {
-    const sceneResult = processElements(parameters.sceneElements);
-    if (sceneResult.errors.length > 0) {
-      result.errors.push(...sceneResult.errors);
-    }
-    
-    if (sceneResult.processed.length > 0) {
-      const scene: Scene = {
-        elements: sceneResult.processed
-      };
-      request.scenes.push(scene);
-    }
-  } else {
-    result.errors.push('No valid video or audio elements found for mergeVideoAudio');
-  }
-}
-
-/**
- * Build scenes for mergeVideos operation
- */
-function buildMergeVideosScenes(
-  request: JSON2VideoRequest,
-  parameters: CollectedParameters,
-  result: RequestBuildResult
-): void {
-
-  if (!parameters.sceneElements || parameters.sceneElements.length === 0) {
-    result.errors.push('No video elements found for mergeVideos');
-    return;
-  }
-
-  // Group elements by sceneIndex (if specified) or create separate scenes for each video
-  const sceneGroups = groupElementsForMergeVideos(parameters.sceneElements);
-  
-  sceneGroups.forEach((elements, index) => {
-    const sceneResult = processElements(elements);
-    if (sceneResult.errors.length > 0) {
-      result.errors.push(...sceneResult.errors.map(err => `Scene ${index + 1}: ${err}`));
-    }
-    
-    if (sceneResult.processed.length > 0) {
-      const scene: Scene = {
-        elements: sceneResult.processed
-      };
-
-      // Apply transition settings if specified and not the last scene
-      if (parameters.operationSettings?.transition && 
-          parameters.operationSettings.transition !== 'none' &&
-          index < sceneGroups.length - 1) {
-        scene.transition = {
-          style: parameters.operationSettings.transition as any,
-          duration: parameters.operationSettings.transitionDuration || 1
-        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        result.errors.push(`Element ${index + 1}: ${errorMessage}`);
       }
-
-      request.scenes.push(scene);
-    }
-  });
-
-  // Special handling for single video
-  if (request.scenes.length === 1) {
-    result.warnings.push('mergeVideos with single video - consider using mergeVideoAudio for audio overlay');
+    });
   }
-}
 
-/**
- * Group scene elements for mergeVideos operation
- */
-function groupElementsForMergeVideos(sceneElements: any[]): any[][] {
-  // For mergeVideos, each video element becomes its own scene
-  // Unless sceneIndex is specified (for future grouping support)
-  const groups: any[][] = [];
-  
-  sceneElements.forEach(element => {
-    if (element.sceneIndex !== undefined) {
-      // Use specified scene grouping
-      if (!groups[element.sceneIndex]) {
-        groups[element.sceneIndex] = [];
-      }
-      groups[element.sceneIndex].push(element);
+  // Add the scene to the request (even if empty)
+  request.scenes.push(scene);
+
+  // Operation-specific adjustments
+  adjustForOperation(request, parameters, result);
+
+  // Warnings for empty content
+  if (scene.elements.length === 0) {
+    if (!parameters.subtitles) {
+      result.warnings.push('No elements or subtitles provided - video will be empty');
     } else {
-      // Each element gets its own scene
-      groups.push([element]);
+      result.warnings.push('No scene elements provided - only subtitles will appear');
     }
-  });
-
-  return groups.filter(group => group.length > 0);
+  }
 }
 
 /**
- * Handle cases where no scenes were created
+ * Apply operation-specific adjustments to the request
  */
-function handleEmptyScenes(
+function adjustForOperation(
   request: JSON2VideoRequest,
   parameters: CollectedParameters,
   result: RequestBuildResult
 ): void {
 
-  switch (parameters.action) {
+  switch (parameters.operation) {
     case 'createMovie':
-      if (parameters.movieElements.length > 0) {
-        // Has movie elements but no scene elements - create empty scene
-        result.warnings.push('No scene elements provided, creating empty scene with movie elements');
-        request.scenes.push({ elements: [] });
-      } else {
-        // No elements at all
-        result.warnings.push('No elements provided, creating empty scene');
-        request.scenes.push({ elements: [] });
+      // No specific adjustments needed - already handles movie elements and scenes
+      break;
+
+    case 'mergeVideoAudio':
+      // Ensure we have video and audio elements
+      const scene = request.scenes[0];
+      if (scene && scene.elements) {
+        const hasVideo = scene.elements.some(el => el.type === 'video');
+        const hasAudio = scene.elements.some(el => el.type === 'audio');
+        
+        if (!hasVideo) {
+          result.warnings.push('mergeVideoAudio: No video element found');
+        }
+        if (!hasAudio) {
+          result.warnings.push('mergeVideoAudio: No audio element found');
+        }
       }
       break;
-    
-    case 'mergeVideoAudio':
+
     case 'mergeVideos':
-      // These operations should have scene elements - errors already reported in validation
-      result.warnings.push(`No scenes created for ${parameters.action} operation`);
-      request.scenes.push({ elements: [] });
+      // For mergeVideos, create separate scenes for each video element
+      if (request.scenes[0] && request.scenes[0].elements) {
+        const videoElements = request.scenes[0].elements.filter(el => el.type === 'video');
+        const otherElements = request.scenes[0].elements.filter(el => el.type !== 'video');
+        
+        if (videoElements.length > 1) {
+          // Create separate scenes for each video
+          request.scenes = videoElements.map((videoElement, index) => ({
+            elements: [videoElement, ...otherElements]
+          }));
+          
+          result.warnings.push(`Created ${videoElements.length} scenes for mergeVideos operation`);
+        } else if (videoElements.length === 1) {
+          result.warnings.push('mergeVideos with single video - consider using createMovie or mergeVideoAudio');
+        } else {
+          result.warnings.push('mergeVideos: No video elements found');
+        }
+      }
       break;
   }
 }
@@ -395,7 +271,7 @@ function applyCommonRequestProperties(
   parameters: CollectedParameters
 ): void {
   
-  // Apply export configurations (replaces webhook comment hack)
+  // Apply export configurations
   if (parameters.exportConfigs && parameters.exportConfigs.length > 0) {
     request.exports = parameters.exportConfigs;
   }
@@ -409,4 +285,28 @@ function applyCommonRequestProperties(
       request.comment = recordComment;
     }
   }
+
+  // Ensure we have an ID
+  if (!request.id) {
+    request.id = parameters.recordId || `n8n-${Date.now()}`;
+  }
+}
+
+/**
+ * Helper to check if request is effectively empty
+ */
+export function isEmptyRequest(request: JSON2VideoRequest): boolean {
+  // Has movie-level elements (like subtitles)
+  if (request.elements && request.elements.length > 0) {
+    return false;
+  }
+  
+  // Has scene elements
+  if (request.scenes && request.scenes.length > 0) {
+    return !request.scenes.some(scene => 
+      scene.elements && scene.elements.length > 0
+    );
+  }
+  
+  return true;
 }

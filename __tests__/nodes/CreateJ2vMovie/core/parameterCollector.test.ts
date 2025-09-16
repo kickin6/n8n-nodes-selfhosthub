@@ -261,9 +261,27 @@ describe('core/parameterCollector', () => {
         expect(result.operationSettings?.transition).toBe('fade');
         expect(result.operationSettings?.transitionDuration).toBe(1.0);
       });
+
+      it('should use default transition settings when parameters are not available', () => {
+        const mockExecute = {
+          getNodeParameter: (paramName: string, itemIndex: number, defaultValue?: any) => {
+            if (paramName === 'operation') return 'mergeVideos';
+            if (paramName === 'advancedModeMergeVideos') return false;
+            if (paramName === 'transition' || paramName === 'transitionDuration') {
+              throw new Error('Parameter not available');
+            }
+            return defaultValue;
+          }
+        } as any;
+
+        const result = collectParameters.call(mockExecute, 0);
+        
+        expect(result.operationSettings?.transition).toBe('none');
+        expect(result.operationSettings?.transitionDuration).toBe(1);
+      });
     });
 
-    describe('action parameter mapping', () => {
+    describe('operation parameter mapping', () => {
       it('should handle operation to operation mapping', () => {
         const mockExecute = createMockExecute({
           operation: 'createMovie',
@@ -312,9 +330,9 @@ describe('core/parameterCollector', () => {
         expect(result.jsonTemplate).toBe('{"transition": "crossfade"}');
       });
 
-      it('should handle missing action-specific template', () => {
+      it('should handle missing operation-specific template', () => {
         const mockExecute = createMockExecute({
-          operation: 'unknownAction',
+          operation: 'unknownOperation',
           advancedMode: true
         });
 
@@ -571,45 +589,6 @@ describe('core/parameterCollector', () => {
       });
     });
 
-    describe('advanced mode overrides', () => {
-      it('should collect override parameters', () => {
-        const mockExecute = createMockExecute({
-          operation: 'createMovie',
-          advancedMode: true,
-          jsonTemplate: '{"width": 1024}',
-          width: 1920,
-          height: 1080,
-          quality: 'high'
-        });
-
-        const result = collectParameters.call(mockExecute, 0);
-
-        expect(result.advancedOverrides).toEqual({
-          width: 1920,
-          height: 1080,
-          quality: 'high'
-        });
-      });
-
-      it('should ignore null/undefined/empty override values', () => {
-        const mockExecute = createMockExecute({
-          operation: 'createMovie',
-          advancedMode: true,
-          jsonTemplate: '{"width": 1024}',
-          width: 1920,
-          height: null,
-          quality: '',
-          cache: undefined
-        });
-
-        const result = collectParameters.call(mockExecute, 0);
-
-        expect(result.advancedOverrides).toEqual({
-          width: 1920
-        });
-      });
-    });
-
     describe('common properties', () => {
       it('should collect recordId when available', () => {
         const mockExecute = createMockExecute({
@@ -623,18 +602,16 @@ describe('core/parameterCollector', () => {
         expect(result.recordId).toBe('test-record-123');
       });
 
-      it('should collect cache and draft settings', () => {
+      it('should collect sceneDuration when available', () => {
         const mockExecute = createMockExecute({
           operation: 'createMovie',
           advancedMode: false,
-          cache: false,
-          draft: true
+          sceneDuration: 5.5
         });
 
         const result = collectParameters.call(mockExecute, 0);
 
-        expect(result.cache).toBe(false);
-        expect(result.draft).toBe(true);
+        expect(result.sceneDuration).toBe(5.5);
       });
 
       it('should handle missing optional parameters gracefully', () => {
@@ -646,9 +623,8 @@ describe('core/parameterCollector', () => {
         const result = collectParameters.call(mockExecute, 0);
 
         expect(result.recordId).toBe('');
-        expect(result.cache).toBe(true);
-        expect(result.draft).toBe(false);
         expect(result.exportConfigs).toEqual([]);
+        expect(result.sceneDuration).toBe(-1);
       });
     });
   });
@@ -663,7 +639,7 @@ describe('core/parameterCollector', () => {
         ['mergeVideoAudio with no elements', { operation: 'mergeVideoAudio', movieElements: [], sceneElements: [] }, false, ['mergeVideoAudio operation requires at least a video or audio element'], ['No operation settings found']],
         ['mergeVideos with elements', { operation: 'mergeVideos', movieElements: [], sceneElements: [{ type: 'video', src: 'test.mp4' }], operationSettings: { outputSettings: { width: 1920 } } }, true, [], []],
         ['mergeVideos with no elements', { operation: 'mergeVideos', movieElements: [], sceneElements: [] }, true, [], ['mergeVideos operation requires at least one video element', 'No operation settings found']],
-        ['unknown action', { operation: 'unknownAction', movieElements: [], sceneElements: [] }, false, ['Invalid operation: unknownAction'], ['No operation settings found']]
+        ['unknown operation', { operation: 'unknownOperation', movieElements: [], sceneElements: [] }, false, ['Invalid operation: unknownOperation'], ['No operation settings found']]
       ])('should validate %s', (_, parametersInput, expectedValid, expectedErrors, expectedWarnings) => {
         const parameters = { 
           isAdvancedMode: false, 

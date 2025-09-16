@@ -1,38 +1,15 @@
 // nodes/CreateJ2vMovie/shared/elementFields.ts
+// COMPLETE REFACTOR: Fixed field ordering, image logic, JSON objects, and missing parameters
 
 import { INodeProperties } from 'n8n-workflow';
 
-// =============================================================================
-// ELEMENT TYPE GROUPS FOR displayOptions.show
-// =============================================================================
-
-// All elements except subtitles (subtitles only has basic properties)
-const COMMON_ELEMENT_TYPES = ['video', 'audio', 'image', 'text', 'voice', 'component', 'html', 'audiogram'];
-
-// Elements that support full visual transformations
-const VISUAL_ELEMENT_TYPES = ['video', 'image', 'component', 'html', 'audiogram'];
-
-// Elements that support basic positioning (includes text with limited visual properties)
-const POSITIONING_ELEMENT_TYPES = ['video', 'image', 'text', 'component', 'html', 'audiogram'];
-
-// Elements with full audio controls (seek, loop, volume, muted)
-const FULL_AUDIO_TYPES = ['video', 'audio'];
-
-// Voice elements (limited audio properties - volume, muted only)
-const VOICE_AUDIO_TYPES = ['voice'];
-
-// All audio-capable elements
-const ALL_AUDIO_TYPES = ['video', 'audio', 'voice'];
-
-// =============================================================================
-// COMMON ELEMENT FIELDS
-// =============================================================================
-
 /**
- * Common fields that appear in all element types
- * These are the base properties shared across all elements
+ * Complete unified element fields with proper ordering and full API coverage
  */
-export const commonElementFields: INodeProperties[] = [
+export const elementFields: INodeProperties[] = [
+  // =============================================================================
+  // ELEMENT TYPE (ALWAYS FIRST)
+  // =============================================================================
   {
     displayName: 'Element Type',
     name: 'type',
@@ -42,1347 +19,1114 @@ export const commonElementFields: INodeProperties[] = [
       { name: 'Audio', value: 'audio' },
       { name: 'Image', value: 'image' },
       { name: 'Text', value: 'text' },
-      { name: 'Voice', value: 'voice' },
+      { name: 'Voice/TTS', value: 'voice' },
       { name: 'Component', value: 'component' },
       { name: 'HTML', value: 'html' },
       { name: 'Audiogram', value: 'audiogram' },
-      { name: 'Subtitles', value: 'subtitles' },
     ],
     default: 'video',
-    description: 'Type of element to add',
+    description: 'Type of element to add to the video',
   },
 
-  // ELEMENT SPECIFIC SOURCE URL
+  // =============================================================================
+  // SOURCE/CONTENT FIELDS (TYPE-SPECIFIC, ALWAYS VISIBLE)
+  // =============================================================================
+  
+  // Video Source
   {
-    displayName: 'Source URL',
+    displayName: 'Video Source URL',
     name: 'src',
     type: 'string',
     default: '',
     required: true,
-    description: 'URL of the media file. Leave empty for AI-generated images.',
+    description: 'URL of the video file',
     displayOptions: {
-      show: {
-        type: ['video', 'audio', 'audiogram', 'html'],
-      },
+      show: { type: ['video'] }
     },
   },
+
+  // Audio Source
   {
-    displayName: 'Source Image URL',
+    displayName: 'Audio Source URL',
     name: 'src',
     type: 'string',
     default: '',
-    required: false,
-    description: 'URL of the image file. Leave empty for AI-generated images.',
+    required: true,
+    description: 'URL of the audio file',
     displayOptions: {
-      show: {
-        type: ['image'],
-      },
+      show: { type: ['audio'] }
     },
   },
+
+  // Image Source (NOT required when using AI generation)
+  {
+    displayName: 'Image Source URL',
+    name: 'src',
+    type: 'string',
+    default: '',
+    required: false, // FIXED: Not required when using AI prompt
+    description: 'URL of the image file (leave empty if using AI generation)',
+    displayOptions: {
+      show: { type: ['image'] }
+    },
+  },
+
+  // Image AI Prompt (alternative to src)
+  {
+    displayName: 'AI Prompt',
+    name: 'prompt',
+    type: 'string',
+    typeOptions: { rows: 3 },
+    default: '',
+    required: false,
+    description: 'Text prompt for AI image generation (alternative to source URL)',
+    displayOptions: {
+      show: { type: ['image'] }
+    },
+  },
+
+  // Text Content
+  {
+    displayName: 'Text Content',
+    name: 'text',
+    type: 'string',
+    typeOptions: { rows: 3 },
+    default: '',
+    required: true,
+    description: 'Text content to display or convert to speech',
+    displayOptions: {
+      show: { type: ['text', 'voice'] }
+    },
+  },
+
+  // Component ID
   {
     displayName: 'Component ID',
     name: 'component',
     type: 'string',
     default: '',
     required: true,
-    description: 'Pre-defined component ID from the JSON2Video component library',
+    description: 'Pre-defined component ID from JSON2Video library',
     displayOptions: {
-      show: {
-        type: ['component'],
-      },
+      show: { type: ['component'] }
     },
   },
+
+  // HTML Source
   {
-    displayName: 'Text Content',
-    name: 'text',
+    displayName: 'HTML Source URL',
+    name: 'src',
     type: 'string',
-    typeOptions: {
-      rows: 4,
+    default: '',
+    description: 'URL of the webpage to render',
+    displayOptions: {
+      show: { type: ['html'] }
     },
+  },
+
+  // HTML Code (alternative to src)
+  {
+    displayName: 'HTML Code',
+    name: 'html',
+    type: 'string',
+    typeOptions: { rows: 5 },
+    default: '',
+    description: 'HTML snippet to render (alternative to source URL)',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+
+  // Audiogram Source
+  {
+    displayName: 'Audio Source URL',
+    name: 'src',
+    type: 'string',
     default: '',
     required: true,
-    description: 'Text content to display or convert to speech',
+    description: 'URL of the audio file for waveform visualization',
     displayOptions: {
-      show: {
-        type: ['text', 'voice'],
-      },
+      show: { type: ['audiogram'] }
     },
   },
-];
 
-// =============================================================================
-// TIMING FIELDS
-// =============================================================================
-
-/**
- * Common timing properties used by all elements
- */
-export const commonTimingFields: INodeProperties[] = [
+  // =============================================================================
+  // BASIC TIMING (ALWAYS VISIBLE)
+  // =============================================================================
   {
-    displayName: 'Timing',
-    name: 'timing',
-    type: 'collection',
-    placeholder: 'Add Timing Option',
-    default: {},
-    description: 'Configure timing and duration options',
-    displayOptions: { show: { type: COMMON_ELEMENT_TYPES } },
-    options: [
-      {
-        displayName: 'Start Time',
-        name: 'start',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'When the element starts appearing (seconds)',
-      },
-      {
-        displayName: 'Duration',
-        name: 'duration',
-        type: 'number',
-        typeOptions: {
-          numberPrecision: 2,
-        },
-        default: -1,
-        description: 'Duration of the element (-1 = auto-detect from media, -2 = match scene)',
-      },
-      {
-        displayName: 'Extra Time',
-        name: 'extraTime',
-        type: 'number',
-        typeOptions: {
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'Additional time to extend duration beyond detected length',
-      },
-      {
-        displayName: 'Z-Index (Layer)',
-        name: 'zIndex',
-        type: 'number',
-        default: 0,
-        description: 'Layer order (higher numbers appear on top)',
-      },
-      {
-        displayName: 'Fade In',
-        name: 'fadeIn',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'Fade in duration (seconds)',
-      },
-      {
-        displayName: 'Fade Out',
-        name: 'fadeOut',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'Fade out duration (seconds)',
-      },
-    ],
+    displayName: 'Start Time (seconds)',
+    name: 'start',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'When the element starts appearing in the video',
   },
-];
+  {
+    displayName: 'Duration (seconds)',
+    name: 'duration',
+    type: 'number',
+    typeOptions: { numberPrecision: 2 },
+    default: -1,
+    description: 'Element duration (-1=auto-detect, -2=match scene duration)',
+  },
 
-// =============================================================================
-// POSITIONING FIELDS
-// =============================================================================
+  // =============================================================================
+  // SECTION 1: POSITIONING TOGGLE → POSITIONING FIELDS
+  // =============================================================================
+  {
+    displayName: 'Position & Size',
+    name: 'showPositioning',
+    type: 'boolean',
+    default: false,
+    description: 'Configure element position and dimensions',
+    displayOptions: {
+      show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
+    },
+  },
 
-/**
- * Position and dimension properties for visual elements
- */
-export const positionFields: INodeProperties[] = [
+  // Positioning fields appear immediately after toggle
+  {
+    displayName: 'Position',
+    name: 'position',
+    type: 'options',
+    options: [
+      { name: 'Top Left', value: 'top-left' },
+      { name: 'Top Center', value: 'top-center' },
+      { name: 'Top Right', value: 'top-right' },
+      { name: 'Center Left', value: 'center-left' },
+      { name: 'Center Center', value: 'center-center' },
+      { name: 'Center Right', value: 'center-right' },
+      { name: 'Bottom Left', value: 'bottom-left' },
+      { name: 'Bottom Center', value: 'bottom-center' },
+      { name: 'Bottom Right', value: 'bottom-right' },
+      { name: 'Custom Coordinates', value: 'custom' },
+    ],
+    default: 'center-center',
+    description: 'Element position preset or custom coordinates',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
+        showPositioning: [true]
+      }
+    },
+  },
+  {
+    displayName: 'X Position',
+    name: 'x',
+    type: 'number',
+    default: 0,
+    description: 'Horizontal position in pixels from left edge',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
+        showPositioning: [true],
+        position: ['custom']
+      }
+    },
+  },
+  {
+    displayName: 'Y Position',
+    name: 'y',
+    type: 'number',
+    default: 0,
+    description: 'Vertical position in pixels from top edge',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
+        showPositioning: [true],
+        position: ['custom']
+      }
+    },
+  },
   {
     displayName: 'Width',
     name: 'width',
     type: 'number',
     default: -1,
-    description: 'Element width in pixels (-1 = auto)',
-    displayOptions: { show: { type: POSITIONING_ELEMENT_TYPES } },
+    description: 'Element width in pixels (-1=auto)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
+        showPositioning: [true]
+      }
+    },
   },
   {
     displayName: 'Height',
     name: 'height',
     type: 'number',
     default: -1,
-    description: 'Element height in pixels (-1 = auto)',
-    displayOptions: { show: { type: POSITIONING_ELEMENT_TYPES } },
+    description: 'Element height in pixels (-1=auto)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
+        showPositioning: [true]
+      }
+    },
   },
   {
-    displayName: 'Positioning',
-    name: 'positioning',
-    type: 'collection',
-    placeholder: 'Add Position Option',
-    default: {},
-    description: 'Configure element positioning options',
-    displayOptions: { show: { type: POSITIONING_ELEMENT_TYPES } },
+    displayName: 'Resize Mode',
+    name: 'resize',
+    type: 'options',
     options: [
-      {
-        displayName: 'Position',
-        name: 'position',
-        type: 'options',
-        options: [
-          { name: 'Custom (Set X/Y)', value: 'custom' },
-          { name: 'Top Left', value: 'top-left' },
-          { name: 'Top Center', value: 'top-center' },
-          { name: 'Top Right', value: 'top-right' },
-          { name: 'Center Left', value: 'center-left' },
-          { name: 'Center Center', value: 'center-center' },
-          { name: 'Center Right', value: 'center-right' },
-          { name: 'Bottom Left', value: 'bottom-left' },
-          { name: 'Bottom Center', value: 'bottom-center' },
-          { name: 'Bottom Right', value: 'bottom-right' },
-        ],
-        default: 'custom',
-        description: 'Position preset. Choose custom to set exact coordinates.',
-      },
-      {
-        displayName: 'X Position',
-        name: 'x',
-        type: 'number',
-        default: 0,
-        description: 'Horizontal position in pixels from left edge',
-      },
-      {
-        displayName: 'Y Position',
-        name: 'y',
-        type: 'number',
-        default: 0,
-        description: 'Vertical position in pixels from top edge',
-      },
+      { name: 'Cover (fill and crop)', value: 'cover' },
+      { name: 'Contain (fit inside)', value: 'contain' },
+      { name: 'Fill (stretch to fit)', value: 'fill' },
+      { name: 'Fit (scale down only)', value: 'fit' },
     ],
+    default: 'cover',
+    description: 'How to resize element to fit dimensions',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showPositioning: [true]
+      }
+    },
   },
-];
 
-// =============================================================================
-// VISUAL TRANSFORM FIELDS
-// =============================================================================
-
-/**
- * Visual effects and transformations for visual elements
- */
-export const visualTransformFields: INodeProperties[] = [
-  {
-    displayName: 'Visual Effects',
-    name: 'visualEffects',
-    type: 'collection',
-    placeholder: 'Add Visual Effect',
-    default: {},
-    description: 'Configure visual effects and transformations',
-    displayOptions: { show: { type: VISUAL_ELEMENT_TYPES } },
-    options: [
-      {
-        displayName: 'Resize Mode',
-        name: 'resize',
-        type: 'options',
-        options: [
-          { name: 'Cover (Fill & Crop)', value: 'cover' },
-          { name: 'Contain (Fit Inside)', value: 'contain' },
-          { name: 'Fill (Stretch)', value: 'fill' },
-          { name: 'Fit (Scale Down)', value: 'fit' },
-        ],
-        default: 'cover',
-        description: 'How to resize element to fit dimensions',
-      },
-      {
-        displayName: 'Pan Direction',
-        name: 'pan',
-        type: 'options',
-        options: [
-          { name: 'Left', value: 'left' },
-          { name: 'Right', value: 'right' },
-          { name: 'Top', value: 'top' },
-          { name: 'Bottom', value: 'bottom' },
-          { name: 'Top Left', value: 'top-left' },
-          { name: 'Top Right', value: 'top-right' },
-          { name: 'Bottom Left', value: 'bottom-left' },
-          { name: 'Bottom Right', value: 'bottom-right' },
-        ],
-        default: '',
-        description: 'Pan direction for Ken Burns effect',
-      },
-      {
-        displayName: 'Pan Distance',
-        name: 'panDistance',
-        type: 'number',
-        typeOptions: {
-          minValue: 0.01,
-          maxValue: 0.5,
-          numberPrecision: 2,
-        },
-        default: 0.1,
-        description: 'Pan distance (0.01-0.5)',
-      },
-      {
-        displayName: 'Pan Crop',
-        name: 'panCrop',
-        type: 'boolean',
-        default: true,
-        description: 'Stretch during pan to avoid black borders',
-      },
-      {
-        displayName: 'Zoom',
-        name: 'zoom',
-        type: 'number',
-        typeOptions: {
-          minValue: -10,
-          maxValue: 10,
-          numberPrecision: 1,
-        },
-        default: 0,
-        description: 'Zoom level (-10 to 10)',
-      },
-      {
-        displayName: 'Flip Horizontal',
-        name: 'flipHorizontal',
-        type: 'boolean',
-        default: false,
-        description: 'Mirror element horizontally',
-      },
-      {
-        displayName: 'Flip Vertical',
-        name: 'flipVertical',
-        type: 'boolean',
-        default: false,
-        description: 'Mirror element vertically',
-      },
-      {
-        displayName: 'Mask',
-        name: 'mask',
-        type: 'string',
-        default: '',
-        description: 'URL of mask image for transparency effects',
-      },
-    ],
-  },
-];
-
-// =============================================================================
-// FIXED COLLECTION SETTINGS
-// =============================================================================
-
-/**
- * Crop settings as fixedCollection
- */
-export const cropSettings: INodeProperties = {
-  displayName: 'Crop',
-  name: 'crop',
-  type: 'fixedCollection',
-  default: {},
-  description: 'Configure cropping area',
-  displayOptions: { show: { type: VISUAL_ELEMENT_TYPES } },
-  typeOptions: {
-    multipleValues: false,
-  },
-  options: [
-    {
-      name: 'cropValues',
-      displayName: 'Crop Settings',
-      values: [
-        {
-          displayName: 'Width',
-          name: 'width',
-          type: 'number',
-          default: 100,
-          description: 'Crop width in pixels',
-        },
-        {
-          displayName: 'Height',
-          name: 'height',
-          type: 'number',
-          default: 100,
-          description: 'Crop height in pixels',
-        },
-        {
-          displayName: 'X Offset',
-          name: 'x',
-          type: 'number',
-          default: 0,
-          description: 'Horizontal crop start position',
-        },
-        {
-          displayName: 'Y Offset',
-          name: 'y',
-          type: 'number',
-          default: 0,
-          description: 'Vertical crop start position',
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * Rotation settings as fixedCollection
- */
-export const rotationSettings: INodeProperties = {
-  displayName: 'Rotate',
-  name: 'rotate',
-  type: 'fixedCollection',
-  default: {},
-  description: 'Configure rotation animation',
-  displayOptions: { show: { type: VISUAL_ELEMENT_TYPES } },
-  typeOptions: {
-    multipleValues: false,
-  },
-  options: [
-    {
-      name: 'rotationValues',
-      displayName: 'Rotation Settings',
-      values: [
-        {
-          displayName: 'Angle',
-          name: 'angle',
-          type: 'number',
-          typeOptions: {
-            minValue: -360,
-            maxValue: 360,
-          },
-          default: 0,
-          description: 'Rotation angle in degrees',
-        },
-        {
-          displayName: 'Speed',
-          name: 'speed',
-          type: 'number',
-          typeOptions: {
-            minValue: 0.1,
-            maxValue: 10,
-            numberPrecision: 1,
-          },
-          default: 1,
-          description: 'Rotation speed multiplier',
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * Chroma key settings as fixedCollection
- */
-export const chromaKeySettings: INodeProperties = {
-  displayName: 'Chroma Key',
-  name: 'chromaKey',
-  type: 'fixedCollection',
-  default: {},
-  description: 'Configure green screen removal',
-  displayOptions: { show: { type: VISUAL_ELEMENT_TYPES } },
-  typeOptions: {
-    multipleValues: false,
-  },
-  options: [
-    {
-      name: 'chromaValues',
-      displayName: 'Chroma Key Settings',
-      values: [
-        {
-          displayName: 'Color',
-          name: 'color',
-          type: 'color',
-          default: '#00FF00',
-          description: 'Color to remove (typically green #00FF00)',
-        },
-        {
-          displayName: 'Tolerance',
-          name: 'tolerance',
-          type: 'number',
-          typeOptions: {
-            minValue: 0,
-            maxValue: 100,
-          },
-          default: 20,
-          description: 'Color tolerance (0-100)',
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * Color correction settings as regular collection
- */
-export const colorCorrectionSettings: INodeProperties = {
-  displayName: 'Color Correction',
-  name: 'correction',
-  type: 'collection',
-  placeholder: 'Add Correction',
-  default: {},
-  description: 'Configure color adjustments',
-  displayOptions: { show: { type: VISUAL_ELEMENT_TYPES } },
-  options: [
-    {
-      displayName: 'Brightness',
-      name: 'brightness',
-      type: 'number',
-      typeOptions: {
-        minValue: -1,
-        maxValue: 1,
-        numberPrecision: 2,
-      },
-      default: 0,
-      description: 'Brightness adjustment (-1 to 1)',
-    },
-    {
-      displayName: 'Contrast',
-      name: 'contrast',
-      type: 'number',
-      typeOptions: {
-        minValue: -1000,
-        maxValue: 1000,
-        numberPrecision: 1,
-      },
-      default: 1,
-      description: 'Contrast adjustment (-1000 to 1000)',
-    },
-    {
-      displayName: 'Gamma',
-      name: 'gamma',
-      type: 'number',
-      typeOptions: {
-        minValue: 0.1,
-        maxValue: 10,
-        numberPrecision: 2,
-      },
-      default: 1,
-      description: 'Gamma adjustment (0.1 to 10)',
-    },
-    {
-      displayName: 'Saturation',
-      name: 'saturation',
-      type: 'number',
-      typeOptions: {
-        minValue: 0,
-        maxValue: 3,
-        numberPrecision: 2,
-      },
-      default: 1,
-      description: 'Saturation adjustment (0 to 3)',
-    },
-  ],
-};
-
-// =============================================================================
-// AUDIO CONTROL FIELDS
-// =============================================================================
-
-/**
- * Audio control properties for audio-capable elements
- */
-export const audioControlFields: INodeProperties[] = [
+  // =============================================================================
+  // SECTION 2: AUDIO CONTROLS TOGGLE → AUDIO FIELDS
+  // =============================================================================
   {
     displayName: 'Audio Controls',
-    name: 'audioControls',
-    type: 'collection',
-    placeholder: 'Add Audio Option',
-    default: {},
-    description: 'Configure audio playback options',
-    displayOptions: { show: { type: ALL_AUDIO_TYPES } },
-    options: [
-      {
-        displayName: 'Volume',
-        name: 'volume',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 10,
-          numberPrecision: 2,
-        },
-        default: 1,
-        description: 'Volume level (0-10). 0 = mute, 1 = normal, 10 = maximum amplification.',
-      },
-      {
-        displayName: 'Muted',
-        name: 'muted',
-        type: 'boolean',
-        default: false,
-        description: 'Mute the audio track',
-      },
-      {
-        displayName: 'Seek (Start Offset)',
-        name: 'seek',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'Start offset within the audio file (seconds)',
-        displayOptions: { show: { type: FULL_AUDIO_TYPES } },
-      },
-      {
-        displayName: 'Loop',
-        name: 'loop',
-        type: 'number',
-        typeOptions: {
-          minValue: -1,
-          numberPrecision: 0,
-        },
-        default: undefined,
-        description: 'Loop count (-1=infinite, positive number=repeat count)',
-        displayOptions: { show: { type: FULL_AUDIO_TYPES } },
-      },
-    ],
+    name: 'showAudioControls',
+    type: 'boolean',
+    default: false,
+    description: 'Configure volume, muting, and playback options',
+    displayOptions: {
+      show: { type: ['video', 'audio', 'voice'] }
+    },
   },
-];
 
-// =============================================================================
-// VOICE CONTROL FIELDS
-// =============================================================================
-
-/**
- * Voice-specific configuration for TTS elements
- */
-export const voiceControlFields: INodeProperties[] = [
+  // Audio control fields appear immediately after toggle
   {
-    displayName: 'Voice Settings',
-    name: 'voiceSettings',
-    type: 'collection',
-    placeholder: 'Add Voice Option',
-    default: {},
-    description: 'Configure text-to-speech options',
-    displayOptions: { show: { type: ['voice'] } },
-    options: [
-      {
-        displayName: 'Voice',
-        name: 'voice',
-        type: 'string',
-        default: 'en-US-AriaNeural',
-        description: 'Voice ID for text-to-speech. Examples: en-US-AriaNeural, en-GB-LibbyNeural, es-ES-ElviraNeural',
-      },
-      {
-        displayName: 'TTS Model',
-        name: 'model',
-        type: 'options',
-        options: [
-          { name: 'Azure Cognitive Services', value: 'azure' },
-          { name: 'ElevenLabs', value: 'elevenlabs' },
-          { name: 'ElevenLabs Flash v2.5 (Fastest)', value: 'elevenlabs-flash-v2-5' },
-        ],
-        default: 'azure',
-        description: 'Text-to-speech model provider. Azure offers many languages, ElevenLabs offers high quality.',
-      },
-      {
-        displayName: 'Connection ID',
-        name: 'connection',
-        type: 'string',
-        default: '',
-        description: 'Custom API connection ID for using your own TTS API key',
-      },
-    ],
+    displayName: 'Volume',
+    name: 'volume',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 10, numberPrecision: 2 },
+    default: 1,
+    description: 'Volume level (0=mute, 1=normal, 10=max)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'audio', 'voice'],
+        showAudioControls: [true]
+      }
+    },
   },
   {
-    displayName: 'Speech Quality',
-    name: 'speechQuality',
-    type: 'collection',
-    placeholder: 'Add Quality Option',
-    default: {},
-    description: 'Configure speech quality options',
-    displayOptions: { show: { type: ['voice'] } },
-    options: [
-      {
-        displayName: 'Speaking Rate',
-        name: 'rate',
-        type: 'number',
-        typeOptions: {
-          minValue: 0.5,
-          maxValue: 3.0,
-          numberPrecision: 2,
-        },
-        default: 1.0,
-        description: 'Speech rate multiplier (0.5-3.0). 1.0 = normal speed, 0.5 = half speed, 2.0 = double speed.',
-      },
-      {
-        displayName: 'Pitch',
-        name: 'pitch',
-        type: 'number',
-        typeOptions: {
-          minValue: 0.5,
-          maxValue: 2.0,
-          numberPrecision: 2,
-        },
-        default: 1.0,
-        description: 'Voice pitch multiplier (0.5-2.0). 1.0 = normal pitch, lower = deeper, higher = squeakier.',
-      },
-    ],
+    displayName: 'Muted',
+    name: 'muted',
+    type: 'boolean',
+    default: false,
+    description: 'Mute audio track',
+    displayOptions: {
+      show: { 
+        type: ['video', 'audio', 'voice'],
+        showAudioControls: [true]
+      }
+    },
   },
-];
-
-// =============================================================================
-// COMPONENT CONTROL FIELDS
-// =============================================================================
-
-/**
- * Component-specific configuration
- */
-export const componentControlFields: INodeProperties[] = [
   {
-    displayName: 'Component Settings',
-    name: 'componentSettings',
-    type: 'collection',
-    placeholder: 'Add Component Option',
-    default: {},
-    description: 'Configure component customization options',
-    displayOptions: { show: { type: ['component'] } },
-    options: [
-      {
-        displayName: 'Settings',
-        name: 'settings',
-        type: 'json',
-        default: '{}',
-        description: 'Component-specific customization settings as JSON object',
-      },
-    ],
+    displayName: 'Seek (Start Offset)',
+    name: 'seek',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Start offset within file (seconds)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'audio'],
+        showAudioControls: [true]
+      }
+    },
   },
-];
-
-// =============================================================================
-// HTML CONTROL FIELDS  
-// =============================================================================
-
-/**
- * HTML-specific configuration
- */
-export const htmlControlFields: INodeProperties[] = [
   {
-    displayName: 'HTML Content',
-    name: 'htmlContent',
-    type: 'collection',
-    placeholder: 'Add HTML Option',
-    default: {},
-    description: 'Configure HTML content options',
-    displayOptions: { show: { type: ['html'] } },
-    options: [
-      {
-        displayName: 'Content Source',
-        name: 'contentSource',
-        type: 'options',
-        options: [
-          { name: 'HTML Code', value: 'html' },
-          { name: 'Web Page URL', value: 'src' },
-        ],
-        default: 'html',
-        description: 'Source of HTML content to render',
-      },
-      {
-        displayName: 'HTML Code',
-        name: 'html',
-        type: 'string',
-        typeOptions: {
-          rows: 10,
-        },
-        default: '',
-        description: 'HTML snippet to render (supports HTML5, CSS3, JavaScript)',
-        displayOptions: { show: { contentSource: ['html'] } },
-      },
-      {
-        displayName: 'Enable TailwindCSS',
-        name: 'tailwindcss',
-        type: 'boolean',
-        default: false,
-        description: 'Enable TailwindCSS framework for the HTML snippet',
-      },
-      {
-        displayName: 'Wait Time',
-        name: 'wait',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 5,
-          numberPrecision: 1,
-        },
-        default: 2,
-        description: 'Time in seconds to wait before taking screenshot (0-5). Allows page to load.',
-      },
-    ],
+    displayName: 'Loop Count',
+    name: 'loop',
+    type: 'number',
+    typeOptions: { minValue: -1 },
+    default: 0,
+    description: 'Loop count (-1=infinite, 0=no loop, >0=repeat count)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'audio'],
+        showAudioControls: [true]
+      }
+    },
   },
-];
 
-// =============================================================================
-// AUDIOGRAM CONTROL FIELDS
-// =============================================================================
-
-/**
- * Audiogram-specific configuration
- */
-export const audiogramControlFields: INodeProperties[] = [
-  {
-    displayName: 'Audiogram Settings',
-    name: 'audiogramSettings',
-    type: 'collection',
-    placeholder: 'Add Audiogram Option',
-    default: {},
-    description: 'Configure audiogram visualization options',
-    displayOptions: { show: { type: ['audiogram'] } },
-    options: [
-      {
-        displayName: 'Wave Color',
-        name: 'color',
-        type: 'color',
-        default: '#ffffff',
-        description: 'Color of the audio waveform visualization (hex code)',
-      },
-      {
-        displayName: 'Opacity',
-        name: 'opacity',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 1,
-          numberPrecision: 2,
-        },
-        default: 0.5,
-        description: 'Wave opacity (0.0-1.0). 0 = transparent, 1 = fully opaque.',
-      },
-      {
-        displayName: 'Amplitude',
-        name: 'amplitude',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 10,
-          numberPrecision: 1,
-        },
-        default: 5,
-        description: 'Wave amplitude scaling (0-10). Higher values create taller waves.',
-      },
-    ],
-  },
-];
-
-// =============================================================================
-// IMAGE AI GENERATION FIELDS
-// =============================================================================
-
-/**
- * AI image generation configuration (from imageElementFields)
- */
-export const imageAIFields: INodeProperties[] = [
-  {
-    displayName: 'AI Image Generation',
-    name: 'aiGeneration',
-    type: 'collection',
-    placeholder: 'Add AI Option',
-    default: {},
-    description: 'Configure AI image generation options',
-    displayOptions: { show: { type: ['image'] } },
-    options: [
-      {
-        displayName: 'Prompt',
-        name: 'prompt',
-        type: 'string',
-        typeOptions: {
-          rows: 3,
-        },
-        default: '',
-        description: 'Text prompt describing the image to generate',
-      },
-      {
-        displayName: 'AI Model',
-        name: 'model',
-        type: 'options',
-        options: [
-          { name: 'Flux Pro (Best Quality)', value: 'flux-pro' },
-          { name: 'Flux Schnell (Fastest)', value: 'flux-schnell' },
-          { name: 'Freepik Classic', value: 'freepik-classic' },
-        ],
-        default: 'flux-pro',
-        description: 'AI model for image generation. Flux Pro offers best quality, Flux Schnell is fastest.',
-      },
-      {
-        displayName: 'Aspect Ratio',
-        name: 'aspectRatio',
-        type: 'options',
-        options: [
-          { name: 'Horizontal (16:9)', value: 'horizontal' },
-          { name: 'Vertical (9:16)', value: 'vertical' },
-          { name: 'Square (1:1)', value: 'squared' },
-        ],
-        default: 'horizontal',
-        description: 'Image aspect ratio for AI generation',
-      },
-      {
-        displayName: 'Connection ID',
-        name: 'connection',
-        type: 'string',
-        default: '',
-        description: 'Optional connection ID for custom AI API key',
-      },
-      {
-        displayName: 'Model Settings',
-        name: 'modelSettings',
-        type: 'json',
-        default: '{}',
-        description: 'Additional model-specific settings as JSON object',
-      },
-    ],
-  },
-];
-
-// =============================================================================
-// TEXT CONTROL FIELDS
-// =============================================================================
-
-/**
- * Text styling and layout configuration
- */
-export const textControlFields: INodeProperties[] = [
-  // Text Styling Collection
+  // =============================================================================
+  // SECTION 3: TEXT STYLING TOGGLE → TEXT FIELDS
+  // =============================================================================
   {
     displayName: 'Text Styling',
-    name: 'textStyling',
-    type: 'collection',
-    placeholder: 'Add Style Option',
-    default: {},
-    description: 'Configure text appearance and styling options',
-    displayOptions: { show: { type: ['text'] } },
-    options: [
-      {
-        displayName: 'Font Family',
-        name: 'fontFamily',
-        type: 'string',
-        default: 'Arial',
-        description: 'Font family name (e.g., Arial, Helvetica, Times New Roman)',
-      },
-      {
-        displayName: 'Font Size',
-        name: 'fontSize',
-        type: 'number',
-        typeOptions: {
-          minValue: 8,
-          maxValue: 200,
-        },
-        default: 32,
-        description: 'Font size in pixels',
-      },
-      {
-        displayName: 'Font Weight',
-        name: 'fontWeight',
-        type: 'options',
-        options: [
-          { name: 'Light (300)', value: '300' },
-          { name: 'Normal (400)', value: '400' },
-          { name: 'Medium (500)', value: '500' },
-          { name: 'Semi-Bold (600)', value: '600' },
-          { name: 'Bold (700)', value: '700' },
-          { name: 'Extra Bold (800)', value: '800' },
-        ],
-        default: '400',
-        description: 'Font weight/thickness',
-      },
-      {
-        displayName: 'Font Color',
-        name: 'fontColor',
-        type: 'color',
-        default: '#ffffff',
-        description: 'Text color in hex format',
-      },
-      {
-        displayName: 'Background Color',
-        name: 'backgroundColor',
-        type: 'color',
-        default: '',
-        description: 'Text background color. Leave empty for transparent background.',
-      },
-      {
-        displayName: 'Text Style',
-        name: 'style',
-        type: 'options',
-        options: [
-          { name: 'Basic (001)', value: '001' },
-          { name: 'Fade In (002)', value: '002' },
-          { name: 'Type Writer (003)', value: '003' },
-          { name: 'Bounce (004)', value: '004' },
-        ],
-        default: '001',
-        description: 'Text animation style for entrance effects',
-      },
-    ],
+    name: 'showTextStyling',
+    type: 'boolean',
+    default: false,
+    description: 'Configure font, color, and text appearance',
+    displayOptions: {
+      show: { type: ['text'] }
+    },
   },
 
-  // Text Layout Collection
+  // Text styling fields appear immediately after toggle
   {
-    displayName: 'Text Layout',
-    name: 'textLayout',
-    type: 'collection',
-    placeholder: 'Add Layout Option',
-    default: {},
-    description: 'Configure text positioning and spacing options',
-    displayOptions: { show: { type: ['text'] } },
+    displayName: 'Font Family',
+    name: 'fontFamily',
+    type: 'options',
     options: [
-      {
-        displayName: 'Text Alignment',
-        name: 'textAlign',
-        type: 'options',
-        options: [
-          { name: 'Left', value: 'left' },
-          { name: 'Center', value: 'center' },
-          { name: 'Right', value: 'right' },
-          { name: 'Justify', value: 'justify' },
-        ],
-        default: 'center',
-        description: 'Horizontal text alignment within the text box',
-      },
-      {
-        displayName: 'Vertical Position',
-        name: 'verticalPosition',
-        type: 'options',
-        options: [
-          { name: 'Top', value: 'top' },
-          { name: 'Center', value: 'center' },
-          { name: 'Bottom', value: 'bottom' },
-        ],
-        default: 'center',
-        description: 'Vertical alignment of text within the text box bounds',
-      },
-      {
-        displayName: 'Horizontal Position',
-        name: 'horizontalPosition',
-        type: 'options',
-        options: [
-          { name: 'Left', value: 'left' },
-          { name: 'Center', value: 'center' },
-          { name: 'Right', value: 'right' },
-        ],
-        default: 'center',
-        description: 'Horizontal alignment of content within the text box bounds',
-      },
-      {
-        displayName: 'Line Height',
-        name: 'lineHeight',
-        type: 'number',
-        typeOptions: {
-          minValue: 0.5,
-          maxValue: 3.0,
-          numberPrecision: 2,
-        },
-        default: 1.2,
-        description: 'Line spacing multiplier (0.5-3.0). 1.0 = normal, 1.5 = extra space.',
-      },
-      {
-        displayName: 'Letter Spacing',
-        name: 'letterSpacing',
-        type: 'number',
-        typeOptions: {
-          numberPrecision: 2,
-        },
-        default: 0,
-        description: 'Letter spacing in pixels. Positive values increase spacing, negative decreases.',
-      },
+      { name: 'Arial', value: 'Arial' },
+      { name: 'Helvetica', value: 'Helvetica' },
+      { name: 'Times New Roman', value: 'Times New Roman' },
+      { name: 'Georgia', value: 'Georgia' },
+      { name: 'Verdana', value: 'Verdana' },
+      { name: 'Courier New', value: 'Courier New' },
+      { name: 'Roboto', value: 'Roboto' },
+      { name: 'Open Sans', value: 'Open Sans' },
+      { name: 'Lato', value: 'Lato' },
+      { name: 'Montserrat', value: 'Montserrat' },
+      { name: 'Source Sans Pro', value: 'Source Sans Pro' },
     ],
+    default: 'Arial',
+    description: 'Font family name',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Font Size',
+    name: 'fontSize',
+    type: 'number',
+    typeOptions: { minValue: 8, maxValue: 500 },
+    default: 32,
+    description: 'Font size in pixels',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Font Weight',
+    name: 'fontWeight',
+    type: 'options',
+    options: [
+      { name: 'Light (300)', value: '300' },
+      { name: 'Normal (400)', value: '400' },
+      { name: 'Medium (500)', value: '500' },
+      { name: 'Semi-Bold (600)', value: '600' },
+      { name: 'Bold (700)', value: '700' },
+      { name: 'Extra Bold (800)', value: '800' },
+    ],
+    default: '400',
+    description: 'Font weight/thickness',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Color',
+    name: 'fontColor',
+    type: 'color',
+    default: '#ffffff',
+    description: 'Text color',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Background Color',
+    name: 'backgroundColor',
+    type: 'color',
+    default: 'transparent',
+    description: 'Text background color',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Align',
+    name: 'textAlign',
+    type: 'options',
+    options: [
+      { name: 'Left', value: 'left' },
+      { name: 'Center', value: 'center' },
+      { name: 'Right', value: 'right' },
+      { name: 'Justify', value: 'justify' },
+    ],
+    default: 'center',
+    description: 'Text alignment',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Style',
+    name: 'textStyle',
+    type: 'options',
+    options: [
+      { name: 'Style 001', value: '001' },
+      { name: 'Style 002', value: '002' },
+      { name: 'Style 003', value: '003' },
+      { name: 'Style 004', value: '004' },
+    ],
+    default: '001',
+    description: 'Text animation style',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Vertical Position',
+    name: 'verticalPosition',
+    type: 'options',
+    options: [
+      { name: 'Top', value: 'top' },
+      { name: 'Center', value: 'center' },
+      { name: 'Bottom', value: 'bottom' },
+    ],
+    default: 'center',
+    description: 'Vertical text alignment within textbox',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Horizontal Position',
+    name: 'horizontalPosition',
+    type: 'options',
+    options: [
+      { name: 'Left', value: 'left' },
+      { name: 'Center', value: 'center' },
+      { name: 'Right', value: 'right' },
+    ],
+    default: 'center',
+    description: 'Horizontal text alignment within textbox',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Line Height',
+    name: 'lineHeight',
+    type: 'number',
+    typeOptions: { minValue: 0.5, maxValue: 3.0, numberPrecision: 2 },
+    default: 1.2,
+    description: 'Line spacing multiplier',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Letter Spacing',
+    name: 'letterSpacing',
+    type: 'number',
+    default: 0,
+    description: 'Letter spacing in pixels',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Decoration',
+    name: 'textDecoration',
+    type: 'options',
+    options: [
+      { name: 'None', value: 'none' },
+      { name: 'Underline', value: 'underline' },
+      { name: 'Overline', value: 'overline' },
+      { name: 'Line Through', value: 'line-through' },
+    ],
+    default: 'none',
+    description: 'Text decoration style',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Transform',
+    name: 'textTransform',
+    type: 'options',
+    options: [
+      { name: 'None', value: 'none' },
+      { name: 'Uppercase', value: 'uppercase' },
+      { name: 'Lowercase', value: 'lowercase' },
+      { name: 'Capitalize', value: 'capitalize' },
+    ],
+    default: 'none',
+    description: 'Text case transformation',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Text Shadow',
+    name: 'textShadow',
+    type: 'string',
+    default: '',
+    placeholder: 'e.g., 2px 2px 4px rgba(0,0,0,0.5)',
+    description: 'CSS text shadow property',
+    displayOptions: {
+      show: { 
+        type: ['text'],
+        showTextStyling: [true]
+      }
+    },
   },
 
-  // Text Effects Collection
+  // =============================================================================
+  // SECTION 4: VOICE SETTINGS TOGGLE → VOICE FIELDS
+  // =============================================================================
   {
-    displayName: 'Text Effects',
-    name: 'textEffects',
-    type: 'collection',
-    placeholder: 'Add Text Effect',
-    default: {},
-    description: 'Configure text visual effects and decorations',
-    displayOptions: { show: { type: ['text'] } },
+    displayName: 'Voice Settings',
+    name: 'showVoiceSettings',
+    type: 'boolean',
+    default: false,
+    description: 'Configure text-to-speech options',
+    displayOptions: {
+      show: { type: ['voice'] }
+    },
+  },
+
+  // Voice settings fields appear immediately after toggle
+  {
+    displayName: 'Voice ID',
+    name: 'voice',
+    type: 'string',
+    default: 'en-US-AriaNeural',
+    description: 'TTS voice identifier (e.g., en-US-AriaNeural)',
+    displayOptions: {
+      show: { 
+        type: ['voice'],
+        showVoiceSettings: [true]
+      }
+    },
+  },
+  {
+    displayName: 'TTS Model',
+    name: 'model',
+    type: 'options',
     options: [
-      {
-        displayName: 'Text Shadow',
-        name: 'textShadow',
-        type: 'string',
-        default: '',
-        description: 'CSS text-shadow property. Example: "2px 2px 4px rgba(0,0,0,0.5)"',
-      },
-      {
-        displayName: 'Text Decoration',
-        name: 'textDecoration',
-        type: 'options',
-        options: [
-          { name: 'None', value: 'none' },
-          { name: 'Underline', value: 'underline' },
-          { name: 'Overline', value: 'overline' },
-          { name: 'Line Through', value: 'line-through' },
-        ],
-        default: 'none',
-        description: 'Text decoration style',
-      },
-      {
-        displayName: 'Text Transform',
-        name: 'textTransform',
-        type: 'options',
-        options: [
-          { name: 'None', value: 'none' },
-          { name: 'Uppercase', value: 'uppercase' },
-          { name: 'Lowercase', value: 'lowercase' },
-          { name: 'Capitalize', value: 'capitalize' },
-        ],
-        default: 'none',
-        description: 'Text case transformation',
-      },
+      { name: 'Azure Cognitive Services', value: 'azure' },
+      { name: 'ElevenLabs', value: 'elevenlabs' },
+      { name: 'ElevenLabs Flash v2.5', value: 'elevenlabs-flash-v2-5' },
     ],
+    default: 'azure',
+    description: 'Text-to-speech model provider',
+    displayOptions: {
+      show: { 
+        type: ['voice'],
+        showVoiceSettings: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Voice Connection',
+    name: 'connection',
+    type: 'string',
+    default: '',
+    description: 'Connection ID for custom TTS API key',
+    displayOptions: {
+      show: { 
+        type: ['voice'],
+        showVoiceSettings: [true]
+      }
+    },
+  },
+
+  // =============================================================================
+  // SECTION 5: IMAGE GENERATION TOGGLE → AI FIELDS
+  // =============================================================================
+  {
+    displayName: 'AI Image Settings',
+    name: 'showImageGeneration',
+    type: 'boolean',
+    default: false,
+    description: 'Configure AI image generation (when using prompt instead of URL)',
+    displayOptions: {
+      show: { type: ['image'] }
+    },
+  },
+
+  // AI generation fields appear immediately after toggle
+  {
+    displayName: 'AI Model',
+    name: 'model',
+    type: 'options',
+    options: [
+      { name: 'Flux Pro (Best Quality)', value: 'flux-pro' },
+      { name: 'Flux Schnell (Fastest)', value: 'flux-schnell' },
+      { name: 'Freepik Classic', value: 'freepik-classic' },
+    ],
+    default: 'flux-pro',
+    description: 'AI image generation model',
+    displayOptions: {
+      show: { 
+        type: ['image'],
+        showImageGeneration: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Aspect Ratio',
+    name: 'aspectRatio',
+    type: 'options',
+    options: [
+      { name: 'Horizontal', value: 'horizontal' },
+      { name: 'Vertical', value: 'vertical' },
+      { name: 'Square', value: 'squared' },
+    ],
+    default: 'horizontal',
+    description: 'AI image generation aspect ratio',
+    displayOptions: {
+      show: { 
+        type: ['image'],
+        showImageGeneration: [true]
+      }
+    },
+  },
+  {
+    displayName: 'AI Connection',
+    name: 'connection',
+    type: 'string',
+    default: '',
+    description: 'Connection ID for custom AI API key',
+    displayOptions: {
+      show: { 
+        type: ['image'],
+        showImageGeneration: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Model Settings',
+    name: 'modelSettings',
+    type: 'json',
+    default: '{}',
+    description: 'AI model-specific settings as JSON object',
+    displayOptions: {
+      show: { 
+        type: ['image'],
+        showImageGeneration: [true]
+      }
+    },
+  },
+
+  // =============================================================================
+  // SECTION 6: VISUAL EFFECTS TOGGLE → VISUAL EFFECTS FIELDS
+  // =============================================================================
+  {
+    displayName: 'Visual Effects',
+    name: 'showVisualEffects',
+    type: 'boolean',
+    default: false,
+    description: 'Apply visual effects like crop, rotation, color correction',
+    displayOptions: {
+      show: { type: ['video', 'image', 'component', 'html', 'audiogram'] }
+    },
+  },
+
+  // Basic visual effects appear immediately after toggle
+  {
+    displayName: 'Pan Direction',
+    name: 'pan',
+    type: 'options',
+    options: [
+      { name: 'None', value: '' },
+      { name: 'Left', value: 'left' },
+      { name: 'Right', value: 'right' },
+      { name: 'Top', value: 'top' },
+      { name: 'Bottom', value: 'bottom' },
+      { name: 'Top Left', value: 'top-left' },
+      { name: 'Top Right', value: 'top-right' },
+      { name: 'Bottom Left', value: 'bottom-left' },
+      { name: 'Bottom Right', value: 'bottom-right' },
+    ],
+    default: '',
+    description: 'Ken Burns pan effect direction',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Pan Distance',
+    name: 'panDistance',
+    type: 'number',
+    typeOptions: { minValue: 0.01, maxValue: 0.5, numberPrecision: 2 },
+    default: 0.1,
+    description: 'Pan distance (0.01-0.5)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Pan Crop',
+    name: 'panCrop',
+    type: 'boolean',
+    default: true,
+    description: 'Stretch during pan animation',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Zoom',
+    name: 'zoom',
+    type: 'number',
+    typeOptions: { minValue: -10, maxValue: 10, numberPrecision: 1 },
+    default: 0,
+    description: 'Zoom level (-10 to 10)',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Flip Horizontal',
+    name: 'flipHorizontal',
+    type: 'boolean',
+    default: false,
+    description: 'Flip element horizontally',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Flip Vertical',
+    name: 'flipVertical',
+    type: 'boolean',
+    default: false,
+    description: 'Flip element vertically',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+  {
+    displayName: 'Mask URL',
+    name: 'mask',
+    type: 'string',
+    default: '',
+    description: 'Mask image URL for transparency effects',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+
+  // FIXED: Crop as JSON textarea object
+  {
+    displayName: 'Crop Settings',
+    name: 'crop',
+    type: 'json',
+    default: '{}',
+    placeholder: 'e.g., {"width": 100, "height": 100, "x": 0, "y": 0}',
+    description: 'Crop area settings as JSON object with width, height, x, y properties',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+
+  // FIXED: Rotate as JSON textarea object  
+  {
+    displayName: 'Rotation Settings',
+    name: 'rotate',
+    type: 'json',
+    default: '{}',
+    placeholder: 'e.g., {"angle": 45, "speed": 1}',
+    description: 'Rotation settings as JSON object with angle and speed properties',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+
+  // FIXED: Chroma-key as JSON textarea object (with correct kebab-case name)
+  {
+    displayName: 'Chroma Key Settings',
+    name: 'chromaKey',
+    type: 'json',
+    default: '{}',
+    placeholder: 'e.g., {"color": "#00FF00", "tolerance": 25}',
+    description: 'Green screen settings as JSON object with color and tolerance properties',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+
+  // FIXED: Correction as JSON textarea object
+  {
+    displayName: 'Color Correction',
+    name: 'correction',
+    type: 'json',
+    default: '{}',
+    placeholder: 'e.g., {"brightness": 0.1, "contrast": 1.2, "gamma": 1.0, "saturation": 1.1}',
+    description: 'Color correction settings as JSON object',
+    displayOptions: {
+      show: { 
+        type: ['video', 'image', 'component', 'html', 'audiogram'],
+        showVisualEffects: [true]
+      }
+    },
+  },
+
+  // =============================================================================
+  // SECTION 7: ADVANCED SETTINGS TOGGLE → ADVANCED FIELDS
+  // =============================================================================
+  {
+    displayName: 'Advanced Settings',
+    name: 'showAdvancedSettings',
+    type: 'boolean',
+    default: false,
+    description: 'Technical options like ID, conditions, variables, and cache',
+  },
+
+  // Advanced fields appear immediately after toggle
+  {
+    displayName: 'Element ID',
+    name: 'id',
+    type: 'string',
+    default: '',
+    description: 'Unique identifier for this element (auto-generated if empty)',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Comment',
+    name: 'comment',
+    type: 'string',
+    default: '',
+    description: 'Internal comment or note about this element',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Condition',
+    name: 'condition',
+    type: 'string',
+    default: '',
+    description: 'Conditional expression for rendering (e.g., "{{ show_logo == true }}")',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Variables',
+    name: 'variables',
+    type: 'json',
+    default: '{}',
+    description: 'Element-level variables as JSON object',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Cache',
+    name: 'cache',
+    type: 'boolean',
+    default: true,
+    description: 'Use cached render if available',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Extra Time (seconds)',
+    name: 'extraTime',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Additional time after duration',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Z-Index (Layer)',
+    name: 'zIndex',
+    type: 'number',
+    typeOptions: { minValue: -99, maxValue: 99 },
+    default: 0,
+    description: 'Layer order (higher numbers appear on top)',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Fade In (seconds)',
+    name: 'fadeIn',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Fade in duration in seconds',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+  {
+    displayName: 'Fade Out (seconds)',
+    name: 'fadeOut',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Fade out duration in seconds',
+    displayOptions: {
+      show: { showAdvancedSettings: [true] }
+    },
+  },
+
+  // =============================================================================
+  // TYPE-SPECIFIC FIELDS (Component, HTML, Audiogram)
+  // =============================================================================
+  {
+    displayName: 'Component Settings',
+    name: 'settings',
+    type: 'json',
+    default: '{}',
+    description: 'Component configuration as JSON object',
+    displayOptions: {
+      show: { type: ['component'] }
+    },
+  },
+  {
+    displayName: 'Enable TailwindCSS',
+    name: 'tailwindcss',
+    type: 'boolean',
+    default: false,
+    description: 'Enable TailwindCSS framework for HTML snippet',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+  {
+    displayName: 'Wait Time (seconds)',
+    name: 'wait',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 5, numberPrecision: 1 },
+    default: 2,
+    description: 'Time to wait before taking screenshot',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+  {
+    displayName: 'Wave Color',
+    name: 'color',
+    type: 'color',
+    default: '#ffffff',
+    description: 'Audio waveform color',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+  {
+    displayName: 'Wave Opacity',
+    name: 'opacity',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
+    default: 0.5,
+    description: 'Waveform opacity (0=transparent, 1=opaque)',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+  {
+    displayName: 'Wave Amplitude',
+    name: 'amplitude',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 10, numberPrecision: 1 },
+    default: 5,
+    description: 'Wave amplitude scaling (0-10)',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
   },
 ];
-
-// =============================================================================
-// SUBTITLE CONTROL FIELDS
-// =============================================================================
 
 /**
- * Subtitle content and styling configuration
+ * Main element collection parameter
  */
-export const subtitleControlFields: INodeProperties[] = [
-  // Subtitle Content Configuration
-  {
-    displayName: 'Subtitle Content',
-    name: 'subtitleContent',
-    type: 'collection',
-    placeholder: 'Add Subtitle Source',
-    default: {},
-    description: 'Configure subtitle content and source options',
-    displayOptions: { show: { type: ['subtitles'] } },
-    options: [
-      {
-        displayName: 'Content Source',
-        name: 'contentSource',
-        type: 'options',
-        options: [
-          { name: 'Captions Text/File', value: 'captions' },
-          { name: 'Direct Text Input', value: 'text' },
-        ],
-        default: 'captions',
-        description: 'How to provide subtitle content',
-      },
-      {
-        displayName: 'Captions',
-        name: 'captions',
-        type: 'string',
-        typeOptions: {
-          rows: 6,
-        },
-        default: '',
-        description: 'Subtitle file URL (SRT, VTT, ASS) or inline subtitle content',
-        displayOptions: { show: { contentSource: ['captions'] } },
-      },
-      {
-        displayName: 'Text Content',
-        name: 'text',
-        type: 'string',
-        typeOptions: {
-          rows: 4,
-        },
-        default: '',
-        description: 'Direct text input for subtitle content',
-        displayOptions: { show: { contentSource: ['text'] } },
-      },
-      {
-        displayName: 'Language',
-        name: 'language',
-        type: 'string',
-        default: 'en',
-        description: 'Language code for subtitle processing (e.g., en, es, fr, de)',
-      },
-      {
-        displayName: 'Transcription Model',
-        name: 'model',
-        type: 'options',
-        options: [
-          { name: 'Default (Fast)', value: 'default' },
-          { name: 'Whisper (Accurate)', value: 'whisper' },
-        ],
-        default: 'default',
-        description: 'AI model for automatic transcription from audio',
-      },
-    ],
+export const elementCollection: INodeProperties = {
+  displayName: 'Elements',
+  name: 'elements',
+  type: 'fixedCollection',
+  typeOptions: {
+    multipleValues: true,
+    sortable: true,
   },
-
-  // Subtitle Settings Configuration
-  {
-    displayName: 'Subtitle Settings',
-    name: 'subtitleSettings',
-    type: 'collection',
-    placeholder: 'Add Subtitle Setting',
-    default: {},
-    description: 'Configure subtitle appearance and styling options',
-    displayOptions: { show: { type: ['subtitles'] } },
-    options: [
-      {
-        displayName: 'All Caps',
-        name: 'allCaps',
-        type: 'boolean',
-        default: false,
-        description: 'Convert all subtitle text to uppercase',
-      },
-      {
-        displayName: 'Position',
-        name: 'position',
-        type: 'options',
-        options: [
-          { name: 'Bottom Center', value: 'bottom-center' },
-          { name: 'Top Center', value: 'top-center' },
-          { name: 'Center Center', value: 'center-center' },
-          { name: 'Custom (Set X/Y)', value: 'custom' },
-        ],
-        default: 'bottom-center',
-        description: 'Subtitle position on screen',
-      },
-      {
-        displayName: 'Font Size',
-        name: 'fontSize',
-        type: 'number',
-        typeOptions: {
-          minValue: 12,
-          maxValue: 100,
-        },
-        default: 24,
-        description: 'Subtitle font size in pixels',
-      },
-      {
-        displayName: 'Font Family',
-        name: 'fontFamily',
-        type: 'string',
-        default: 'Arial',
-        description: 'Font family for subtitle text',
-      },
-      {
-        displayName: 'Font URL',
-        name: 'fontUrl',
-        type: 'string',
-        default: '',
-        description: 'Custom font URL (optional). Leave empty to use system fonts.',
-      },
-      {
-        displayName: 'Word Color',
-        name: 'wordColor',
-        type: 'color',
-        default: '#ffffff',
-        description: 'Color of the subtitle text',
-      },
-      {
-        displayName: 'Line Color',
-        name: 'lineColor',
-        type: 'color',
-        default: '#ffffff',
-        description: 'Color of text line/stroke',
-      },
-      {
-        displayName: 'Box Color',
-        name: 'boxColor',
-        type: 'color',
-        default: '',
-        description: 'Background box color. Leave empty for transparent.',
-      },
-      {
-        displayName: 'Outline Color',
-        name: 'outlineColor',
-        type: 'color',
-        default: '#000000',
-        description: 'Text outline/border color',
-      },
-      {
-        displayName: 'Outline Width',
-        name: 'outlineWidth',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 10,
-          numberPrecision: 1,
-        },
-        default: 1,
-        description: 'Text outline width in pixels (0 = no outline)',
-      },
-      {
-        displayName: 'Shadow Color',
-        name: 'shadowColor',
-        type: 'color',
-        default: '#000000',
-        description: 'Text shadow color',
-      },
-      {
-        displayName: 'Shadow Offset',
-        name: 'shadowOffset',
-        type: 'number',
-        typeOptions: {
-          minValue: 0,
-          maxValue: 20,
-          numberPrecision: 1,
-        },
-        default: 0,
-        description: 'Text shadow offset distance in pixels (0 = no shadow)',
-      },
-      {
-        displayName: 'Max Words Per Line',
-        name: 'maxWordsPerLine',
-        type: 'number',
-        typeOptions: {
-          minValue: 1,
-          maxValue: 20,
-          numberPrecision: 0,
-        },
-        default: 4,
-        description: 'Maximum number of words displayed per subtitle line',
-      },
-      {
-        displayName: 'X Position',
-        name: 'x',
-        type: 'number',
-        default: 0,
-        description: 'Custom X position (when position is set to custom)',
-        displayOptions: { show: { position: ['custom'] } },
-      },
-      {
-        displayName: 'Y Position',
-        name: 'y',
-        type: 'number',
-        default: 0,
-        description: 'Custom Y position (when position is set to custom)',
-        displayOptions: { show: { position: ['custom'] } },
-      },
-      {
-        displayName: 'Keywords',
-        name: 'keywords',
-        type: 'string',
-        typeOptions: {
-          rows: 3,
-        },
-        default: '',
-        description: 'Comma-separated keywords to improve transcription accuracy (e.g., "JSON2Video, Claude, AI")',
-      },
-      {
-        displayName: 'Word Replacements',
-        name: 'replace',
-        type: 'json',
-        default: '{}',
-        description: 'JSON object mapping words to replace (e.g., {"gonna": "going to", "wanna": "want to"})',
-      },
-    ],
-  },
-];
-
-// =============================================================================
-// COMPLETE ELEMENT FIELDS
-// =============================================================================
-
-/**
- * Complete combined element fields array
- */
-export const completeElementFields: INodeProperties[] = [
-  ...commonElementFields,
-  ...commonTimingFields,
-  ...positionFields,
-  ...visualTransformFields,
-  cropSettings,
-  rotationSettings,
-  chromaKeySettings,
-  colorCorrectionSettings,
-  ...audioControlFields,
-  ...voiceControlFields,
-  ...componentControlFields,
-  ...htmlControlFields,
-  ...audiogramControlFields,
-  ...imageAIFields,
-  ...textControlFields,
-  ...subtitleControlFields,
-];
+  placeholder: 'Add Element',
+  description: 'Video elements (videos, images, text, audio, etc.)',
+  default: {},
+  options: [
+    {
+      name: 'elementValues',
+      displayName: 'Element',
+      values: elementFields,
+    },
+  ],
+};

@@ -7,7 +7,7 @@ describe('core/requestBuilder', () => {
   
   function createBaseParameters(overrides: Partial<CollectedParameters> = {}): CollectedParameters {
     return {
-      action: 'createMovie',
+      operation: 'createMovie',
       isAdvancedMode: false,
       movieElements: [],
       sceneElements: [],
@@ -22,7 +22,7 @@ describe('core/requestBuilder', () => {
         [
           'createMovie with config',
           {
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             movieElements: [{ type: 'subtitles', captions: 'Movie subtitles' }],
             sceneElements: [{ type: 'video', src: 'video.mp4' }],
             operationSettings: {
@@ -41,7 +41,7 @@ describe('core/requestBuilder', () => {
         [
           'createMovie with only scene elements',
           {
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             sceneElements: [{ type: 'text', text: 'Hello World' }]
           },
           {
@@ -51,7 +51,7 @@ describe('core/requestBuilder', () => {
         [
           'mergeVideoAudio basic valid',
           {
-            action: 'mergeVideoAudio' as const,
+            operation: 'mergeVideoAudio' as const,
             sceneElements: [
               { type: 'video', src: 'video.mp4', volume: 1 },
               { type: 'audio', src: 'audio.mp3', volume: 0.8 }
@@ -75,7 +75,7 @@ describe('core/requestBuilder', () => {
         [
           'mergeVideoAudio missing video',
           {
-            action: 'mergeVideoAudio' as const,
+            operation: 'mergeVideoAudio' as const,
             sceneElements: [{ type: 'audio', src: 'audio.mp3' }]
           },
           {
@@ -97,7 +97,7 @@ describe('core/requestBuilder', () => {
         [
           'basic with transitions using 3 videos',
           {
-            action: 'mergeVideos' as const,
+            operation: 'mergeVideos' as const,
             sceneElements: [
               { type: 'video', src: 'video1.mp4', duration: 10 },
               { type: 'video', src: 'video2.mp4', duration: 8 },
@@ -126,7 +126,7 @@ describe('core/requestBuilder', () => {
         [
           'no transitions',
           {
-            action: 'mergeVideos' as const,
+            operation: 'mergeVideos' as const,
             sceneElements: [
               { type: 'video', src: 'video1.mp4' },
               { type: 'video', src: 'video2.mp4' }
@@ -143,7 +143,7 @@ describe('core/requestBuilder', () => {
         [
           'single video with warning',
           {
-            action: 'mergeVideos' as const,
+            operation: 'mergeVideos' as const,
             sceneElements: [{ type: 'video', src: 'video1.mp4' }]
           },
           {
@@ -154,7 +154,7 @@ describe('core/requestBuilder', () => {
         [
           'with sceneIndex grouping',
           {
-            action: 'mergeVideos' as const,
+            operation: 'mergeVideos' as const,
             sceneElements: [
               { type: 'video', src: 'video1.mp4', sceneIndex: 0 },
               { type: 'video', src: 'video2.mp4', sceneIndex: 0 },
@@ -186,7 +186,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle transition duration defaulting', () => {
         const parameters = createBaseParameters({
-          action: 'mergeVideos',
+          operation: 'mergeVideos',
           sceneElements: [
             { type: 'video', src: 'video1.mp4' },
             { type: 'video', src: 'video2.mp4' },
@@ -206,7 +206,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle transition none setting', () => {
         const parameters = createBaseParameters({
-          action: 'mergeVideos',
+          operation: 'mergeVideos',
           sceneElements: [
             { type: 'video', src: 'video1.mp4' },
             { type: 'video', src: 'video2.mp4' }
@@ -222,7 +222,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle sceneIndex grouping with gaps', () => {
         const parameters = createBaseParameters({
-          action: 'mergeVideos',
+          operation: 'mergeVideos',
           sceneElements: [
             { type: 'video', src: 'video1.mp4', sceneIndex: 0 },
             { type: 'video', src: 'video2.mp4', sceneIndex: 2 }
@@ -245,28 +245,28 @@ describe('core/requestBuilder', () => {
       it.each([
         [
           'mergeVideoAudio empty elements',
-          { action: 'mergeVideoAudio' as const, sceneElements: [] },
+          { operation: 'mergeVideoAudio' as const, sceneElements: [] },
           { scenes: [{ elements: [] }] },
           ['No valid video or audio elements found for mergeVideoAudio'],
           ['No scenes created for mergeVideoAudio operation']
         ],
         [
           'mergeVideos empty elements',
-          { action: 'mergeVideos' as const, sceneElements: [] },
+          { operation: 'mergeVideos' as const, sceneElements: [] },
           { scenes: [{ elements: [] }] },
           ['No video elements found for mergeVideos'],
           ['No scenes created for mergeVideos operation']
         ],
         [
-          'unsupported action',
-          { action: 'unsupportedAction' as any },
+          'unsupported operation',
+          { operation: 'unsupportedOperation' as any },
           { scenes: [] },
-          ['Unsupported operation: unsupportedAction'],
+          ['Unsupported operation: unsupportedOperation'],
           ['Request has no scenes - video will be empty']
         ],
         [
           'createMovie no elements',
-          { action: 'createMovie' as const, movieElements: [], sceneElements: [] },
+          { operation: 'createMovie' as const, movieElements: [], sceneElements: [] },
           { scenes: [{ elements: [] }] },
           [],
           ['No elements provided, creating empty scene']
@@ -274,7 +274,7 @@ describe('core/requestBuilder', () => {
         [
           'createMovie only movie elements',
           { 
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             movieElements: [{ type: 'audio', src: 'background.mp3' }],
             sceneElements: []
           },
@@ -300,7 +300,7 @@ describe('core/requestBuilder', () => {
         [
           'valid JSON template',
           {
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             isAdvancedMode: true,
             jsonTemplate: JSON.stringify({
               width: 1024,
@@ -319,10 +319,9 @@ describe('core/requestBuilder', () => {
         [
           'JSON template with overrides',
           {
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             isAdvancedMode: true,
             jsonTemplate: JSON.stringify({ width: 1024, height: 768, scenes: [] }),
-            advancedOverrides: { width: 1920, quality: 'ultra' }
           },
           {
             width: 1920,
@@ -336,16 +335,9 @@ describe('core/requestBuilder', () => {
         [
           'all override properties',
           {
-            action: 'createMovie' as const,
+            operation: 'createMovie' as const,
             isAdvancedMode: true,
             jsonTemplate: JSON.stringify({ scenes: [] }),
-            advancedOverrides: {
-              width: 1920,
-              height: 1080,
-              quality: 'high',
-              resolution: 'full-hd',
-              cache: false
-            }
           },
           {
             width: 1920,
@@ -414,7 +406,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle missing scenes property in JSON template', () => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           isAdvancedMode: true,
           jsonTemplate: JSON.stringify({ width: 800 })
         });
@@ -435,10 +427,9 @@ describe('core/requestBuilder', () => {
         const mockOverrides = new Proxy({}, { get: proxyFn });
 
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           isAdvancedMode: true,
           jsonTemplate: JSON.stringify({ scenes: [] }),
-          advancedOverrides: mockOverrides as any
         });
 
         const result = buildRequest(parameters);
@@ -451,7 +442,7 @@ describe('core/requestBuilder', () => {
     describe('common properties', () => {
       it('should apply record ID', () => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           sceneElements: [{ type: 'text', text: 'test' }],
           recordId: 'test-123'
         });
@@ -469,7 +460,7 @@ describe('core/requestBuilder', () => {
         ] as any[];
         
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           sceneElements: [{ type: 'text', text: 'test' }],
           exportConfigs
         });
@@ -483,7 +474,7 @@ describe('core/requestBuilder', () => {
         ['existing comment with record ID', { recordId: 'test-123' }, 'Existing comment | RecordID: test-123']
       ])('should handle %s', (_, params, expectedComment) => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           isAdvancedMode: true,
           jsonTemplate: JSON.stringify({
             comment: 'Existing comment',
@@ -505,7 +496,7 @@ describe('core/requestBuilder', () => {
         ['undefined individual output settings', { operationSettings: { outputSettings: { width: undefined, height: undefined, quality: undefined } } }]
       ])('should handle %s', (_, params) => {
         const parameters = createBaseParameters({
-          action: 'mergeVideoAudio',
+          operation: 'mergeVideoAudio',
           sceneElements: [{ type: 'video', src: 'video.mp4' }],
           ...params
         });
@@ -519,7 +510,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle partial output settings', () => {
         const parameters = createBaseParameters({
-          action: 'mergeVideoAudio',
+          operation: 'mergeVideoAudio',
           sceneElements: [{ type: 'video', src: 'video.mp4' }],
           operationSettings: {
             outputSettings: { width: 1920, quality: 'high' }
@@ -534,7 +525,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle draft property in output settings', () => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           sceneElements: [{ type: 'text', text: 'test' }],
           operationSettings: {
             outputSettings: {
@@ -558,16 +549,9 @@ describe('core/requestBuilder', () => {
 
       it('should handle all advanced override branches', () => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           isAdvancedMode: true,
           jsonTemplate: JSON.stringify({ scenes: [] }),
-          advancedOverrides: {
-            width: 1920,
-            height: 1080,
-            quality: 'high',
-            resolution: 'full-hd',
-            cache: false
-          }
         });
 
         const result = buildRequest(parameters);
@@ -584,7 +568,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle advanced mode with undefined override values', () => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           isAdvancedMode: true,
           jsonTemplate: JSON.stringify({ 
             width: 800,
@@ -594,13 +578,6 @@ describe('core/requestBuilder', () => {
             cache: true,
             scenes: []
           }),
-          advancedOverrides: {
-            width: undefined,
-            height: undefined,
-            quality: undefined,
-            resolution: undefined,
-            cache: undefined
-          }
         });
 
         const result = buildRequest(parameters);
@@ -620,10 +597,10 @@ describe('core/requestBuilder', () => {
       it.each([
         ['movie elements', { movieElements: [null] as any, sceneElements: [{ type: 'text', text: 'test' }] }],
         ['scene elements in createMovie', { sceneElements: [null] as any }],
-        ['scene elements in mergeVideoAudio', { action: 'mergeVideoAudio' as const, sceneElements: [null] as any }]
+        ['scene elements in mergeVideoAudio', { operation: 'mergeVideoAudio' as const, sceneElements: [null] as any }]
       ])('should handle %s processing errors', (_, params) => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           ...params
         });
 
@@ -636,7 +613,7 @@ describe('core/requestBuilder', () => {
 
       it('should handle scene element processing errors in mergeVideos', () => {
         const parameters = createBaseParameters({
-          action: 'mergeVideos',
+          operation: 'mergeVideos',
           sceneElements: [
             { invalid: 'element1' },
             { invalid: 'element2' }
@@ -656,7 +633,7 @@ describe('core/requestBuilder', () => {
         ['scene elements', { sceneElements: 'not an array' as any }]
       ])('should handle non-array elements input for %s', (_, params) => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           ...params
         });
 
@@ -673,7 +650,7 @@ describe('core/requestBuilder', () => {
         ['non-Error exception', () => { throw 'String error'; }, 'Request building failed: Unknown error']
       ])('should handle main buildRequest exception with %s', (_, throwFn, expectedError) => {
         const parameters = createBaseParameters({
-          action: 'createMovie',
+          operation: 'createMovie',
           sceneElements: [{ type: 'text', text: 'test' }]
         });
 

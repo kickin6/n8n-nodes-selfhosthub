@@ -112,7 +112,7 @@ describe('schemaValidator', () => {
       ['strictMode false', { strictMode: false, level: 'complete' as const }],
       ['includeWarnings false', { includeWarnings: false, level: 'complete' as const }],
       ['validateElements false', { validateElements: false, level: 'complete' as const }],
-      ['skipActionRules true', { skipActionRules: true, level: 'complete' as const }]
+      ['skipOperationRules true', { skipOperationRules: true, level: 'complete' as const }]
     ])('should handle option: %s', (_, options) => {
       const request = { scenes: [scene({ elements: [textEl()] })] };
       const result = validateRequest(request as any, 'createMovie', options);
@@ -123,16 +123,16 @@ describe('schemaValidator', () => {
 
     it.each([
       ['createMovie', 'mergeVideoAudio', 'mergeVideos']
-    ])('should handle action-specific validation for %s', (action) => {
+    ])('should handle operation-specific validation for %s', (operation) => {
       const request = { scenes: [scene({ elements: [textEl()] })] };
       const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(request as any, action, options);
+      const result = validateRequest(request as any, operation, options);
 
       expect(typeof result.isValid).toBe('boolean');
     });
   });
 
-  describe('action-specific validation', () => {
+  describe('operation-specific validation', () => {
     it.each([
       ['createMovie with no elements', 'createMovie', { scenes: [{ elements: [] }] }, true],
       ['mergeVideoAudio valid structure', 'mergeVideoAudio', { 
@@ -150,38 +150,38 @@ describe('schemaValidator', () => {
       ['mergeVideos multiple scenes', 'mergeVideos', { 
         scenes: [{ elements: [videoEl()] }, { elements: [videoEl()] }] 
       }, false]
-    ])('validates %s', (_, action, request, shouldHaveErrors) => {
+    ])('validates %s', (_, operation, request, shouldHaveErrors) => {
       const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(request as any, action, options);
+      const result = validateRequest(request as any, operation, options);
 
       if (shouldHaveErrors) {
         expect(result.errors.length).toBeGreaterThan(0);
       } else {
-        // May still have non-action-specific errors, but test passes if structure is valid
+        // May still have non-operation-specific errors, but test passes if structure is valid
         expect(typeof result.isValid).toBe('boolean');
       }
     });
 
     it.each([
       ['createMovie', 'mergeVideoAudio', 'mergeVideos']
-    ])('should skip action rules when requested for %s', (action) => {
+    ])('should skip operation rules when requested for %s', (operation) => {
       const request = { scenes: [] };
       
-      const normalOptions: ValidationOptions = { level: 'semantic', skipActionRules: false };
-      const skippedOptions: ValidationOptions = { level: 'semantic', skipActionRules: true };
+      const normalOptions: ValidationOptions = { level: 'semantic', skipOperationRules: false };
+      const skippedOptions: ValidationOptions = { level: 'semantic', skipOperationRules: true };
       
-      const normalResult = validateRequest(request as any, action, normalOptions);
-      const skippedResult = validateRequest(request as any, action, skippedOptions);
+      const normalResult = validateRequest(request as any, operation, normalOptions);
+      const skippedResult = validateRequest(request as any, operation, skippedOptions);
 
-      // When skipActionRules is true, should have fewer action-specific errors
-      const normalActionErrors = normalResult.errors.filter(e => 
-        e.includes(`${action} action`) || e.includes(`${action} requires`)
+      // When skipOperationRules is true, should have fewer operation-specific errors
+      const normalOperationErrors = normalResult.errors.filter(e => 
+        e.includes(`${operation} operation`) || e.includes(`${operation} requires`)
       );
-      const skippedActionErrors = skippedResult.errors.filter(e => 
-        e.includes(`${action} action`) || e.includes(`${action} requires`)
+      const skippedOperationErrors = skippedResult.errors.filter(e => 
+        e.includes(`${operation} operation`) || e.includes(`${operation} requires`)
       );
 
-      expect(skippedActionErrors.length).toBeLessThanOrEqual(normalActionErrors.length);
+      expect(skippedOperationErrors.length).toBeLessThanOrEqual(normalOperationErrors.length);
     });
   });
 
@@ -201,18 +201,18 @@ describe('schemaValidator', () => {
       expect(typeof result.isValid).toBe('boolean');
     });
 
-    it('covers uncovered line: default case in validateActionBusinessRules', () => {
+    it('covers uncovered line: default case in validateOperationBusinessRules', () => {
       // Test default case in switch statement with strictMode true
-      const options: ValidationOptions = { level: 'semantic', skipActionRules: false, strictMode: true };
+      const options: ValidationOptions = { level: 'semantic', skipOperationRules: false, strictMode: true };
       const result = validateRequest(
         { scenes: [{ elements: [textEl()] }] } as any,
-        'unknownAction' as any, // Force unknown action to hit default case
+        'unknownOperation' as any, // Force unknown operation to hit default case
         options
       );
 
       expect(typeof result.isValid).toBe('boolean');
-      // Should have a warning about unknown action in strictMode
-      expect(result.warnings.some((w: string) => w.includes('Unknown action type'))).toBe(true);
+      // Should have a warning about unknown operation in strictMode
+      expect(result.warnings.some((w: string) => w.includes('Unknown operation type'))).toBe(true);
     });
 
     it('covers mergeVideoAudio scene with no elements path', () => {
@@ -270,7 +270,7 @@ describe('schemaValidator', () => {
       );
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideoAudio action requires at least one scene'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('mergeVideoAudio operation requires at least one scene'))).toBe(true);
     });
 
     // Cover uncovered lines 269-270: mergeVideos scene with no elements
@@ -486,7 +486,7 @@ describe('schemaValidator', () => {
       }, false, true],
 
       ['valid build result', {
-        request: { scenes: [{ elements: [textEl()] }], action: 'createMovie' },
+        request: { scenes: [{ elements: [textEl()] }], operation: 'createMovie' },
         errors: [],
         warnings: []
       }, true, false],
@@ -529,14 +529,14 @@ describe('schemaValidator', () => {
         strictMode: true,
         includeWarnings: true,
         validateElements: true,
-        skipActionRules: false
+        skipOperationRules: false
       }],
       ['all options disabled', { scenes: [scene({ elements: [textEl()] })] }, {
         level: 'structural' as const,
         strictMode: false,
         includeWarnings: false,
         validateElements: false,
-        skipActionRules: true
+        skipOperationRules: true
       }]
     ])('handles %s', (_, request, options) => {
       const result = validateRequest(request as any, 'createMovie', options);

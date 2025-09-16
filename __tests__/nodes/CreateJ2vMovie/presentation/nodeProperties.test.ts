@@ -1,270 +1,323 @@
 // __tests__/nodes/CreateJ2vMovie/presentation/nodeProperties.test.ts
 
-// Since the unified nodeProperties.ts doesn't export the expected functions,
-// let's test what's actually there or mock the expected behavior
+import {
+  getAllNodeProperties,
+  isValidOperation,
+  getOperationValidationRules,
+  getOperationDefaults,
+  getAdvancedModeParameterName,
+  getJsonTemplateParameterName,
+  getOperationPlaceholder,
+  getOperationDescription,
+  getOperationJsonTemplate
+} from '../../../../nodes/CreateJ2vMovie/presentation/nodeProperties';
 
 describe('presentation/nodeProperties', () => {
-  describe('module structure', () => {
-    it('should be importable without errors', () => {
-      expect(() => {
-        require('../../../../nodes/CreateJ2vMovie/presentation/nodeProperties');
-      }).not.toThrow();
+  describe('getAllNodeProperties', () => {
+    it('should return an array of node properties', () => {
+      const properties = getAllNodeProperties();
+      
+      expect(Array.isArray(properties)).toBe(true);
+      expect(properties.length).toBeGreaterThan(0);
+      
+      // First property should be operation parameter
+      expect(properties[0].name).toBe('operation');
+      expect(properties[0].type).toBe('options');
+      expect(properties[0].default).toBe('createMovie');
     });
 
-    it('should exist as a file', () => {
-      const nodeProperties = require('../../../../nodes/CreateJ2vMovie/presentation/nodeProperties');
-      expect(nodeProperties).toBeDefined();
-    });
-  });
-
-  describe('expected functions (when implemented)', () => {
-    // Test the expected behavior that should be implemented
-    describe('getAllNodeProperties (expected)', () => {
-      it('should return an array when implemented', () => {
-        // This test documents what should be implemented
-        const expectedBehavior = () => {
-          // Mock implementation of what getAllNodeProperties should do
-          return [
-            {
-              displayName: 'Operation',
-              name: 'operation',
-              type: 'options',
-              default: 'createMovie',
-              options: [
-                { name: 'Create Movie', value: 'createMovie' },
-                { name: 'Merge Video and Audio', value: 'mergeVideoAudio' },
-                { name: 'Merge Videos', value: 'mergeVideos' }
-              ]
-            }
-          ];
-        };
-
-        const result = expectedBehavior();
-        expect(Array.isArray(result)).toBe(true);
-        expect(result.length).toBeGreaterThan(0);
-        expect(result[0]).toHaveProperty('name');
-        expect(result[0]).toHaveProperty('type');
-        expect(result[0]).toHaveProperty('displayName');
-      });
-    });
-
-    describe('isValidOperation (expected)', () => {
-      it('should validate operations when implemented', () => {
-        // Mock implementation of what isValidOperation should do
-        const expectedBehavior = (operation: string) => {
-          const validOperations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
-          return validOperations.includes(operation);
-        };
-
-        expect(expectedBehavior('createMovie')).toBe(true);
-        expect(expectedBehavior('mergeVideoAudio')).toBe(true);
-        expect(expectedBehavior('mergeVideos')).toBe(true);
-        expect(expectedBehavior('invalid')).toBe(false);
-        expect(expectedBehavior('')).toBe(false);
-      });
+    it('should include operation parameter with correct options', () => {
+      const properties = getAllNodeProperties();
+      const operationParam = properties[0];
+      
+      expect(operationParam.options).toBeDefined();
+      expect(Array.isArray(operationParam.options)).toBe(true);
+      expect(operationParam.options!).toHaveLength(3);
+      
+      const options = operationParam.options as Array<{ name: string; value: string; description?: string }>;
+      expect(options[0].value).toBe('createMovie');
+      expect(options[1].value).toBe('mergeVideoAudio');
+      expect(options[2].value).toBe('mergeVideos');
     });
   });
 
-  describe('unified parameters integration', () => {
-    it('should work with unifiedParameters if available', () => {
-      try {
-        const unifiedParams = require('../../../../nodes/CreateJ2vMovie/presentation/unifiedParameters');
-        expect(unifiedParams).toBeDefined();
+  describe('isValidOperation', () => {
+    it('should return true for valid operations', () => {
+      expect(isValidOperation('createMovie')).toBe(true);
+      expect(isValidOperation('mergeVideoAudio')).toBe(true);
+      expect(isValidOperation('mergeVideos')).toBe(true);
+    });
+
+    it('should return false for invalid operations', () => {
+      expect(isValidOperation('invalid')).toBe(false);
+      expect(isValidOperation('')).toBe(false);
+      expect(isValidOperation('unknownOperation')).toBe(false);
+    });
+  });
+
+  describe('getOperationValidationRules', () => {
+    it('should return validation rules for createMovie', () => {
+      const rules = getOperationValidationRules('createMovie');
+      
+      expect(Array.isArray(rules)).toBe(true);
+      expect(rules).toContain('Requires either movie elements or scene elements');
+      expect(rules).toContain('Supports export configurations');
+    });
+
+    it('should return validation rules for mergeVideoAudio', () => {
+      const rules = getOperationValidationRules('mergeVideoAudio');
+      
+      expect(Array.isArray(rules)).toBe(true);
+      expect(rules).toContain('Requires at least one video or audio element');
+    });
+
+    it('should return validation rules for mergeVideos', () => {
+      const rules = getOperationValidationRules('mergeVideos');
+      
+      expect(Array.isArray(rules)).toBe(true);
+      expect(rules).toContain('Requires at least one video element');
+      expect(rules).toContain('Supports transition effects');
+    });
+
+    it('should return empty array for unknown operation', () => {
+      const rules = getOperationValidationRules('unknownOperation');
+      
+      expect(Array.isArray(rules)).toBe(true);
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle empty string operation', () => {
+      const rules = getOperationValidationRules('');
+      
+      expect(Array.isArray(rules)).toBe(true);
+      expect(rules).toHaveLength(0);
+    });
+  });
+
+  describe('getOperationDefaults', () => {
+    it('should return default values for createMovie', () => {
+      const defaults = getOperationDefaults('createMovie');
+      
+      expect(defaults).toMatchObject({
+        advancedMode: false,
+        advancedModeMergeVideoAudio: false,
+        advancedModeMergeVideos: false,
+        cache: true,
+        draft: false,
+        output_width: 1920,
+        output_height: 1080
+      });
+    });
+
+    it('should return default values for mergeVideoAudio', () => {
+      const defaults = getOperationDefaults('mergeVideoAudio');
+      
+      expect(defaults).toMatchObject({
+        advancedMode: false,
+        advancedModeMergeVideoAudio: false,
+        advancedModeMergeVideos: false,
+        cache: true,
+        draft: false
+      });
+      expect(defaults.output_width).toBeUndefined();
+      expect(defaults.output_height).toBeUndefined();
+    });
+
+    it('should return default values for mergeVideos', () => {
+      const defaults = getOperationDefaults('mergeVideos');
+      
+      expect(defaults).toMatchObject({
+        advancedMode: false,
+        advancedModeMergeVideoAudio: false,
+        advancedModeMergeVideos: false,
+        cache: true,
+        draft: false,
+        transition: 'fade',
+        transitionDuration: 1.0
+      });
+    });
+
+    it('should return basic defaults for unknown operation', () => {
+      const defaults = getOperationDefaults('unknownOperation');
+      
+      expect(defaults).toMatchObject({
+        advancedMode: false,
+        advancedModeMergeVideoAudio: false,
+        advancedModeMergeVideos: false,
+        cache: true,
+        draft: false
+      });
+      expect(defaults.output_width).toBeUndefined();
+      expect(defaults.transition).toBeUndefined();
+    });
+
+    it('should handle empty string operation', () => {
+      const defaults = getOperationDefaults('');
+      
+      expect(defaults).toMatchObject({
+        advancedMode: false,
+        advancedModeMergeVideoAudio: false,
+        advancedModeMergeVideos: false,
+        cache: true,
+        draft: false
+      });
+    });
+  });
+
+  describe('getAdvancedModeParameterName', () => {
+    it('should return correct parameter names for each operation', () => {
+      expect(getAdvancedModeParameterName('createMovie')).toBe('advancedMode');
+      expect(getAdvancedModeParameterName('mergeVideoAudio')).toBe('advancedModeMergeVideoAudio');
+      expect(getAdvancedModeParameterName('mergeVideos')).toBe('advancedModeMergeVideos');
+    });
+
+    it('should return default parameter name for unknown operation', () => {
+      expect(getAdvancedModeParameterName('unknown')).toBe('advancedMode');
+      expect(getAdvancedModeParameterName('')).toBe('advancedMode');
+    });
+  });
+
+  describe('getJsonTemplateParameterName', () => {
+    it('should return correct template parameter names for each operation', () => {
+      expect(getJsonTemplateParameterName('createMovie')).toBe('jsonTemplate');
+      expect(getJsonTemplateParameterName('mergeVideoAudio')).toBe('jsonTemplateMergeVideoAudio');
+      expect(getJsonTemplateParameterName('mergeVideos')).toBe('jsonTemplateMergeVideos');
+    });
+
+    it('should return default template parameter name for unknown operation', () => {
+      expect(getJsonTemplateParameterName('unknown')).toBe('jsonTemplate');
+      expect(getJsonTemplateParameterName('')).toBe('jsonTemplate');
+    });
+  });
+
+  describe('getOperationPlaceholder', () => {
+    it('should return correct placeholders for each operation', () => {
+      expect(getOperationPlaceholder('createMovie')).toBe('Add Scene Element');
+      expect(getOperationPlaceholder('mergeVideoAudio')).toBe('Add Video or Audio Element');
+      expect(getOperationPlaceholder('mergeVideos')).toBe('Add Video Element');
+    });
+
+    it('should return default placeholder for unknown operation', () => {
+      expect(getOperationPlaceholder('unknown')).toBe('Add Scene Element');
+      expect(getOperationPlaceholder('')).toBe('Add Scene Element');
+    });
+  });
+
+  describe('getOperationDescription', () => {
+    it('should return correct descriptions for each operation', () => {
+      expect(getOperationDescription('createMovie')).toBe('Elements that appear in scenes (videos, images, text, audio)');
+      expect(getOperationDescription('mergeVideoAudio')).toBe('Add video and audio elements to merge together. Typically one video and one audio element.');
+      expect(getOperationDescription('mergeVideos')).toBe('Add multiple video elements to merge in sequence with optional transitions.');
+    });
+
+    it('should return default description for unknown operation', () => {
+      expect(getOperationDescription('unknown')).toBe('Elements that appear in scenes (videos, images, text, audio)');
+      expect(getOperationDescription('')).toBe('Elements that appear in scenes (videos, images, text, audio)');
+    });
+  });
+
+  describe('getOperationJsonTemplate', () => {
+    it('should return valid JSON template for createMovie', () => {
+      const template = getOperationJsonTemplate('createMovie');
+      
+      expect(() => JSON.parse(template)).not.toThrow();
+      
+      const parsed = JSON.parse(template);
+      expect(parsed).toHaveProperty('width');
+      expect(parsed).toHaveProperty('height');
+      expect(parsed).toHaveProperty('quality');
+      expect(parsed).toHaveProperty('elements');
+      expect(parsed).toHaveProperty('scenes');
+      expect(Array.isArray(parsed.elements)).toBe(true);
+      expect(Array.isArray(parsed.scenes)).toBe(true);
+    });
+
+    it('should return valid JSON template for mergeVideoAudio', () => {
+      const template = getOperationJsonTemplate('mergeVideoAudio');
+      
+      expect(() => JSON.parse(template)).not.toThrow();
+      
+      const parsed = JSON.parse(template);
+      expect(parsed).toHaveProperty('scenes');
+      expect(Array.isArray(parsed.scenes)).toBe(true);
+      expect(parsed.scenes[0]).toHaveProperty('elements');
+      expect(parsed.scenes[0].elements).toHaveLength(2);
+      expect(parsed.scenes[0].elements[0].type).toBe('video');
+      expect(parsed.scenes[0].elements[1].type).toBe('audio');
+    });
+
+    it('should return valid JSON template for mergeVideos', () => {
+      const template = getOperationJsonTemplate('mergeVideos');
+      
+      expect(() => JSON.parse(template)).not.toThrow();
+      
+      const parsed = JSON.parse(template);
+      expect(parsed).toHaveProperty('scenes');
+      expect(Array.isArray(parsed.scenes)).toBe(true);
+      expect(parsed.scenes).toHaveLength(2);
+      expect(parsed.scenes[1]).toHaveProperty('transition');
+      expect(parsed.scenes[1].transition).toHaveProperty('style');
+      expect(parsed.scenes[1].transition).toHaveProperty('duration');
+    });
+
+    it('should return default template for unknown operation', () => {
+      const template = getOperationJsonTemplate('unknown');
+      const defaultTemplate = getOperationJsonTemplate('createMovie');
+      
+      expect(template).toBe(defaultTemplate);
+    });
+
+    it('should return default template for empty operation', () => {
+      const template = getOperationJsonTemplate('');
+      const defaultTemplate = getOperationJsonTemplate('createMovie');
+      
+      expect(template).toBe(defaultTemplate);
+    });
+  });
+
+  describe('integration tests', () => {
+    it('should have consistent operation values across all functions', () => {
+      const operations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
+      
+      operations.forEach(operation => {
+        expect(isValidOperation(operation)).toBe(true);
+        expect(getOperationValidationRules(operation)).toBeDefined();
+        expect(getOperationDefaults(operation)).toBeDefined();
+        expect(getAdvancedModeParameterName(operation)).toBeDefined();
+        expect(getJsonTemplateParameterName(operation)).toBeDefined();
+        expect(getOperationPlaceholder(operation)).toBeDefined();
+        expect(getOperationDescription(operation)).toBeDefined();
+        expect(getOperationJsonTemplate(operation)).toBeDefined();
+      });
+    });
+
+    it('should provide consistent advanced mode parameter names', () => {
+      const createMovieParam = getAdvancedModeParameterName('createMovie');
+      const mergeVideoAudioParam = getAdvancedModeParameterName('mergeVideoAudio');
+      const mergeVideosParam = getAdvancedModeParameterName('mergeVideos');
+      
+      expect(createMovieParam).toBe('advancedMode');
+      expect(mergeVideoAudioParam).toBe('advancedModeMergeVideoAudio');
+      expect(mergeVideosParam).toBe('advancedModeMergeVideos');
+      
+      // Verify these parameter names exist in defaults
+      const defaults = getOperationDefaults('createMovie');
+      expect(defaults).toHaveProperty(createMovieParam);
+      expect(defaults).toHaveProperty(mergeVideoAudioParam);
+      expect(defaults).toHaveProperty(mergeVideosParam);
+    });
+
+    it('should provide valid JSON templates for all operations', () => {
+      const operations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
+      
+      operations.forEach(operation => {
+        const template = getOperationJsonTemplate(operation);
+        expect(() => JSON.parse(template)).not.toThrow();
         
-        // Test any exported properties from unifiedParameters
-        const exports = Object.keys(unifiedParams);
-        expect(exports.length).toBeGreaterThan(0);
-      } catch (error) {
-        // If unifiedParameters doesn't exist or export anything, that's ok for now
-        console.log('unifiedParameters not available or empty');
-      }
-    });
-  });
-
-  describe('shared dependencies', () => {
-    it('should be able to import elementFields', () => {
-      const elementFields = require('../../../../nodes/CreateJ2vMovie/shared/elementFields');
-      expect(elementFields).toBeDefined();
-      expect(elementFields.completeElementFields).toBeDefined();
-      expect(Array.isArray(elementFields.completeElementFields)).toBe(true);
-    });
-
-    it('should be able to import movieParams', () => {
-      const movieParams = require('../../../../nodes/CreateJ2vMovie/shared/movieParams');
-      expect(movieParams).toBeDefined();
-      expect(movieParams.qualityParameter).toBeDefined();
-      expect(movieParams.qualityParameter).toHaveProperty('name');
-      expect(movieParams.qualityParameter).toHaveProperty('type');
-    });
-  });
-
-  describe('parameter structure validation', () => {
-    it('should validate parameter objects have required fields', () => {
-      const { completeElementFields } = require('../../../../nodes/CreateJ2vMovie/shared/elementFields');
-      
-      completeElementFields.forEach((param: any, index: number) => {
-        expect(param).toBeDefined();
-        expect(typeof param).toBe('object');
-        expect(param.name).toBeDefined();
-        expect(typeof param.name).toBe('string');
-        expect(param.name.trim().length).toBeGreaterThan(0);
-        expect(param.type).toBeDefined();
-        expect(typeof param.type).toBe('string');
-        expect(param.type.trim().length).toBeGreaterThan(0);
-        expect(param.displayName).toBeDefined();
-        expect(typeof param.displayName).toBe('string');
-        expect(param.displayName.trim().length).toBeGreaterThan(0);
+        const parsed = JSON.parse(template);
+        expect(typeof parsed).toBe('object');
+        expect(parsed).not.toBeNull();
       });
-    });
-
-    it('should validate quality parameter structure', () => {
-      const { qualityParameter } = require('../../../../nodes/CreateJ2vMovie/shared/movieParams');
-      
-      expect(qualityParameter.name).toBe('quality');
-      expect(qualityParameter.type).toBe('options');
-      expect(qualityParameter.options).toBeDefined();
-      expect(Array.isArray(qualityParameter.options)).toBe(true);
-      expect(qualityParameter.options.length).toBeGreaterThan(0);
-      
-      const expectedValues = ['low', 'medium', 'high', 'very_high'];
-      const actualValues = qualityParameter.options.map((opt: any) => opt.value);
-      expectedValues.forEach(value => {
-        expect(actualValues).toContain(value);
-      });
-    });
-  });
-
-  describe('parameter validation rules', () => {
-    it('should validate options-type parameters have options array', () => {
-      const { qualityParameter } = require('../../../../nodes/CreateJ2vMovie/shared/movieParams');
-      
-      if (qualityParameter.type === 'options') {
-        expect(qualityParameter.options).toBeDefined();
-        expect(Array.isArray(qualityParameter.options)).toBe(true);
-        expect(qualityParameter.options.length).toBeGreaterThan(0);
-        
-        qualityParameter.options.forEach((option: any) => {
-          expect(option).toHaveProperty('name');
-          expect(option).toHaveProperty('value');
-          expect(typeof option.name).toBe('string');
-          expect(typeof option.value).toBe('string');
-        });
-      }
-    });
-
-    it('should validate element fields have proper types', () => {
-      const { completeElementFields } = require('../../../../nodes/CreateJ2vMovie/shared/elementFields');
-      const validTypes = [
-        'string', 'number', 'boolean', 'options', 'fixedCollection', 
-        'json', 'collection', 'multiOptions', 'dateTime'
-      ];
-
-      completeElementFields.forEach((param: any) => {
-        expect(validTypes).toContain(param.type);
-      });
-    });
-  });
-
-  describe('implementation requirements', () => {
-    it('should document required exports for node integration', () => {
-      // This test documents what needs to be implemented for the main node to work
-      const requiredExports = [
-        'getAllNodeProperties',
-        'isValidOperation'
-      ];
-
-      // The main node tries to import these functions
-      requiredExports.forEach(exportName => {
-        try {
-          const nodeProperties = require('../../../../nodes/CreateJ2vMovie/presentation/nodeProperties');
-          if (nodeProperties[exportName]) {
-            expect(typeof nodeProperties[exportName]).toBe('function');
-          } else {
-            console.log(`Missing required export: ${exportName}`);
-            // Document that this export is missing but don't fail the test
-            expect(exportName).toBeDefined(); // This will always pass but documents the requirement
-          }
-        } catch (error) {
-          console.log(`Cannot test ${exportName} due to import error:`, error);
-        }
-      });
-    });
-
-    it('should support the expected operations', () => {
-      const expectedOperations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
-      
-      // Document that these operations should be supported
-      expectedOperations.forEach(operation => {
-        expect(operation).toBeDefined();
-        expect(typeof operation).toBe('string');
-        expect(operation.length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle module import gracefully', () => {
-      expect(() => {
-        require('../../../../nodes/CreateJ2vMovie/presentation/nodeProperties');
-      }).not.toThrow();
-    });
-
-    it('should handle missing exports gracefully', () => {
-      const nodeProperties = require('../../../../nodes/CreateJ2vMovie/presentation/nodeProperties');
-      
-      // Test that accessing missing properties doesn't crash
-      expect(() => {
-        const _ = nodeProperties.getAllNodeProperties;
-        const __ = nodeProperties.isValidOperation;
-      }).not.toThrow();
-    });
-  });
-
-  describe('future implementation guidance', () => {
-    it('should provide guidance for implementing getAllNodeProperties', () => {
-      // This test provides guidance for what getAllNodeProperties should do
-      const mockImplementation = () => {
-        const { completeElementFields } = require('../../../../nodes/CreateJ2vMovie/shared/elementFields');
-        const { qualityParameter } = require('../../../../nodes/CreateJ2vMovie/shared/movieParams');
-        
-        return [
-          // Operation selector should be first
-          {
-            displayName: 'Operation',
-            name: 'operation',
-            type: 'options',
-            default: 'createMovie',
-            options: [
-              { name: 'Create Movie', value: 'createMovie' },
-              { name: 'Merge Video and Audio', value: 'mergeVideoAudio' },
-              { name: 'Merge Videos', value: 'mergeVideos' }
-            ]
-          },
-          // Then include shared parameters like quality
-          qualityParameter,
-          // Then include element fields (filtered appropriately)
-          ...completeElementFields.slice(0, 3) // Example: just first few for testing
-        ];
-      };
-
-      const result = mockImplementation();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0].name).toBe('operation');
-    });
-
-    it('should provide guidance for implementing isValidOperation', () => {
-      // This test provides guidance for what isValidOperation should do
-      const mockImplementation = (operation: any) => {
-        if (typeof operation !== 'string') return false;
-        const validOperations = ['createMovie', 'mergeVideoAudio', 'mergeVideos'];
-        return validOperations.includes(operation);
-      };
-
-      expect(mockImplementation('createMovie')).toBe(true);
-      expect(mockImplementation('invalid')).toBe(false);
-      expect(mockImplementation(null)).toBe(false);
-      expect(mockImplementation(123)).toBe(false);
     });
   });
 });

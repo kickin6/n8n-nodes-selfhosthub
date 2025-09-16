@@ -360,11 +360,6 @@ describe('unifiedParameters', () => {
           // Should not have multiple advanced mode keys
           const advancedModeKeys = showKeys.filter(key => key.includes('advancedMode'));
           expect(advancedModeKeys.length).toBeLessThanOrEqual(1);
-          
-          // Should not have both operation and action
-          const hasOperation = showKeys.includes('operation');
-          const hasAction = showKeys.includes('action');
-          expect(hasOperation && hasAction).toBe(false);
         }
       });
     });
@@ -483,20 +478,11 @@ describe('integration with existing architecture', () => {
   });
 
   it('should maintain naming consistency with core functions', () => {
-    // The parameter collector expects 'operation' not 'action'
     // Advanced mode parameter names should match what the collector expects
     
     expect(unifiedAdvancedModeParameter.name).toBe('advancedMode');
     expect(mergeVideoAudioAdvancedModeParameter.name).toBe('advancedModeMergeVideoAudio');
     expect(mergeVideosAdvancedModeParameter.name).toBe('advancedModeMergeVideos');
-    
-    // Parameters that reference operations should use 'operation'
-    unifiedParameters.forEach(param => {
-      if (param.displayOptions?.show?.operation) {
-        expect(param.displayOptions.show.operation).toBeDefined();
-        expect(param.displayOptions.show.action).toBeUndefined();
-      }
-    });
   });
 
   it('should support all existing test scenarios', () => {
