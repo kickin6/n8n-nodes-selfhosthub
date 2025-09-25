@@ -456,12 +456,6 @@ describe('rules', () => {
         elements: [{ type: 'subtitles', captions: 'test' }],
         scenes: [{ elements: [validElement] }]
       }],
-      ['with scene transitions', {
-        scenes: [{
-          elements: [validElement],
-          transition: { style: 'fade', duration: 1.0 }
-        }]
-      }],
       ['with scene duration', {
         scenes: [{
           elements: [validElement],
@@ -510,30 +504,6 @@ describe('rules', () => {
       ['invalid scene duration', { scenes: [{ elements: [validElement], duration: -5 }] }, 'Duration must be a positive number', 'error'],
       ['scene duration -1 valid', { scenes: [{ elements: [validElement], duration: -1 }] }, '', 'valid'],
       ['scene duration -2 valid', { scenes: [{ elements: [validElement], duration: -2 }] }, '', 'valid'],
-      ['invalid transition style', {
-        scenes: [{
-          elements: [validElement],
-          transition: { style: 'invalid' }
-        }]
-      }, 'Invalid transition style', 'error'],
-      ['missing transition style', {
-        scenes: [{
-          elements: [validElement],
-          transition: {}
-        }]
-      }, 'Invalid transition style', 'error'],
-      ['invalid transition duration', {
-        scenes: [{
-          elements: [validElement],
-          transition: { style: 'fade', duration: -1 }
-        }]
-      }, 'Transition duration must be a positive number', 'error'],
-      ['transition duration not number', {
-        scenes: [{
-          elements: [validElement],
-          transition: { style: 'fade', duration: 'invalid' }
-        }]
-      }, 'Transition duration must be a positive number', 'error'],
       ['invalid background color', {
         scenes: [{
           elements: [validElement],

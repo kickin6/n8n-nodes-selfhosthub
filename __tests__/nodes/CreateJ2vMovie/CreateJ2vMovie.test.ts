@@ -38,7 +38,7 @@ describe('CreateJ2vMovie Node', () => {
             expect(node.description.name).toBe('createJ2vMovie');
             expect(node.description.icon).toBe('file:createJ2vMovie.png');
             expect(node.description.group).toEqual(['transform']);
-            expect(node.description.version).toBe(1);
+            expect(node.description.version).toBe(2);
             expect(node.description.description).toBe('Create videos with the JSON2Video API');
             expect(node.description.defaults).toEqual({ name: 'Create JSON2Video Movie' });
             expect(Array.isArray(node.description.inputs)).toBe(true);
