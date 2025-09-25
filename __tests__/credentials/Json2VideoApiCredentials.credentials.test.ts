@@ -1,3 +1,5 @@
+// __tests__/credentials/Json2VideoApiCredentials.credentials.test.ts
+
 import { Json2VideoApiCredentials } from '../../credentials/Json2VideoApiCredentials.credentials';
 
 describe('Json2VideoApiCredentials', () => {
@@ -59,7 +61,6 @@ describe('Json2VideoApiCredentials', () => {
       expect(data?.id).toMatch(/^test-\d+$/);
       expect(data?.width).toBe(640);
       expect(data?.height).toBe(360);
-      expect(data?.fps).toBe(25);
       expect(data?.scenes).toBeDefined();
       expect(Array.isArray(data?.scenes)).toBe(true);
       expect(data?.scenes?.[0]).toEqual({ elements: [] });

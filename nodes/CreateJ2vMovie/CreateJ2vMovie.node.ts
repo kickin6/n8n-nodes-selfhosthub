@@ -1,3 +1,5 @@
+// nodes/CreateJ2vMovie/CreateJ2vMovie.node.ts
+
 import {
   IDataObject,
   IExecuteFunctions,
@@ -8,51 +10,37 @@ import {
   IRequestOptions,
   NodeConnectionType,
 } from 'n8n-workflow';
-import {
-  createMovieAdvancedModeParameter,
-  createMovieAdvancedParameters,
-  createMovieJsonTemplateParameter,
-  createMovieParameters
-} from './operations/createMovie';
-import {
-  mergeVideoAudioAdvancedModeParameter,
-  mergeVideoAudioAdvancedParameters,
-  mergeVideoAudioJsonTemplateParameter,
-  mergeVideoAudioParameters
-} from './operations/mergeVideoAudio';
-import {
-  mergeVideosAdvancedModeParameter,
-  mergeVideosAdvancedParameters,
-  mergeVideosJsonTemplateParameter,
-  mergeVideosParameters
-} from './operations/mergeVideos';
-import { buildRequestBody } from './utils/requestBuilder';
 
+import { getAllNodeProperties } from './presentation/properties';
+import { collectParameters, validateCollectedParameters, CollectedParameters } from './core/collector';
+import { buildRequest, RequestBuildResult } from './core/buildRequest';
+import { validateBuildResult, RequestValidationResult } from './core/validator';
+
+/**
+ * n8n node for creating videos using the JSON2Video API
+ */
 export class CreateJ2vMovie implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'Self-Host Hub (JSON2Video)',
+    displayName: 'Create JSON2Video Movie',
     name: 'createJ2vMovie',
     icon: 'file:createJ2vMovie.png',
-    group: [],
-    version: 1,
-    subtitle: '=',
+    group: ['transform'],
+    version: 2,
+    subtitle: '={{$parameter["advancedMode"] ? "Advanced Mode" : "Create Movie"}}',
     description: 'Create videos with the JSON2Video API',
     defaults: {
-      name: 'Self-Host Hub (JSON2Video)',
+      name: 'Create JSON2Video Movie',
     },
-    // We use NodeConnectionType.Main directly because isolatedModules is disabled in tsconfig.json
-    // If isolatedModules is enabled, these would need to be replaced with string literals and type assertions
-    // For more details, see docs/DEVELOPMENT_GUIDELINES.md#typescript-configuration
     inputs: [
       {
-        type: 'main' as NodeConnectionType,
-        displayName: 'Input',
+        displayName: '',
+        type: NodeConnectionType.Main,
       },
     ],
     outputs: [
       {
-        type: 'main' as NodeConnectionType,
-        displayName: 'Output',
+        displayName: '',
+        type: NodeConnectionType.Main,
       },
     ],
     credentials: [
@@ -61,148 +49,232 @@ export class CreateJ2vMovie implements INodeType {
         required: true,
       },
     ],
-    properties: [
-      // Core operation selector
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        options: [
-          {
-            name: 'Create Movie',
-            value: 'createMovie',
-          },
-          {
-            name: 'Merge Video and Audio',
-            value: 'mergeVideoAudio',
-          },
-          {
-            name: 'Merge Videos',
-            value: 'mergeVideos',
-          },
-        ],
-        default: 'createMovie',
+    requestDefaults: {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
-
-      // Advanced Mode toggle for each operation
-      createMovieAdvancedModeParameter,
-      mergeVideoAudioAdvancedModeParameter,
-      mergeVideosAdvancedModeParameter,
-
-      // JSON Template for advanced mode for each operation
-      createMovieJsonTemplateParameter,
-      mergeVideoAudioJsonTemplateParameter,
-      mergeVideosJsonTemplateParameter,
-
-      // Import parameter definitions for each operation - validate each parameter has required fields
-      ...createMovieParameters.filter(p => p && typeof p.name === 'string'),
-      ...createMovieAdvancedParameters.filter(p => p && typeof p.name === 'string'),
-      ...mergeVideoAudioParameters.filter(p => p && typeof p.name === 'string'),
-      ...mergeVideoAudioAdvancedParameters.filter(p => p && typeof p.name === 'string'),
-      ...mergeVideosParameters.filter(p => p && typeof p.name === 'string'),
-      ...mergeVideosAdvancedParameters.filter(p => p && typeof p.name === 'string'),
-    ],
+    },
+    properties: getAllNodeProperties(),
   };
 
+  /**
+   * Execute the node for each input item
+   */
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
-    const credentials = await this.getCredentials('json2VideoApiCredentials');
-    const apiKey = credentials.apiKey as string;
 
-    // Process each item
+    if (items.length === 0) {
+      return [[]];
+    }
+
+    const returnData: INodeExecutionData[] = [];
+
     for (let i = 0; i < items.length; i++) {
       try {
-        // Get operation type
-        const operation = String(this.getNodeParameter('operation', i, ''));
+        // Collect and validate parameters
+        const collectedParameters = collectParameters.call(this, i);
+        const parameterValidation = validateCollectedParameters(collectedParameters);
 
-        // Check for advanced mode based on operation
-        let isAdvancedMode = false;
-        if (operation === 'createMovie') {
-          isAdvancedMode = this.getNodeParameter('advancedMode', i, true) as boolean;
-        } else if (operation === 'mergeVideoAudio') {
-          isAdvancedMode = this.getNodeParameter('advancedModeMergeAudio', i, true) as boolean;
-        } else if (operation === 'mergeVideos') {
-          isAdvancedMode = this.getNodeParameter('advancedModeMergeVideos', i, true) as boolean;
+        // Build API request
+        const buildResult = buildRequest(collectedParameters);
+
+        // Validate complete request
+        const validationResult: RequestValidationResult = validateBuildResult(
+          buildResult,
+          {
+            level: 'complete',
+            strictMode: true,
+            includeWarnings: true,
+            validateElements: true,
+          }
+        );
+
+        if (!validationResult.isValid) {
+          throw new Error(validationResult.errors.join('; '));
         }
 
-        // Log parameters for debugging
-        try {
-          const movieElements = this.getNodeParameter('movieElements.elementValues', i, []);
-          const elements = this.getNodeParameter('elements.elementValues', i, []);
-        } catch (error) {
+        // Prepare API request
+        const credentials = await this.getCredentials('json2VideoApiCredentials');
+        if (!credentials || !credentials.apiKey) {
+          throw new Error('JSON2Video API credentials are required');
         }
 
-        // Build request body using the centralized utility
-        const requestBody = buildRequestBody.call(this, operation, i, isAdvancedMode);
+        const baseUrl = 'https://api.json2video.com/v2/movies';
+        let apiUrl = baseUrl;
 
-        // Get recordId and webhookUrl for the API URL parameters
-        const recordId = String(this.getNodeParameter('recordId', i, ''));
-        const webhookUrl = String(this.getNodeParameter('webhookUrl', i, ''));
+        const urlParams = new URLSearchParams();
 
-        // Common API call setup
-        const options: IRequestOptions = {
+        // Add optional query parameters
+        const webhookUrl = this.getNodeParameter('webhookUrl', i, '') as string;
+        if (webhookUrl) {
+          urlParams.append('webhook', webhookUrl);
+        }
+
+        const recordId = this.getNodeParameter('recordId', i, '') as string;
+        if (recordId) {
+          urlParams.append('id', recordId);
+        }
+
+        if (urlParams.toString()) {
+          apiUrl += '?' + urlParams.toString();
+        }
+
+        const requestOptions: IRequestOptions = {
           method: 'POST' as IHttpRequestMethods,
-          url: '',
-          body: requestBody,
+          url: apiUrl,
           headers: {
+            'x-api-key': credentials.apiKey as string,
             'Content-Type': 'application/json',
-            'x-api-key': apiKey,
           },
+          body: buildResult.request,
           json: true,
         };
 
-        // Set the appropriate API endpoint based on operation
-        switch (operation) {
-          case 'createMovie':
-          case 'mergeVideoAudio':
-          case 'mergeVideos':
-            options.url = `https://api.json2video.com/v2/movies?id=${recordId}&webhook=${encodeURIComponent(webhookUrl)}`;
-            break;
-          case 'checkStatus':
-            const jobId = this.getNodeParameter('jobId', i) as string;
-            options.url = `https://api.json2video.com/v2/movies/${jobId}`;
-            options.method = 'GET';
-            break;
-        }
+        const response = await this.helpers.request(requestOptions);
 
-        // Make the API request
-        const responseData = await this.helpers.request(options);
+        // Process response
+        const responseData = processApiResponse(response.body);
 
-        // Handle the API response properly - JSON2Video returns an object, not an array
-        let processedResponse: IDataObject[];
-        if (Array.isArray(responseData)) {
-          processedResponse = responseData as IDataObject[];
-        } else {
-          // Single object response - wrap in array
-          processedResponse = [responseData as IDataObject];
-        }
-
-        // Return the API response
-        const executionData = this.helpers.constructExecutionMetaData(
-          this.helpers.returnJsonArray(processedResponse),
-          { itemData: { item: i } },
-        );
-
-        returnData.push(...executionData);
-      } catch (error: any) {
-        if (this.continueOnFail()) {
-          // Add error as json to output
+        // Add execution metadata to response
+        for (const responseItem of responseData) {
           returnData.push({
             json: {
-              error: error.message || 'Unknown error occurred',
+              ...responseItem,
+              itemIndex: i,
+              timestamp: new Date().toISOString(),
             },
-            pairedItem: {
-              item: i,
-            },
+            pairedItem: { item: i },
           });
-          continue;
         }
-        throw error;
+
+      } catch (error) {
+        const errorMessage = extractMainErrorMessage(extractErrorMessage(error));
+
+        if (this.continueOnFail()) {
+          returnData.push({
+            json: {
+              error: errorMessage,
+              itemIndex: i,
+              timestamp: new Date().toISOString(),
+            },
+            pairedItem: { item: i },
+          });
+        } else {
+          throw new Error(`Item ${i + 1} processing failed: ${errorMessage}`);
+        }
       }
     }
 
     return [returnData];
   }
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+/**
+ * Extract error message from various error types
+ */
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message || 'Unknown error occurred';
+  }
+  return 'Unknown error occurred';
+}
+
+/**
+ * Extract parameter-specific error messages
+ */
+export function extractParameterErrorMessage(error: unknown): string {
+  const message = extractErrorMessage(error);
+  const parameterErrorPrefix = 'Parameter validation failed: ';
+  if (message.startsWith(parameterErrorPrefix)) {
+    return message.substring(parameterErrorPrefix.length);
+  }
+  return message;
+}
+
+/**
+ * Extract main error by removing common error prefixes
+ */
+export function extractMainErrorMessage(message: string): string {
+  const errorPrefixes = [
+    'Request building failed: ',
+    'Request validation failed: ',
+    'Failed to collect parameters for operation \'',
+    'Processing failed: ',
+    'API error: ',
+    'Network error: ',
+    'Authentication failed: ',
+    'Invalid operation: ',
+    'Build failed: ',
+    'Validation failed: ',
+    'Parameter validation failed: ',
+  ];
+
+  for (const prefix of errorPrefixes) {
+    if (message.startsWith(prefix)) {
+      let cleaned = message.substring(prefix.length);
+      // Handle operation-specific error format
+      if (prefix.includes('operation') && cleaned.includes('\': ')) {
+        cleaned = cleaned.split('\': ')[1];
+      }
+      return cleaned;
+    }
+  }
+
+  return message;
+}
+
+/**
+ * Check if request contains meaningful content
+ */
+export function isEmptyRequest(request: any): boolean {
+  if (!request || Object.keys(request).length === 0) {
+    return true;
+  }
+
+  if (request.elements && request.elements.length > 0) {
+    return false;
+  }
+
+  if (request.scenes && Array.isArray(request.scenes)) {
+    if (request.scenes.length === 0) {
+      return true;
+    }
+
+    const hasContent = request.scenes.some((scene: any) =>
+      scene && scene.elements && Array.isArray(scene.elements) && scene.elements.length > 0
+    );
+
+    if (!hasContent) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Create base return array structure
+ */
+export function createBaseArray(): INodeExecutionData[][] {
+  return [[]];
+}
+
+/**
+ * Process API response into standardized format
+ */
+function processApiResponse(responseData: any): IDataObject[] {
+  if (Array.isArray(responseData)) {
+    return responseData as IDataObject[];
+  }
+
+  if (responseData) {
+    return [responseData as IDataObject];
+  }
+
+  return [{}];
 }

@@ -82,7 +82,7 @@ This document outlines the standards and best practices for developing and maint
 
 ### Internal Structure
 
-- Keep parameter handling separate from API interaction logic
+- Keep parameter handling separate from API interoperation logic
 - Implement polling mechanism pattern for long-running operations
 - Use consistent error handling and validation approaches
 - Organize complex nodes with utility files and operation-specific modules
@@ -198,7 +198,7 @@ This document outlines the standards and best practices for developing and maint
 ### Test Quality Standards
 
 - Implement unit tests for all functions and methods
-- Create integration tests for API interactions
+- Create integration tests for API interoperations
 - Add edge case tests for all error conditions
 - Test all parameter combinations that users might employ
 - Verify proper error handling and user-friendly error messages
