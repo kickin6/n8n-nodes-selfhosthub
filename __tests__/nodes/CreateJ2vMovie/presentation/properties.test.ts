@@ -205,8 +205,6 @@ describe('CreateJ2vMovie Properties', () => {
       const jsonTemplates = properties.filter(p => p.name.startsWith('jsonTemplate'));
       
       jsonTemplates.forEach(template => {
-        console.log("LOG")
-        console.debug("DEBUG")
         expect(() => JSON.parse(template.default as string)).not.toThrow();
         
         const parsed = JSON.parse(template.default as string);

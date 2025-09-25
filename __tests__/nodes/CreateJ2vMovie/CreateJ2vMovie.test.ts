@@ -34,7 +34,7 @@ describe('CreateJ2vMovie Node', () => {
 
     describe('basic node structure', () => {
         it('should have correct node description', () => {
-            expect(node.description.displayName).toBe('Create JSON2Video Movie');
+            expect(node.description.displayName).toBe('Self-Host Hub (JSON2Video)');
             expect(node.description.name).toBe('createJ2vMovie');
             expect(node.description.icon).toBe('file:createJ2vMovie.png');
             expect(node.description.group).toEqual(['transform']);
