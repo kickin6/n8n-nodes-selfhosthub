@@ -585,6 +585,9 @@ export const jsonTemplateBlank: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateBlank',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -599,15 +602,28 @@ export const jsonTemplateBlank: INodeProperties = {
     {
       "elements": []
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Blank template - add your own elements and scenes',
 };
 
 export const jsonTemplateVideoImage: INodeProperties = {
-  displayName: 'JSON Template', 
+  displayName: 'JSON Template',
   name: 'jsonTemplateVideoImage',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -647,15 +663,28 @@ export const jsonTemplateVideoImage: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Create video from images. Requires: image0Url, image1Url, image2Url',
 };
 
 export const jsonTemplateVideoAudio: INodeProperties = {
-  displayName: 'JSON Template', 
+  displayName: 'JSON Template',
   name: 'jsonTemplateVideoAudio',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -681,6 +710,16 @@ export const jsonTemplateVideoAudio: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Merge video with audio. Requires: video0Url, audio0Url',
@@ -688,8 +727,11 @@ export const jsonTemplateVideoAudio: INodeProperties = {
 
 export const jsonTemplateVideoSequence: INodeProperties = {
   displayName: 'JSON Template',
-  name: 'jsonTemplateVideoSequence', 
+  name: 'jsonTemplateVideoSequence',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -723,6 +765,16 @@ export const jsonTemplateVideoSequence: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Sequence of videos. Requires: video0Url, video1Url, video2Url',
@@ -732,6 +784,9 @@ export const jsonTemplateSlideshow: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateSlideshow',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -776,6 +831,16 @@ export const jsonTemplateSlideshow: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Image slideshow with music. Requires: image0Url, image1Url, image2Url, audio0Url',
@@ -785,6 +850,9 @@ export const jsonTemplateTextOverlay: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateTextOverlay',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -837,6 +905,16 @@ export const jsonTemplateTextOverlay: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Video with text overlays. Requires: video0Url, text0, text1',
@@ -846,6 +924,9 @@ export const jsonTemplateFaceless: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateFaceless',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -917,6 +998,16 @@ export const jsonTemplateFaceless: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Faceless video with AI voice and images. Requires: prompt0, text0, prompt1, text1, audio0Url',
@@ -926,6 +1017,9 @@ export const jsonTemplateSocialStory: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplateSocialStory',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -992,6 +1086,16 @@ export const jsonTemplateSocialStory: INodeProperties = {
         }
       ]
     }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "{{  /* webhook0Url */ }}"
+        }
+      ]
+    }
   ]
 }`,
   description: 'Vertical social media video. Requires: video0Url, text0, text1, audio0Url',
@@ -1001,6 +1105,9 @@ export const jsonTemplatePresentation: INodeProperties = {
   displayName: 'JSON Template',
   name: 'jsonTemplatePresentation',
   type: 'json' as const,
+  typeOptions: {
+    rows: 20
+  },
   displayOptions: {
     show: {
       advancedMode: [true],
@@ -1040,6 +1147,16 @@ export const jsonTemplatePresentation: INodeProperties = {
           "text": "{{  /* text2 */ }}",
           "voice": "en-US-JennyNeural",
           "model": "azure"
+        }
+      ]
+    }
+  ],
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "={{  /* webhook0Url */ }}"
         }
       ]
     }
