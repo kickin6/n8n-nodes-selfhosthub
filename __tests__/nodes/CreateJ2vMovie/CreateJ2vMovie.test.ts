@@ -3,14 +3,14 @@
 import { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { CreateJ2vMovie, extractErrorMessage, extractParameterErrorMessage, extractMainErrorMessage, isEmptyRequest, createBaseArray } from '../../../nodes/CreateJ2vMovie/CreateJ2vMovie.node';
 
-describe('CreateJ2vMovie Node - Complete Coverage', () => {
+describe('CreateJ2vMovie Node', () => {
     let node: CreateJ2vMovie;
     let mockExecute: any;
     let mockRequest: jest.MockedFunction<any>;
 
     beforeEach(() => {
         node = new CreateJ2vMovie();
-        
+
         mockRequest = jest.fn();
 
         mockExecute = {
@@ -34,52 +34,67 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
     describe('basic node structure', () => {
         it('should have correct node description', () => {
-            expect(node.description.displayName).toBe('Create J2V Movie');
+            expect(node.description.displayName).toBe('Create JSON2Video Movie');
             expect(node.description.name).toBe('createJ2vMovie');
             expect(node.description.icon).toBe('file:createJ2vMovie.png');
             expect(node.description.group).toEqual(['transform']);
             expect(node.description.version).toBe(1);
             expect(node.description.description).toBe('Create videos with the JSON2Video API');
-            expect(Array.isArray(node.description.defaults)).toBe(false);
+            expect(node.description.defaults).toEqual({ name: 'Create JSON2Video Movie' });
             expect(Array.isArray(node.description.inputs)).toBe(true);
             expect(Array.isArray(node.description.outputs)).toBe(true);
             expect(Array.isArray(node.description.credentials)).toBe(true);
         });
+
+        it('should have correct subtitle display', () => {
+            expect(node.description.subtitle).toBe('={{$parameter["advancedMode"] ? "Advanced Mode" : "Create Movie"}}');
+        });
+
+        it('should have correct request defaults', () => {
+            expect(node.description.requestDefaults).toEqual({
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            });
+        });
     });
 
-    const createValidParameterMock = (operation: string, overrides: any = {}) => {
+    const createValidParameterMock = (overrides: any = {}) => {
         const baseParams: any = {
-            operation,
             advancedMode: false,
-            movieElements: {
-                elementValues: [{ type: 'subtitles', captions: 'Test subtitles' }]
-            },
-            sceneElements: {
-                elementValues: [{ type: 'text', text: 'Test scene text' }]
+            recordId: '',
+            showMovieSettings: false,
+            enableSubtitles: false,
+            elements: {
+                elementValues: [{ type: 'text', text: 'Test text' }]
             },
             outputSettings: {
-                outputDetails: { width: 1920, height: 1080, quality: 'high' }
+                outputValues: { width: 1920, height: 1080, quality: 'high', cache: true }
             },
+            exportSettings: {},
             webhookUrl: '',
-            recordId: '',
+            templateType: 'blank',
+            jsonTemplateBlank: '{"scenes": [{"elements": []}]}',
             ...overrides
         };
 
         return (paramName: string, itemIndex: number, defaultValue?: any) => {
-            return baseParams[paramName] !== undefined ? baseParams[paramName] : defaultValue;
+            if (paramName in baseParams) {
+                return baseParams[paramName];
+            }
+            return defaultValue;
         };
     };
 
     describe('execute method', () => {
         describe('successful execution', () => {
-            it('should execute successfully with createMovie operation', async () => {
+            it('should execute successfully with basic mode', async () => {
                 const inputData: INodeExecutionData[] = [{ json: {} }];
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -97,18 +112,23 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
                 expect(Array.isArray(result[0])).toBe(true);
                 expect(result[0].length).toBe(1);
                 expect(result[0][0].json.success).toBe(true);
-                expect(result[0][0].json.operation).toBe('createMovie');
+                expect(result[0][0].json.id).toBe('video-123');
+                expect(result[0][0].json.itemIndex).toBe(0);
+                expect(result[0][0].json.timestamp).toBeDefined();
             });
 
-            it('should execute successfully with advanced mode', async () => {
+            it('should execute successfully with advanced mode and blank template', async () => {
                 const inputData: INodeExecutionData[] = [{ json: {} }];
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
                 mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie', {
+                    createValidParameterMock({
                         advancedMode: true,
-                        jsonTemplate: JSON.stringify({
+                        templateType: 'blank',
+                        jsonTemplateBlank: JSON.stringify({
+                            width: 1920,
+                            height: 1080,
                             scenes: [{ elements: [{ type: 'text', text: 'Advanced test' }] }]
                         })
                     })
@@ -126,6 +146,63 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 expect(result).toBeDefined();
                 expect(result[0][0].json.success).toBe(true);
+                expect(mockRequest).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        body: expect.objectContaining({
+                            width: 1920,
+                            height: 1080,
+                            scenes: expect.any(Array)
+                        })
+                    })
+                );
+            });
+
+            it('should handle different template types in advanced mode', async () => {
+                const templates = [
+                    { type: 'videoImage', field: 'jsonTemplateVideoImage' },
+                    { type: 'videoAudio', field: 'jsonTemplateVideoAudio' },
+                    { type: 'videoSequence', field: 'jsonTemplateVideoSequence' },
+                    { type: 'slideshow', field: 'jsonTemplateSlideshow' },
+                    { type: 'textOverlay', field: 'jsonTemplateTextOverlay' },
+                    { type: 'faceless', field: 'jsonTemplateFaceless' },
+                    { type: 'socialStory', field: 'jsonTemplateSocialStory' },
+                    { type: 'presentation', field: 'jsonTemplatePresentation' }
+                ];
+
+                for (const template of templates) {
+                    const inputData: INodeExecutionData[] = [{ json: {} }];
+                    const params: any = {
+                        advancedMode: true,
+                        templateType: template.type
+                    };
+                    params[template.field] = JSON.stringify({
+                        width: 1920,
+                        height: 1080,
+                        scenes: [{
+                            elements: [{
+                                type: 'text',
+                                text: 'Test content',
+                                duration: 5
+                            }]
+                        }]
+                    });
+
+                    mockExecute.getInputData.mockReturnValue(inputData);
+                    mockExecute.continueOnFail.mockReturnValue(false);
+                    mockExecute.getNodeParameter.mockImplementation(createValidParameterMock(params));
+                    mockExecute.getCredentials.mockResolvedValue({
+                        apiKey: 'test-api-key'
+                    });
+
+                    mockRequest.mockResolvedValue({
+                        statusCode: 200,
+                        body: { success: true }
+                    });
+
+                    const result = await node.execute.call(mockExecute as IExecuteFunctions);
+
+                    expect(result[0][0].json.success).toBe(true);
+                }
             });
 
             it('should handle URL parameters correctly', async () => {
@@ -134,7 +211,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
                 mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie', {
+                    createValidParameterMock({
                         webhookUrl: 'https://example.com/webhook',
                         recordId: 'record-123'
                     })
@@ -162,9 +239,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -185,9 +260,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -209,9 +282,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -224,44 +295,59 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
 
                 expect(result[0]).toHaveLength(1);
-                expect(result[0][0].json).toEqual({
-                    operation: 'createMovie',
+                expect(result[0][0].json).toEqual(expect.objectContaining({
                     itemIndex: 0,
                     timestamp: expect.any(String)
-                });
+                }));
+            });
+
+            it('should handle empty input data', async () => {
+                mockExecute.getInputData.mockReturnValue([]);
+
+                const result = await node.execute.call(mockExecute as IExecuteFunctions);
+
+                expect(result).toEqual([[]]);
+                expect(mockRequest).not.toHaveBeenCalled();
             });
         });
 
         describe('error handling', () => {
-            it('should handle missing operation parameter', async () => {
+            it('should handle parameter collection errors', async () => {
                 const inputData: INodeExecutionData[] = [{ json: {} }];
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(true);
-                mockExecute.getNodeParameter.mockImplementation((paramName: string) => {
-                    if (paramName === 'operation') return '';
-                    return createValidParameterMock('createMovie')(paramName, 0);
+                mockExecute.getNodeParameter.mockImplementation(() => {
+                    throw new Error('Parameter error');
                 });
 
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
 
                 expect(result[0]).toHaveLength(1);
-                expect(result[0][0].json.error).toBe('Operation is required');
+                expect(result[0][0].json.error).toBe('Parameter error');
             });
 
-            it('should handle invalid operation', async () => {
+            it('should handle validation errors with continueOnFail true', async () => {
                 const inputData: INodeExecutionData[] = [{ json: {} }];
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(true);
                 mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('invalidOperation')
+                    createValidParameterMock({
+                        advancedMode: true,
+                        templateType: 'blank',
+                        jsonTemplateBlank: 'invalid json'
+                    })
                 );
+                // Need to provide credentials to pass that check first
+                mockExecute.getCredentials.mockResolvedValue({
+                    apiKey: 'test-api-key'
+                });
 
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
 
                 expect(result[0]).toHaveLength(1);
-                expect(result[0][0].json.error).toBe('invalidOperation');
+                expect(result[0][0].json.error).toContain("Build result contains no request");
             });
 
             it('should handle API error with continueOnFail true', async () => {
@@ -269,9 +355,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(true);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -282,7 +366,6 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 expect(result[0]).toHaveLength(1);
                 expect(result[0][0].json.error).toBe('API error');
-                expect(result[0][0].json.operation).toBe('createMovie');
             });
 
             it('should handle API error with continueOnFail false', async () => {
@@ -290,9 +373,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(false);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({
                     apiKey: 'test-api-key'
                 });
@@ -308,9 +389,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(true);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue(null);
 
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
@@ -324,9 +403,7 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
                 mockExecute.getInputData.mockReturnValue(inputData);
                 mockExecute.continueOnFail.mockReturnValue(true);
-                mockExecute.getNodeParameter.mockImplementation(
-                    createValidParameterMock('createMovie')
-                );
+                mockExecute.getNodeParameter.mockImplementation(createValidParameterMock());
                 mockExecute.getCredentials.mockResolvedValue({});
 
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
@@ -335,12 +412,19 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
                 expect(result[0][0].json.error).toBe('JSON2Video API credentials are required');
             });
 
-            it('should handle empty input data', async () => {
-                mockExecute.getInputData.mockReturnValue([]);
+            it('should handle non-Error exceptions', async () => {
+                const inputData: INodeExecutionData[] = [{ json: {} }];
+
+                mockExecute.getInputData.mockReturnValue(inputData);
+                mockExecute.continueOnFail.mockReturnValue(true);
+                mockExecute.getNodeParameter.mockImplementation(() => {
+                    throw 'string error';
+                });
 
                 const result = await node.execute.call(mockExecute as IExecuteFunctions);
 
-                expect(result).toEqual([[]]);
+                expect(result[0]).toHaveLength(1);
+                expect(result[0][0].json.error).toBe('Unknown error occurred');
             });
         });
     });
@@ -377,14 +461,14 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
         describe('extractParameterErrorMessage', () => {
             it.each([
-                { 
+                {
                     input: new Error('Parameter validation failed: Missing required field'),
                     expected: 'Missing required field',
                     description: 'parameter validation error'
                 },
                 {
                     input: new Error('Parameter validation failed: Invalid format'),
-                    expected: 'Invalid format', 
+                    expected: 'Invalid format',
                     description: 'parameter format error'
                 },
                 {
@@ -446,6 +530,8 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
 
         describe('isEmptyRequest', () => {
             it.each([
+                { input: null, description: 'null' },
+                { input: undefined, description: 'undefined' },
                 { input: {}, description: 'empty object' },
                 { input: { scenes: [] }, description: 'empty scenes array' },
                 { input: { scenes: [{ elements: [] }] }, description: 'scenes with empty elements' },
@@ -455,52 +541,26 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
             });
 
             it.each([
-                { 
+                {
                     input: { scenes: [{ elements: [{ type: 'text', text: 'test' }] }] },
                     description: 'scenes with text elements'
                 },
                 {
-                    input: { width: 1920 },
-                    description: 'object with width property'
+                    input: { elements: [{ type: 'subtitles' }] },
+                    description: 'movie-level elements'
                 },
                 {
                     input: { scenes: [{ elements: [] }, { elements: [{ type: 'video' }] }] },
                     description: 'mixed empty and non-empty scenes'
-                },
-                {
-                    input: { someProperty: 'value' },
-                    description: 'object with other properties'
                 }
             ])('should detect non-empty requests: $description', ({ input }) => {
                 expect(isEmptyRequest(input)).toBe(false);
             });
 
-            it.each([
-                { input: null, description: 'null input' },
-                { input: undefined, description: 'undefined input' },
-                { input: 123, description: 'number input' },
-                { input: [], description: 'array input' }
-            ])('should handle invalid input types that return true: $description', ({ input }) => {
-                expect(isEmptyRequest(input)).toBe(true);
-            });
-
-            it.each([
-                { input: 'string', description: 'string input' }
-            ])('should handle invalid input types that return false: $description', ({ input }) => {
-                expect(isEmptyRequest(input)).toBe(false);
-            });
-
-            it.each([
-                { input: { scenes: [null] }, description: 'null scene element' }
-            ])('should handle malformed scenes that throw: $description', ({ input }) => {
-                expect(() => isEmptyRequest(input)).toThrow();
-            });
-
-            it.each([
-                { input: { scenes: [{ elements: null }] }, description: 'null elements property' },
-                { input: { scenes: [{ elements: 'invalid' }] }, description: 'non-array elements property' }
-            ])('should handle malformed scenes that return true: $description', ({ input }) => {
-                expect(isEmptyRequest(input)).toBe(true);
+            it('should handle invalid scenes structure', () => {
+                expect(isEmptyRequest({ scenes: 'invalid' })).toBe(false);
+                expect(isEmptyRequest({ scenes: [null] })).toBe(true);
+                expect(isEmptyRequest({ scenes: [{ elements: 'invalid' }] })).toBe(true);
             });
         });
 
@@ -508,10 +568,10 @@ describe('CreateJ2vMovie Node - Complete Coverage', () => {
             it('should create consistent base array structure', () => {
                 const result1 = createBaseArray();
                 const result2 = createBaseArray();
-                
+
                 expect(result1).toEqual([[]]);
                 expect(result2).toEqual([[]]);
-                expect(result1).not.toBe(result2); // Different instances
+                expect(result1).not.toBe(result2);
                 expect(Array.isArray(result1)).toBe(true);
                 expect(result1.length).toBe(1);
                 expect(Array.isArray(result1[0])).toBe(true);

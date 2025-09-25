@@ -1,9 +1,10 @@
 # JSON2Video API Complete Documentation
 
-This document defines the complete JSON2Video API schema based on the official API documentation and serves as the authoritative reference for the JSON2Video n8n node development.
+This document defines the complete JSON2Video API schema based on the official API documentation and serves as the authoritative reference for the CreateJ2vMovie n8n node.
 
 **API Documentation References:**
 - Main API Documentation: https://json2video.com/docs/api/
+- v2 API Documentation: https://json2video.com/docs/v2/
 - Movie Schema: https://json2video.com/docs/api/#schema-movie
 - Scene Schema: https://json2video.com/docs/api/#schema-scene
 
@@ -15,9 +16,10 @@ The JSON2Video API follows a hierarchical structure:
 
 ```
 Movie (top-level container)
-├── Movie-level Elements (global elements: subtitles, text, audio, voice, etc.)
-├── Scenes (array of scene objects)
-    ├── Scene-level Elements (per-scene: video, audio, image, text, voice, html, component, audiogram)
+├── Movie-level Elements (global elements: subtitles, text, audio, voice)
+├── Exports (delivery configurations: webhook, ftp, email)
+└── Scenes (array of scene objects)
+    └── Scene-level Elements (per-scene: video, audio, image, text, voice, html, component, audiogram)
 ```
 
 **Critical Rule**: Subtitles elements can ONLY exist at the movie level, not within scenes.
@@ -47,7 +49,7 @@ The top-level movie object defines the overall structure and settings.
 | `comment` | string | No | - | Internal notes/memos |
 | `variables` | object | No | {} | Movie-level variables |
 | `elements` | array | No | - | Movie-level elements (global across all scenes) |
-| `exports` | array | No | - | Export configurations |
+| `exports` | array | No | - | Export configurations (v2 API format) |
 
 ### Resolution Options
 - `"sd"` - Standard Definition
@@ -59,6 +61,69 @@ The top-level movie object defines the overall structure and settings.
 - `"twitter-landscape"` - Twitter landscape
 - `"twitter-portrait"` - Twitter portrait
 - `"custom"` - Custom dimensions (requires width/height)
+
+---
+
+## Export Configuration (v2 API)
+
+**API Reference:** https://json2video.com/docs/v2/api-reference/exports
+
+The v2 API uses a new export format with destinations array:
+
+```json
+{
+  "exports": [
+    {
+      "destinations": [
+        {
+          "type": "webhook",
+          "endpoint": "https://example.com/webhook"
+        },
+        {
+          "type": "ftp",
+          "host": "ftp.example.com",
+          "username": "user",
+          "password": "pass"
+        },
+        {
+          "type": "email",
+          "to": "user@example.com"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Webhook Destination
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `type` | string | **Yes** | Must be "webhook" |
+| `endpoint` | string | **Yes** | HTTPS URL to receive POST request |
+
+### FTP/SFTP Destination
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "ftp" |
+| `host` | string | **Yes** | - | FTP server hostname/IP |
+| `username` | string | **Yes** | - | FTP username |
+| `password` | string | **Yes** | - | FTP password |
+| `port` | integer | No | 21 | Server port (1-65535) |
+| `remote-path` | string | No | "/" | Upload directory path |
+| `file` | string | No | - | Custom filename |
+| `secure` | boolean | No | false | Use SFTP instead of FTP |
+
+### Email Destination
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `type` | string | **Yes** | - | Must be "email" |
+| `to` | string/array | **Yes** | - | Recipient email(s) |
+| `from` | string | No | - | Sender email address |
+| `subject` | string | No | "Your video is ready" | Email subject line |
+| `message` | string | No | - | Email body content |
 
 ---
 
@@ -193,7 +258,7 @@ All elements share these base properties:
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "text" |
 | `text` | string | **Yes** | - | Text content to display |
-| `style` | string | No | "001" | Animation style: "001", "002", "003", "004" |
+| `style` | string | No | "001" | Animation style: "001" through "010" |
 | `position` | string | No | "custom" | Positioning preset or "custom" |
 | `x` | number | No | 0 | X coordinate |
 | `y` | number | No | 0 | Y coordinate |
@@ -206,9 +271,9 @@ All elements share these base properties:
 
 | Property | Type | Required | Default | Valid Values | Description |
 |----------|------|----------|---------|--------------|-------------|
-| `font-family` | string | No | "Arial" | "Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana", "Courier New", "Roboto", "Open Sans", "Lato", "Montserrat", "Source Sans Pro", "Raleway", "Ubuntu", "Nunito", "Playfair Display", "Merriweather", custom URL | Google Fonts name or custom font URL |
-| `font-size` | string/number | No | 32 | 8-500 | Font size with units (e.g., "32px", "2em") or number |
-| `font-weight` | string/number | No | "400" | "100", "200", "300", "400", "500", "600", "700", "800", "900" | Font weight |
+| `font-family` | string | No | "Arial" | Google Fonts name or custom font URL | Font family |
+| `font-size` | string/number | No | 32 | 8-500 | Font size with units or number |
+| `font-weight` | string/number | No | "400" | "100"-"900" (multiples of 100) | Font weight |
 | `font-color` | string | No | "#ffffff" | Hex, rgb, rgba, "transparent" | Text color |
 | `background-color` | string | No | "transparent" | Hex, rgb, rgba, "transparent" | Background color |
 | `text-align` | string | No | "center" | "left", "center", "right", "justify" | Text alignment |
@@ -268,7 +333,8 @@ All elements share these base properties:
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `type` | string | **Yes** | - | Must be "audiogram" |
-| `color` | string | No | "#ffffff" | Wave color (hex code, e.g., "#FF0000") |
+| `src` | string | No | - | Audio source URL for visualization |
+| `color` | string | No | "#ffffff" | Wave color (hex code) |
 | `opacity` | number | No | 0.5 | Opacity (0.0-1.0) |
 | `amplitude` | number | No | 5 | Wave amplitude scaling (0-10) |
 | `position` | string | No | "custom" | Positioning preset or "custom" |
@@ -338,10 +404,10 @@ All elements share these base properties:
 |----------|------|----------|---------|--------------|-------------|
 | `style` | string | No | "classic" | Any string | Subtitle style |
 | `all-caps` | boolean | No | false | true, false | Make subtitles uppercase |
-| `font-family` | string | No | "Arial" | "Arial", "Helvetica", "Times New Roman", "Georgia", "Verdana", "Courier New", "Roboto", "Open Sans", "Lato", "Montserrat", "Source Sans Pro", "Raleway", "Ubuntu", "Nunito", custom URL | Font family name |
+| `font-family` | string | No | "Arial" | Font names or custom URL | Font family name |
 | `font-size` | number | No | - | 8-200 | Font size (defaults to 5% of movie width) |
 | `font-url` | string | No | - | Valid URL | Custom font URL (TTF format) |
-| `position` | string | No | "bottom-center" | "top-left", "top-center", "top-right", "center-left", "center-center", "center-right", "bottom-left", "bottom-center", "bottom-right", "custom" | Position on canvas |
+| `position` | string | No | "bottom-center" | Position presets or "custom" | Position on canvas |
 | `word-color` | string | No | "#FFFF00" | Hex, rgb, rgba | Color of current word |
 | `line-color` | string | No | "#FFFFFF" | Hex, rgb, rgba | Color of other words |
 | `box-color` | string | No | "#000000" | Hex, rgb, rgba | Background box color |
@@ -401,36 +467,6 @@ Elements can be conditionally included using the `condition` property:
 }
 ```
 
-### Dynamic Number of Scenes
-
-Use the `iterate` property to generate multiple scenes from array data:
-
-```json
-{
-  "variables": {
-    "slides": [
-      {"image": "img1.jpg", "title": "Slide 1"},
-      {"image": "img2.jpg", "title": "Slide 2"}
-    ]
-  },
-  "scenes": [
-    {
-      "iterate": "slides",
-      "elements": [
-        {
-          "type": "image",
-          "src": "{{image}}"
-        },
-        {
-          "type": "text", 
-          "text": "{{title}}"
-        }
-      ]
-    }
-  ]
-}
-```
-
 ---
 
 ## Property Naming Convention
@@ -487,6 +523,7 @@ The n8n node processors must convert camelCase to kebab-case for API requests.
 3. **Value Ranges**: Numeric properties have defined min/max values
 4. **Enum Values**: String properties with limited valid options
 5. **Conditional Requirements**: Some properties become required based on others (e.g., x/y when position="custom")
+6. **Export Format**: v2 API uses `exports` array with `destinations` structure
 
 ---
 
@@ -495,4 +532,5 @@ The n8n node processors must convert camelCase to kebab-case for API requests.
 1. **Scene Structure**: Split into multiple scenes for parallel rendering
 2. **Asset Optimization**: Use appropriate formats and sizes
 3. **Caching**: Leverage `cache: true` for repeated elements
-4. **Transitions**: Use sparingly, prefer `fade` when needed
+4. **Visual Effects**: Use pan effects within scenes for dynamic visuals
+5. **Draft Mode**: Use lower quality for testing iterations

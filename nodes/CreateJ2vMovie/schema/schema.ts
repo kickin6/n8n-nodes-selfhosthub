@@ -1,15 +1,13 @@
-// nodes/CreateJ2vMovie/schema/json2videoSchema.ts
+// nodes/CreateJ2vMovie/schema/schema.ts
 
 /**
  * Complete JSON2Video API Schema Definition
- * Based on official API documentation and JSON_SCHEMA.md
- * This serves as the single source of truth for all API validation
+ * Based on official v2 API documentation - serves as the single source of truth for all API validation
  */
 
-// =============================================================================
-// ROOT REQUEST INTERFACE
-// =============================================================================
-
+/**
+ * Root JSON2Video API request interface
+ */
 export interface JSON2VideoRequest {
   id?: string;
   resolution?: string;
@@ -25,48 +23,54 @@ export interface JSON2VideoRequest {
   scenes: Scene[];
 }
 
-// =============================================================================
-// EXPORT CONFIGURATION INTERFACES
-// =============================================================================
-
+/**
+ * Export configuration for video delivery methods (v2 API format)
+ */
 export interface ExportConfig {
-  // Basic export settings
-  format?: 'mp4' | 'webm' | 'gif';
-  quality?: 'low' | 'medium' | 'high' | 'very_high';
-  resolution?: string;
-  width?: number;
-  height?: number;
-  
-  // Delivery methods (mutually exclusive)
-  webhook?: WebhookExportConfig;
-  ftp?: FtpExportConfig;  
-  email?: EmailExportConfig;
+  destinations: ExportDestination[];
 }
 
-export interface WebhookExportConfig {
-  url: string;
+/**
+ * Export destination union type
+ */
+export type ExportDestination = WebhookDestination | FtpDestination | EmailDestination;
+
+/**
+ * Webhook export destination
+ */
+export interface WebhookDestination {
+  type: 'webhook';
+  endpoint: string;
 }
 
-export interface FtpExportConfig {
+/**
+ * FTP/SFTP export destination
+ */
+export interface FtpDestination {
+  type: 'ftp';
   host: string;
   port?: number;
   username: string;
   password: string;
-  path?: string;
+  'remote-path'?: string;
+  file?: string;
   secure?: boolean; // SFTP vs FTP
 }
 
-export interface EmailExportConfig {
+/**
+ * Email export destination
+ */
+export interface EmailDestination {
+  type: 'email';
   to: string | string[];
   from?: string;
   subject?: string;
   message?: string;
 }
 
-// =============================================================================
-// SCENE INTERFACE
-// =============================================================================
-
+/**
+ * Scene object containing elements and settings
+ */
 export interface Scene {
   id?: string;
   duration?: number;
@@ -76,19 +80,11 @@ export interface Scene {
   cache?: boolean;
   variables?: Record<string, any>;
   elements: SceneElement[];
-  transition?: Transition;
-  iterate?: string;
 }
 
-export interface Transition {
-  style: 'fade' | 'dissolve' | 'wipeLeft' | 'wipeRight' | 'wipeUp' | 'wipeDown';
-  duration?: number;
-}
-
-// =============================================================================
-// ELEMENT BASE INTERFACES
-// =============================================================================
-
+/**
+ * Base element interface with common properties
+ */
 export interface BaseElement {
   type: string;
   id?: string;
@@ -104,6 +100,9 @@ export interface BaseElement {
   'fade-out'?: number;
 }
 
+/**
+ * Visual element interface with positioning and effects
+ */
 export interface VisualElement extends BaseElement {
   position?: string;
   x?: number;
@@ -124,6 +123,9 @@ export interface VisualElement extends BaseElement {
   correction?: CorrectionObject;
 }
 
+/**
+ * Audio element interface with playback controls
+ */
 export interface AudioElement extends BaseElement {
   src?: string;
   seek?: number;
@@ -132,14 +134,13 @@ export interface AudioElement extends BaseElement {
   loop?: number;
 }
 
-// =============================================================================
-// MOVIE-LEVEL ELEMENTS (can appear in movie.elements array)
-// =============================================================================
-
+/**
+ * Movie-level text element (global across entire video)
+ */
 export interface MovieTextElement extends BaseElement {
   type: 'text';
   text: string;
-  style?: '001' | '002' | '003' | '004';
+  style?: '001' | '002' | '003' | '004' | '005' | '006' | '007' | '008' | '009' | '010';
   position?: string;
   x?: number;
   y?: number;
@@ -149,6 +150,9 @@ export interface MovieTextElement extends BaseElement {
   settings?: TextSettings;
 }
 
+/**
+ * Subtitle element (only allowed at movie level)
+ */
 export interface SubtitleElement extends BaseElement {
   type: 'subtitles';
   captions?: string;
@@ -159,10 +163,16 @@ export interface SubtitleElement extends BaseElement {
   settings?: SubtitleSettings;
 }
 
+/**
+ * Movie-level audio element
+ */
 export interface MovieAudioElement extends AudioElement {
   type: 'audio';
 }
 
+/**
+ * Voice/TTS element for speech synthesis
+ */
 export interface VoiceElement extends BaseElement {
   type: 'voice';
   text: string;
@@ -173,12 +183,14 @@ export interface VoiceElement extends BaseElement {
   muted?: boolean;
 }
 
+/**
+ * Union type for all movie-level elements
+ */
 export type MovieElement = MovieTextElement | SubtitleElement | MovieAudioElement | VoiceElement;
 
-// =============================================================================
-// SCENE-LEVEL ELEMENTS (can appear in scene.elements array)
-// =============================================================================
-
+/**
+ * Video element for scene-level video content
+ */
 export interface VideoElement extends VisualElement {
   type: 'video';
   src?: string;
@@ -188,6 +200,9 @@ export interface VideoElement extends VisualElement {
   loop?: number;
 }
 
+/**
+ * Image element with support for AI generation
+ */
 export interface ImageElement extends VisualElement {
   type: 'image';
   src?: string;
@@ -198,10 +213,13 @@ export interface ImageElement extends VisualElement {
   'model-settings'?: Record<string, any>;
 }
 
+/**
+ * Scene-level text element
+ */
 export interface SceneTextElement extends BaseElement {
   type: 'text';
   text: string;
-  style?: '001' | '002' | '003' | '004';
+  style?: '001' | '002' | '003' | '004' | '005' | '006' | '007' | '008' | '009' | '010';
   position?: string;
   x?: number;
   y?: number;
@@ -211,10 +229,16 @@ export interface SceneTextElement extends BaseElement {
   settings?: TextSettings;
 }
 
+/**
+ * Scene-level audio element
+ */
 export interface SceneAudioElement extends AudioElement {
   type: 'audio';
 }
 
+/**
+ * Scene-level voice element
+ */
 export interface SceneVoiceElement extends BaseElement {
   type: 'voice';
   text: string;
@@ -225,12 +249,18 @@ export interface SceneVoiceElement extends BaseElement {
   muted?: boolean;
 }
 
+/**
+ * Component element for reusable video components
+ */
 export interface ComponentElement extends VisualElement {
   type: 'component';
   component: string;
   settings?: Record<string, any>;
 }
 
+/**
+ * Audiogram element for audio waveform visualization
+ */
 export interface AudiogramElement extends VisualElement {
   type: 'audiogram';
   color?: string;
@@ -238,6 +268,9 @@ export interface AudiogramElement extends VisualElement {
   amplitude?: number;
 }
 
+/**
+ * HTML element for custom HTML rendering
+ */
 export interface HtmlElement extends VisualElement {
   type: 'html';
   html?: string;
@@ -246,12 +279,14 @@ export interface HtmlElement extends VisualElement {
   wait?: number;
 }
 
+/**
+ * Union type for all scene-level elements
+ */
 export type SceneElement = VideoElement | ImageElement | SceneTextElement | SceneAudioElement | SceneVoiceElement | ComponentElement | AudiogramElement | HtmlElement;
 
-// =============================================================================
-// SHARED OBJECTS
-// =============================================================================
-
+/**
+ * Crop object for element cropping
+ */
 export interface CropObject {
   width: number;
   height: number;
@@ -259,16 +294,25 @@ export interface CropObject {
   y?: number;
 }
 
+/**
+ * Rotation object for element rotation effects
+ */
 export interface RotateObject {
   angle: number;
   speed?: number;
 }
 
+/**
+ * Chroma key object for green screen effects
+ */
 export interface ChromaKeyObject {
   color: string;
   tolerance?: number;
 }
 
+/**
+ * Color correction object for visual adjustments
+ */
 export interface CorrectionObject {
   brightness?: number;
   contrast?: number;
@@ -276,6 +320,9 @@ export interface CorrectionObject {
   saturation?: number;
 }
 
+/**
+ * Text styling settings using kebab-case properties
+ */
 export interface TextSettings {
   'font-family'?: string;
   'font-size'?: number | string;
@@ -292,6 +339,9 @@ export interface TextSettings {
   'text-transform'?: string;
 }
 
+/**
+ * Subtitle styling settings using kebab-case properties
+ */
 export interface SubtitleSettings {
   style?: string;
   'all-caps'?: boolean;
@@ -315,10 +365,9 @@ export interface SubtitleSettings {
   language?: string;
 }
 
-// =============================================================================
-// API RULES AND VALIDATION CONSTANTS
-// =============================================================================
-
+/**
+ * API rules and validation constants
+ */
 export const API_RULES = {
   MOVIE_ELEMENT_TYPES: ['text', 'subtitles', 'audio', 'voice'] as const,
   SCENE_ELEMENT_TYPES: ['video', 'audio', 'image', 'text', 'voice', 'component', 'audiogram', 'html'] as const,
@@ -335,6 +384,17 @@ export const API_RULES = {
     component: ['component', 'type'] as const,
     audiogram: [] as const,
     html: [] as const
+  },
+
+  EXPORT_RULES: {
+    REQUIRED_FIELDS: {
+      webhook: ['endpoint'] as const,
+      ftp: ['host', 'username', 'password'] as const,
+      email: ['to'] as const
+    },
+    VALID_DESTINATION_TYPES: ['webhook', 'ftp', 'email'] as const,
+    SUPPORTS_MULTIPLE_DESTINATIONS: true,
+    SINGLE_EXPORT_CONFIG: true // Currently only supports one item in exports array
   },
 
   SUBTITLE_RULES: {
@@ -356,6 +416,7 @@ export const API_RULES = {
     gamma: { min: 0.1, max: 10 },
     saturation: { min: 0, max: 3 },
     wait: { min: 0, max: 5 },
+    ftpPort: { min: 1, max: 65535 },
   },
 
   VALID_POSITIONS: [
@@ -374,11 +435,7 @@ export const API_RULES = {
 
   VALID_RESIZE_MODES: ['cover', 'fill', 'fit', 'contain'] as const,
 
-  VALID_TRANSITION_STYLES: [
-    'fade', 'dissolve', 'wipeLeft', 'wipeRight', 'wipeUp', 'wipeDown'
-  ] as const,
-
-  VALID_TEXT_STYLES: ['001', '002', '003', '004'] as const,
+  VALID_TEXT_STYLES: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010'] as const,
 
   VALID_AI_MODELS: ['flux-pro', 'flux-schnell', 'freepik-classic'] as const,
 
@@ -394,14 +451,13 @@ export const API_RULES = {
   SPECIAL_DURATION_VALUES: [-1, -2] as const, // -1 = intrinsic, -2 = match container
 } as const;
 
-// =============================================================================
-// PARAMETER INTERFACES FOR ELEMENT PROCESSING
-// =============================================================================
-
+/**
+ * Text element parameters for processing - simplified for JSON settings approach
+ */
 export interface TextElementParams {
   text: string;
-  style?: string;
-  textTransform?: string;
+  textStyle?: string;
+  textSettings?: string | object;
   position?: string;
   x?: number;
   y?: number;
@@ -409,22 +465,12 @@ export interface TextElementParams {
   height?: number;
   start?: number;
   duration?: number;
-  // settings
-  fontFamily?: string;
-  fontSize?: number | string;
-  fontWeight?: number | string;
-  fontColor?: string;
-  backgroundColor?: string;
-  textAlign?: string;
-  verticalPosition?: string;
-  horizontalPosition?: string;
-  // extended settings
-  lineHeight?: number;
-  letterSpacing?: number;
-  textShadow?: string;
-  textDecoration?: string;
+  [key: string]: any;
 }
 
+/**
+ * Subtitle element parameters for processing
+ */
 export interface SubtitleElementParams {
   captions?: string;
   src?: string;
@@ -451,6 +497,9 @@ export interface SubtitleElementParams {
   replace?: Record<string, string>;
 }
 
+/**
+ * Basic element parameters for processing
+ */
 export interface BasicElementParams {
   type: string;
   src?: string;
@@ -469,6 +518,9 @@ export interface BasicElementParams {
   [key: string]: any;
 }
 
+/**
+ * HTML element parameters for processing
+ */
 export interface HtmlElementParams {
   html?: string;
   src?: string;
@@ -497,30 +549,59 @@ export interface HtmlElementParams {
   [key: string]: any;
 }
 
-// =============================================================================
-// TYPE GUARDS AND UTILITIES
-// =============================================================================
-
+/**
+ * Type guard for movie-level elements
+ */
 export function isMovieElement(element: any): element is MovieElement {
-  return element && API_RULES.MOVIE_ELEMENT_TYPES.includes(element.type);
+  return Boolean(element && API_RULES.MOVIE_ELEMENT_TYPES.includes(element.type));
 }
 
+/**
+ * Type guard for scene-level elements
+ */
 export function isSceneElement(element: any): element is SceneElement {
-  return element && API_RULES.SCENE_ELEMENT_TYPES.includes(element.type);
+  return Boolean(element && API_RULES.SCENE_ELEMENT_TYPES.includes(element.type));
 }
 
+/**
+ * Type guard for subtitle elements
+ */
 export function isSubtitleElement(element: any): element is SubtitleElement {
-  return element && element.type === 'subtitles';
+  return Boolean(element && element.type === 'subtitles');
 }
 
+/**
+ * Type guard for text elements
+ */
 export function isTextElement(element: any): element is MovieTextElement | SceneTextElement {
-  return element && element.type === 'text';
+  return Boolean(element && element.type === 'text');
 }
 
+/**
+ * Type guard for HTML elements
+ */
 export function isHtmlElement(element: any): element is HtmlElement {
-  return element && element.type === 'html';
+  return Boolean(element && element.type === 'html');
 }
 
+/**
+ * Type guard for export destinations
+ */
+export function isWebhookDestination(destination: any): destination is WebhookDestination {
+  return Boolean(destination && destination.type === 'webhook');
+}
+
+export function isFtpDestination(destination: any): destination is FtpDestination {
+  return Boolean(destination && destination.type === 'ftp');
+}
+
+export function isEmailDestination(destination: any): destination is EmailDestination {
+  return Boolean(destination && destination.type === 'email');
+}
+
+/**
+ * Check if element has all required fields for its type
+ */
 export function hasRequiredFields(element: any): boolean {
   if (!element || !element.type) return false;
 
@@ -535,6 +616,26 @@ export function hasRequiredFields(element: any): boolean {
   });
 }
 
+/**
+ * Check if export destination has all required fields for its type
+ */
+export function hasRequiredExportFields(destination: any): boolean {
+  if (!destination || !destination.type) return false;
+
+  const requiredFields = API_RULES.EXPORT_RULES.REQUIRED_FIELDS[destination.type as keyof typeof API_RULES.EXPORT_RULES.REQUIRED_FIELDS];
+  if (!requiredFields) return true;
+
+  return requiredFields.every(field => {
+    const value = destination[field];
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'string' && value.trim() === '') return false;
+    return true;
+  });
+}
+
+/**
+ * Validate duration value according to API rules
+ */
 export function isValidDuration(duration: any): boolean {
   if (duration === undefined || duration === null) return true;
   if (typeof duration === 'number') {
@@ -543,10 +644,16 @@ export function isValidDuration(duration: any): boolean {
   return false;
 }
 
+/**
+ * Validate position value according to API rules
+ */
 export function isValidPosition(position: string): boolean {
   return API_RULES.VALID_POSITIONS.includes(position as any);
 }
 
+/**
+ * Validate wait time for HTML elements
+ */
 export function isValidWait(wait: any): boolean {
   if (wait === undefined || wait === null) return true;
   if (typeof wait === 'number') {
@@ -555,10 +662,28 @@ export function isValidWait(wait: any): boolean {
   return false;
 }
 
-// =============================================================================
-// EXPORTS
-// =============================================================================
+/**
+ * Validate FTP port number
+ */
+export function isValidFtpPort(port: any): boolean {
+  if (port === undefined || port === null) return true;
+  if (typeof port === 'number') {
+    return port >= API_RULES.VALIDATION_RANGES.ftpPort.min && port <= API_RULES.VALIDATION_RANGES.ftpPort.max;
+  }
+  return false;
+}
 
+/**
+ * Union type for all element types
+ */
 export type AllElements = MovieElement | SceneElement;
+
+/**
+ * Alias for the main request interface
+ */
 export type { JSON2VideoRequest as MovieRequest };
+
+/**
+ * Alias for the scene interface
+ */
 export type { Scene as SceneRequest };

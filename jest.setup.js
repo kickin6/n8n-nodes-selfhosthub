@@ -10,10 +10,8 @@ if (process.env.DEBUG_TESTS) {
 global.console = {
   ...console,
   // Suppress console.log during tests unless DEBUG_TESTS is set
-  log: process.env.DEBUG_TESTS ? console.log : jest.fn(),
-  debug: process.env.DEBUG_TESTS ? console.debug : jest.fn(),
-  log: console.log,
-  debug: console.debug,
+  log: process.env.LOG_TESTS === 'true' ? console.log : jest.fn(),
+  debug: process.env.DEBUG_TESTS === 'true' ? console.debug : jest.fn(),
   warn: console.warn,
   error: console.error,
 };

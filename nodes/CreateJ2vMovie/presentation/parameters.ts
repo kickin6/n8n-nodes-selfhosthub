@@ -1,17 +1,13 @@
-// nodes/CreateJ2vMovie/presentation/unifiedParameters.ts
-// COMPLETE REFACTOR: Added missing movie-level parameters and fixed structure
+// nodes/CreateJ2vMovie/presentation/parameters.ts
 
 import { INodeProperties } from 'n8n-workflow';
-import { elementCollection } from '../shared/elementFields';
+import { elementCollection } from './fields';
+import { templateSelectorParameter } from './templates';
 
 /**
- * UNIFIED PARAMETERS - Complete API coverage with movie settings
+ * Parameters collection for video creation
  */
 export const unifiedParameters: INodeProperties[] = [
-  // =============================================================================
-  // BASIC CONFIGURATION
-  // =============================================================================
-  
   {
     displayName: 'Record ID',
     name: 'recordId',
@@ -20,12 +16,21 @@ export const unifiedParameters: INodeProperties[] = [
     description: 'Optional record identifier for tracking. If not provided, JSON2Video will auto-generate one.',
   },
 
-  // =============================================================================
-  // MOVIE SETTINGS TOGGLE → MOVIE SETTINGS FIELDS
-  // =============================================================================
-
+  // Movie settings toggle and fields
   {
-    displayName: 'Movie Settings',
+    displayName: 'Movie Settings [<a href="https://json2video.com/docs/v2/api-reference/json-syntax/movie" target=_blank>Doc</a>]',
+    name: 'movieSettingsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Movie Settings divider',
+    displayOptions: {
+      hide: {
+        advancedMode: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showMovieSettings',
     type: 'boolean' as const,
     default: false,
@@ -33,13 +38,9 @@ export const unifiedParameters: INodeProperties[] = [
     displayOptions: {
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
-  // Movie settings fields appear immediately after toggle
   {
     displayName: 'Movie ID',
     name: 'movieId',
@@ -50,8 +51,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -65,8 +64,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -83,8 +80,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -98,8 +93,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -113,8 +106,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -128,8 +119,6 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
@@ -138,7 +127,7 @@ export const unifiedParameters: INodeProperties[] = [
     name: 'movieResolution',
     type: 'options' as const,
     options: [
-      { name: 'Custom (use width/height)', value: 'custom' },
+      { name: 'Custom (use Output Settings width/height)', value: 'custom' },
       { name: 'Standard Definition', value: 'sd' },
       { name: 'High Definition', value: 'hd' },
       { name: 'Full HD', value: 'full-hd' },
@@ -154,34 +143,35 @@ export const unifiedParameters: INodeProperties[] = [
       show: { showMovieSettings: [true] },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
 
-  // =============================================================================
-  // MOVIE-LEVEL SUBTITLES (FOR CREATEMOVIE ONLY)
-  // =============================================================================
-
+  // Movie-level subtitles
   {
-    displayName: 'Add Subtitles',
+    displayName: 'Subtitles [<a href="https://json2video.com/docs/v2/api-reference/json-syntax/element/subtitles" target=_blank>Doc</a> | <a href="https://json2video.com/docs/v2/api-reference/json-syntax/element/subtitles#settings" target=_blank>Settings</a>]',
+    name: 'subtitlesDivider',
+    type: 'notice',
+    default: '',
+    description: 'Subtitles divider',
+    displayOptions: {
+      hide: {
+        advancedMode: [true],
+      },
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'enableSubtitles',
     type: 'boolean' as const,
     default: false,
     description: 'Add subtitles to the video (movie-level, appears across entire video)',
     displayOptions: {
-      show: {
-        operation: ['createMovie'],
-      },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Captions',
     name: 'captions',
@@ -192,17 +182,13 @@ export const unifiedParameters: INodeProperties[] = [
     description: 'URL to subtitle file (SRT, VTT, ASS) OR actual subtitle content as text. Leave empty to auto-generate from audio.',
     displayOptions: {
       show: {
-        operation: ['createMovie'],
         enableSubtitles: [true],
       },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Comment',
     name: 'subtitleComment',
@@ -212,17 +198,13 @@ export const unifiedParameters: INodeProperties[] = [
     description: 'Internal comment or note about the subtitle element',
     displayOptions: {
       show: {
-        operation: ['createMovie'],
         enableSubtitles: [true],
       },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Language',
     name: 'subtitleLanguage',
@@ -271,17 +253,13 @@ export const unifiedParameters: INodeProperties[] = [
     description: 'Language code for subtitles or "auto" for auto-detection',
     displayOptions: {
       show: {
-        operation: ['createMovie'],
         enableSubtitles: [true],
       },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Transcription Model',
     name: 'subtitleModel',
@@ -294,17 +272,13 @@ export const unifiedParameters: INodeProperties[] = [
     description: 'Transcription model to use when auto-generating subtitles from audio',
     displayOptions: {
       show: {
-        operation: ['createMovie'],
         enableSubtitles: [true],
       },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
-
   {
     displayName: 'Subtitle Settings',
     name: 'subtitleSettings',
@@ -324,40 +298,28 @@ export const unifiedParameters: INodeProperties[] = [
   "outline-width": 2,
   "max-words-per-line": 4
 }`,
-    description: 'Subtitle styling and appearance settings as JSON object. Complete settings object with kebab-case properties.',
+    description: 'Subtitle settings [<a href="https://json2video.com/docs/v2/api-reference/json-syntax/element/subtitles#settings" target=_blank>Doc</a>]',
     displayOptions: {
       show: {
-        operation: ['createMovie'],
         enableSubtitles: [true],
       },
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
 
-  // =============================================================================
-  // UNIFIED ELEMENTS COLLECTION
-  // =============================================================================
-
-  // Main unified element collection
+  // Elements collection
   {
     ...elementCollection,
     displayOptions: {
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
   },
 
-  // =============================================================================
-  // OUTPUT SETTINGS
-  // =============================================================================
-
+  // Output settings
   {
     displayName: 'Output Settings',
     name: 'outputSettings',
@@ -370,8 +332,6 @@ export const unifiedParameters: INodeProperties[] = [
     displayOptions: {
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
     default: {},
@@ -419,10 +379,7 @@ export const unifiedParameters: INodeProperties[] = [
     ],
   },
 
-  // =============================================================================
-  // EXPORT SETTINGS
-  // =============================================================================
-
+  // Export settings - Updated for v2 API format
   {
     displayName: 'Export Settings',
     name: 'exportSettings',
@@ -430,23 +387,21 @@ export const unifiedParameters: INodeProperties[] = [
     typeOptions: {
       multipleValues: true,
     },
-    placeholder: 'Add Export Configuration',
-    description: 'Configure video delivery methods',
+    placeholder: 'Add Export Destination',
+    description: 'Configure export settings [<a href="https://json2video.com/docs/v2/api-reference/exports" target=_blank>Doc</a>]',
     displayOptions: {
       hide: {
         advancedMode: [true],
-        advancedModeMergeVideoAudio: [true],
-        advancedModeMergeVideos: [true],
       },
     },
     default: {},
     options: [
       {
         name: 'exportValues',
-        displayName: 'Export Configuration',
+        displayName: 'Export Destination',
         values: [
           {
-            displayName: 'Export Type',
+            displayName: 'Destination Type',
             name: 'exportType',
             type: 'options' as const,
             required: true,
@@ -458,31 +413,7 @@ export const unifiedParameters: INodeProperties[] = [
             ],
             description: 'Method for delivering the generated video',
           },
-          {
-            displayName: 'Format',
-            name: 'format',
-            type: 'options' as const,
-            options: [
-              { name: 'MP4', value: 'mp4' },
-              { name: 'WebM', value: 'webm' },
-              { name: 'GIF', value: 'gif' },
-            ],
-            default: 'mp4',
-            description: 'Video format for export',
-          },
-          {
-            displayName: 'Quality',
-            name: 'quality',
-            type: 'options' as const,
-            options: [
-              { name: 'Low', value: 'low' },
-              { name: 'Medium', value: 'medium' },
-              { name: 'High', value: 'high' },
-              { name: 'Very High', value: 'very_high' },
-            ],
-            default: 'high',
-            description: 'Video quality setting',
-          },
+
           // Webhook fields
           {
             displayName: 'Webhook URL',
@@ -503,6 +434,7 @@ export const unifiedParameters: INodeProperties[] = [
             },
             description: 'HTTPS URL to receive webhook notifications when video is complete',
           },
+
           // FTP fields
           {
             displayName: 'FTP Host',
@@ -514,6 +446,17 @@ export const unifiedParameters: INodeProperties[] = [
               show: { exportType: ['ftp'] },
             },
             description: 'FTP server hostname or IP address',
+          },
+          {
+            displayName: 'FTP Port',
+            name: 'ftpPort',
+            type: 'number' as const,
+            default: 21,
+            typeOptions: { minValue: 1, maxValue: 65535 },
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'FTP server port (default: 21 for FTP, 22 for SFTP)',
           },
           {
             displayName: 'FTP Username',
@@ -539,15 +482,36 @@ export const unifiedParameters: INodeProperties[] = [
             description: 'FTP password',
           },
           {
-            displayName: 'FTP Path',
+            displayName: 'Remote Path',
             name: 'ftpPath',
             type: 'string' as const,
             default: '/',
             displayOptions: {
               show: { exportType: ['ftp'] },
             },
-            description: 'Remote directory path for upload',
+            description: 'Remote directory path for upload (e.g., /videos/)',
           },
+          {
+            displayName: 'File Name',
+            name: 'ftpFile',
+            type: 'string' as const,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'Custom filename for uploaded video (optional - auto-generated if empty)',
+          },
+          {
+            displayName: 'Use SFTP (Secure)',
+            name: 'ftpSecure',
+            type: 'boolean' as const,
+            default: false,
+            displayOptions: {
+              show: { exportType: ['ftp'] },
+            },
+            description: 'Use SFTP (secure) instead of regular FTP',
+          },
+
           // Email fields
           {
             displayName: 'Email To',
@@ -562,6 +526,19 @@ export const unifiedParameters: INodeProperties[] = [
               validation: [{ type: 'email' }],
             },
             description: 'Recipient email address',
+          },
+          {
+            displayName: 'Email From',
+            name: 'emailFrom',
+            type: 'string' as const,
+            default: '',
+            displayOptions: {
+              show: { exportType: ['email'] },
+            },
+            typeOptions: {
+              validation: [{ type: 'email' }],
+            },
+            description: 'Sender email address (optional)',
           },
           {
             displayName: 'Email Subject',
@@ -590,61 +567,289 @@ export const unifiedParameters: INodeProperties[] = [
   },
 ];
 
-// =============================================================================
-// ADVANCED MODE PARAMETERS
-// =============================================================================
-
+/**
+ * Advanced mode parameter
+ */
 export const unifiedAdvancedModeParameter: INodeProperties = {
   displayName: 'Advanced Mode',
   name: 'advancedMode',
   type: 'boolean' as const,
   default: false,
   description: 'Enable advanced mode for full JSON control (overrides all form settings)',
-  displayOptions: {
-    show: {
-      operation: ['createMovie'],
-    },
-  },
 };
 
-export const mergeVideoAudioAdvancedModeParameter: INodeProperties = {
-  displayName: 'Advanced Mode',
-  name: 'advancedModeMergeVideoAudio',
-  type: 'boolean' as const,
-  default: false,
-  description: 'Enable advanced mode for full JSON control (overrides all form settings)',
-  displayOptions: {
-    show: {
-      operation: ['mergeVideoAudio'],
-    },
-  },
-};
-
-export const mergeVideosAdvancedModeParameter: INodeProperties = {
-  displayName: 'Advanced Mode',
-  name: 'advancedModeMergeVideos',
-  type: 'boolean' as const,
-  default: false,
-  description: 'Enable advanced mode for full JSON control (overrides all form settings)',
-  displayOptions: {
-    show: {
-      operation: ['mergeVideos'],
-    },
-  },
-};
-
-// =============================================================================
-// JSON TEMPLATE PARAMETERS
-// =============================================================================
-
-export const unifiedJsonTemplateParameter: INodeProperties = {
+/**
+ * JSON template parameters - one for each template type
+ */
+export const jsonTemplateBlank: INodeProperties = {
   displayName: 'JSON Template',
-  name: 'jsonTemplate',
+  name: 'jsonTemplateBlank',
   type: 'json' as const,
   displayOptions: {
     show: {
-      operation: ['createMovie'],
       advancedMode: [true],
+      templateType: ['blank'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": []
+    }
+  ]
+}`,
+  description: 'Blank template - add your own elements and scenes',
+};
+
+export const jsonTemplateVideoImage: INodeProperties = {
+  displayName: 'JSON Template', 
+  name: 'jsonTemplateVideoImage',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['videoImage'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "image",
+          "src": "{{  /* image0Url */ }}",
+          "start": 0,
+          "duration": 5,
+          "resize": "cover",
+          "zoom": 3
+        },
+        {
+          "type": "image",
+          "src": "{{  /* image1Url */ }}",
+          "start": 5,
+          "duration": 5,
+          "resize": "cover",
+          "zoom": 3
+        },
+        {
+          "type": "image",
+          "src": "{{  /* image2Url */ }}",
+          "start": 10,
+          "duration": 5,
+          "resize": "cover",
+          "zoom": 3
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Create video from images. Requires: image0Url, image1Url, image2Url',
+};
+
+export const jsonTemplateVideoAudio: INodeProperties = {
+  displayName: 'JSON Template', 
+  name: 'jsonTemplateVideoAudio',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['videoAudio'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "{{  /* video0Url */ }}",
+          "volume": 0.3
+        },
+        {
+          "type": "audio",
+          "src": "{{  /* audio0Url */ }}",
+          "volume": 1
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Merge video with audio. Requires: video0Url, audio0Url',
+};
+
+export const jsonTemplateVideoSequence: INodeProperties = {
+  displayName: 'JSON Template',
+  name: 'jsonTemplateVideoSequence', 
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['videoSequence'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "{{  /* video0Url */ }}",
+          "start": 0,
+          "duration": -1
+        },
+        {
+          "type": "video",
+          "src": "{{  /* video1Url */ }}",
+          "start": 10,
+          "duration": -1
+        },
+        {
+          "type": "video",
+          "src": "{{  /* video2Url */ }}",
+          "start": 20,
+          "duration": -1
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Sequence of videos. Requires: video0Url, video1Url, video2Url',
+};
+
+export const jsonTemplateSlideshow: INodeProperties = {
+  displayName: 'JSON Template',
+  name: 'jsonTemplateSlideshow',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['slideshow'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "elements": [
+    {
+      "type": "audio",
+      "src": "{{  /* audio0Url */ }}",
+      "volume": 0.5,
+      "duration": -2
+    }
+  ],
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "image",
+          "src": "{{  /* image0Url */ }}",
+          "start": 0,
+          "duration": 4,
+          "resize": "cover"
+        },
+        {
+          "type": "image",
+          "src": "{{  /* image1Url */ }}",
+          "start": 4,
+          "duration": 4,
+          "resize": "cover"
+        },
+        {
+          "type": "image",
+          "src": "{{  /* image2Url */ }}",
+          "start": 8,
+          "duration": 4,
+          "resize": "cover"
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Image slideshow with music. Requires: image0Url, image1Url, image2Url, audio0Url',
+};
+
+export const jsonTemplateTextOverlay: INodeProperties = {
+  displayName: 'JSON Template',
+  name: 'jsonTemplateTextOverlay',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['textOverlay'],
+    },
+  },
+  default: `{
+  "width": 1920,
+  "height": 1080,
+  "quality": "high",
+  "scenes": [
+    {
+      "elements": [
+        {
+          "type": "video",
+          "src": "{{  /* video0Url */ }}"
+        },
+        {
+          "type": "text",
+          "text": "{{  /* text0 */ }}",
+          "start": 1,
+          "duration": 3,
+          "position": "center-center",
+          "style": "001",
+          "settings": {
+            "font-size": "6vw",
+            "font-family": "Inter",
+            "font-weight": "700",
+            "text-align": "center",
+            "font-color": "#FFFFFF",
+            "text-shadow": "2px 2px 4px rgba(0,0,0,0.8)"
+          }
+        },
+        {
+          "type": "text",
+          "text": "{{  /* text1 */ }}",
+          "start": 2,
+          "duration": 3,
+          "position": "bottom-center",
+          "y": -100,
+          "style": "001",
+          "settings": {
+            "font-size": "3vw",
+            "font-family": "Inter",
+            "font-weight": "400",
+            "text-align": "center",
+            "font-color": "#FFFFFF",
+            "text-shadow": "1px 1px 2px rgba(0,0,0,0.8)"
+          }
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Video with text overlays. Requires: video0Url, text0, text1',
+};
+
+export const jsonTemplateFaceless: INodeProperties = {
+  displayName: 'JSON Template',
+  name: 'jsonTemplateFaceless',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['faceless'],
     },
   },
   default: `{
@@ -654,91 +859,191 @@ export const unifiedJsonTemplateParameter: INodeProperties = {
   "elements": [
     {
       "type": "subtitles",
-      "captions": "https://example.com/subtitles.srt"
+      "captions": "",
+      "language": "en",
+      "model": "default",
+      "settings": {
+        "style": "classic",
+        "font-family": "Arial",
+        "font-size": 42,
+        "position": "bottom-center",
+        "word-color": "#FFFF00",
+        "line-color": "#FFFFFF",
+        "box-color": "rgba(0,0,0,0.7)",
+        "outline-width": 2
+      }
+    },
+    {
+      "type": "audio",
+      "src": "{{  /* audio0Url */ }}",
+      "volume": 0.2,
+      "duration": -2
     }
   ],
   "scenes": [
     {
       "elements": [
         {
+          "type": "image",
+          "prompt": "{{  /* prompt0 */ }}",
+          "model": "flux-schnell",
+          "resize": "cover",
+          "start": 0,
+          "duration": 10
+        },
+        {
+          "type": "voice",
+          "text": "{{  /* text0 */ }}",
+          "voice": "en-US-AriaNeural",
+          "model": "azure",
+          "start": 0,
+          "duration": 10
+        },
+        {
+          "type": "image",
+          "prompt": "{{  /* prompt1 */ }}",
+          "model": "flux-schnell",
+          "resize": "cover",
+          "start": 10,
+          "duration": 10
+        },
+        {
+          "type": "voice",
+          "text": "{{  /* text1 */ }}",
+          "voice": "en-US-AriaNeural",
+          "model": "azure",
+          "start": 10,
+          "duration": 10
+        }
+      ]
+    }
+  ]
+}`,
+  description: 'Faceless video with AI voice and images. Requires: prompt0, text0, prompt1, text1, audio0Url',
+};
+
+export const jsonTemplateSocialStory: INodeProperties = {
+  displayName: 'JSON Template',
+  name: 'jsonTemplateSocialStory',
+  type: 'json' as const,
+  displayOptions: {
+    show: {
+      advancedMode: [true],
+      templateType: ['socialStory'],
+    },
+  },
+  default: `{
+  "width": 1080,
+  "height": 1920,
+  "quality": "high",
+  "elements": [
+    {
+      "type": "audio",
+      "src": "{{  /* audio0Url */ }}",
+      "volume": 0.8,
+      "duration": -2
+    }
+  ],
+  "scenes": [
+    {
+      "duration": 7,
+      "elements": [
+        {
           "type": "video",
-          "src": "https://example.com/video.mp4"
+          "src": "{{  /* video0Url */ }}",
+          "resize": "cover",
+          "muted": true,
+          "duration": -2
         },
         {
           "type": "text",
-          "text": "Hello World",
-          "x": 100,
-          "y": 100
-        }
-      ]
-    }
-  ]
-}`,
-  description: 'Complete JSON2Video API request template. This overrides all other settings.',
-};
-
-export const mergeVideoAudioJsonTemplateParameter: INodeProperties = {
-  displayName: 'JSON Template',
-  name: 'jsonTemplateMergeVideoAudio',
-  type: 'json' as const,
-  displayOptions: {
-    show: {
-      operation: ['mergeVideoAudio'],
-      advancedModeMergeVideoAudio: [true],
-    },
-  },
-  default: `{
-  "width": 1920,
-  "height": 1080,
-  "scenes": [
-    {
-      "elements": [
-        {
-          "type": "video",
-          "src": "https://example.com/video.mp4"
+          "text": "{{  /* text0 */ }}",
+          "position": "center-center",
+          "start": 0,
+          "duration": 3,
+          "style": "007",
+          "settings": {
+            "font-size": "8vw",
+            "font-family": "Montserrat",
+            "font-weight": "900",
+            "text-align": "center",
+            "font-color": "#FFFFFF",
+            "text-transform": "uppercase",
+            "text-shadow": "3px 3px 6px rgba(0,0,0,0.9)"
+          },
+          "fade-in": 0.3,
+          "fade-out": 0.3
         },
         {
-          "type": "audio", 
-          "src": "https://example.com/audio.mp3"
+          "type": "text",
+          "text": "{{  /* text1 */ }}",
+          "position": "center-center",
+          "start": 3,
+          "duration": 4,
+          "style": "006",
+          "settings": {
+            "font-size": "6vw",
+            "font-family": "Montserrat",
+            "font-weight": "700",
+            "text-align": "center",
+            "font-color": "#FFFF00",
+            "text-shadow": "2px 2px 4px rgba(0,0,0,0.9)"
+          }
         }
       ]
     }
   ]
 }`,
-  description: 'Complete JSON2Video API request template for merging video and audio.',
+  description: 'Vertical social media video. Requires: video0Url, text0, text1, audio0Url',
 };
 
-export const mergeVideosJsonTemplateParameter: INodeProperties = {
+export const jsonTemplatePresentation: INodeProperties = {
   displayName: 'JSON Template',
-  name: 'jsonTemplateMergeVideos',
+  name: 'jsonTemplatePresentation',
   type: 'json' as const,
   displayOptions: {
     show: {
-      operation: ['mergeVideos'],
-      advancedModeMergeVideos: [true],
+      advancedMode: [true],
+      templateType: ['presentation'],
     },
   },
   default: `{
   "width": 1920,
   "height": 1080,
+  "quality": "high",
+  "elements": [
+    {
+      "type": "subtitles",
+      "captions": "",
+      "language": "auto",
+      "model": "whisper",
+      "settings": {
+        "style": "classic",
+        "position": "bottom-center",
+        "font-size": 36,
+        "word-color": "#FFFF00",
+        "line-color": "#FFFFFF",
+        "max-words-per-line": 6
+      }
+    }
+  ],
   "scenes": [
     {
       "elements": [
         {
-          "type": "video",
-          "src": "https://example.com/video1.mp4"
-        }
-      ]
-    },
-    {
-      "elements": [
+          "type": "html",
+          "html": "<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column;'><h1 style='color: white; font-size: 72px; font-family: Inter; margin-bottom: 20px;'>{{  /* text0 */ }}</h1><p style='color: rgba(255,255,255,0.9); font-size: 36px; font-family: Inter;'>{{  /* text1 */ }}</p></div>",
+          "duration": -2
+        },
         {
-          "type": "video",
-          "src": "https://example.com/video2.mp4"
+          "type": "voice",
+          "text": "{{  /* text2 */ }}",
+          "voice": "en-US-JennyNeural",
+          "model": "azure"
         }
       ]
     }
   ]
 }`,
-  description: 'Complete JSON2Video API request template for merging multiple videos.',
+  description: 'Presentation/tutorial video. Requires: text0, text1, text2',
 };

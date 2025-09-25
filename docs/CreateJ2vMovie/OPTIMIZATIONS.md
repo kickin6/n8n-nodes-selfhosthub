@@ -335,7 +335,7 @@ The caching system operates at three levels:
     "timing": {
       "intro_duration": 3,
       "outro_duration": 2,
-      "transition_speed": 0.5
+      "fade_duration": 0.5
     }
   }
 }
@@ -399,46 +399,33 @@ The caching system operates at three levels:
 
 ### Dynamic Scene Generation
 
-#### Data-Driven Slideshows
-```json
-{
-  "variables": {
-    "products": [
-      {
-        "name": "Product A",
-        "image": "https://example.com/product-a.jpg",
-        "price": 29.99,
-        "duration": 4
-      },
-      {
-        "name": "Product B", 
-        "image": "https://example.com/product-b.jpg",
-        "price": 39.99,
-        "duration": 6
-      }
-    ]
-  },
-  "scenes": [
+To generate multiple scenes from data arrays, pre-process your data in n8n or your application to create the full scene array:
+
+```javascript
+// n8n Function node example
+const products = [
+  { name: "Product A", image: "url1.jpg", price: 29.99 },
+  { name: "Product B", image: "url2.jpg", price: 39.99 }
+];
+
+const scenes = products.map(product => ({
+  duration: 5,
+  elements: [
     {
-      "iterate": "products",
-      "duration": "{{ duration }}",
-      "elements": [
-        {
-          "type": "image",
-          "src": "{{ image }}"
-        },
-        {
-          "type": "text",
-          "text": "{{ name }} - ${{ price }}",
-          "position": "bottom-center"
-        }
-      ]
+      type: "image",
+      src: product.image,
+      resize: "cover"
+    },
+    {
+      type: "text",
+      text: `${product.name} - $${product.price}`,
+      position: "bottom-center"
     }
   ]
-}
-```
+}));
 
-**Result**: Generates one scene per product with dynamic durations.
+return { scenes };
+```
 
 ---
 
@@ -498,7 +485,7 @@ The caching system operates at three levels:
       "elements": [
         {
           "type": "image",
-          "src": "image2.jpg" 
+          "src": "image2.jpg"
         }
       ]
     },
@@ -540,41 +527,11 @@ The caching system operates at three levels:
 - **Normalization**: Consistent volume levels
 - **Duration**: Trim unnecessary content
 
-### Transition Optimization
+### Visual Effect Optimization
 
-#### Avoid Heavy Transitions
+#### Pan Effects as Alternative to Scene Transitions
 ```json
-// Avoid complex transitions that slow rendering
-{
-  "scenes": [
-    {
-      "transition": {
-        "style": "dissolve",        // Slower rendering
-        "duration": 2.0             // Longer = slower
-      }
-    }
-  ]
-}
-```
-
-#### Prefer Simple Transitions
-```json
-// Use fade for best performance
-{
-  "scenes": [
-    {
-      "transition": {
-        "style": "fade",            // Fastest transition
-        "duration": 0.5             // Shorter = faster
-      }
-    }
-  ]
-}
-```
-
-#### Consider Wipes Instead
-```json
-// Alternative: Use pan effects instead of transitions
+// Use pan effects for wipe-like transitions within a scene
 {
   "scenes": [
     {
@@ -768,77 +725,6 @@ The caching system operates at three levels:
 
 ---
 
-## Dynamic Scene Considerations for n8n
-
-### Current n8n Array Structure Challenge
-
-The current n8n node assumes scenes are in a fixed array structure:
-
-```javascript
-// Current n8n approach
-const scenesCollection = this.getNodeParameter('scenes.sceneValues', itemIndex, []);
-```
-
-### Dynamic Scene Solutions
-
-#### Option 1: Pre-processing Variable Arrays
-```javascript
-// n8n could pre-process dynamic data into scene arrays
-function expandDynamicScenes(templateData) {
-  if (templateData.scenes?.some(scene => scene.iterate)) {
-    // Expand iterate scenes into full scene arrays
-    const expandedScenes = [];
-    
-    templateData.scenes.forEach(scene => {
-      if (scene.iterate) {
-        const dataArray = templateData.variables[scene.iterate];
-        dataArray.forEach(item => {
-          const expandedScene = {
-            ...scene,
-            // Replace variables with item data
-            elements: scene.elements.map(element => 
-              replaceVariables(element, item)
-            )
-          };
-          delete expandedScene.iterate;
-          expandedScenes.push(expandedScene);
-        });
-      } else {
-        expandedScenes.push(scene);
-      }
-    });
-    
-    return { ...templateData, scenes: expandedScenes };
-  }
-  return templateData;
-}
-```
-
-#### Option 2: Advanced Mode for Dynamic Scenes
-```javascript
-// Use Advanced Mode for dynamic scene generation
-const advancedTemplate = {
-  "variables": {
-    "dynamic_data": getFromPreviousNode()
-  },
-  "scenes": [
-    {
-      "iterate": "dynamic_data",
-      "elements": [...]
-    }
-  ]
-};
-
-// Let JSON2Video API handle the iteration
-```
-
-#### Option 3: Hybrid Approach
-- **Basic Mode**: Fixed scene arrays (current approach)
-- **Advanced Mode**: Support dynamic scenes with iterate
-- **Smart Detection**: Auto-switch based on data structure
-
----
-
 ## Debugging and Troubleshooting
 
 ### Performance Diagnosis
@@ -846,8 +732,7 @@ const advancedTemplate = {
 #### Render Time Analysis
 1. **Single Long Scene**: Suspect sequential processing
 2. **Large Assets**: Check file sizes and formats
-3. **Complex Transitions**: Try removing transitions
-4. **Heavy Effects**: Simplify visual effects
+3. **Heavy Effects**: Simplify visual effects
 
 #### Common Performance Issues
 ```json
@@ -921,7 +806,7 @@ const advancedTemplate = {
 1. **Split long videos into multiple scenes** (aim for <30s per scene)
 2. **Optimize asset sizes** before upload
 3. **Use caching strategically** (true for static, false for dynamic)
-4. **Minimize transitions** (prefer fade or wipes)
+4. **Use pan effects** for visual transitions within scenes
 
 ### Structure
 1. **Use meaningful variable names** and group related data
@@ -937,6 +822,6 @@ const advancedTemplate = {
 
 ### Scalability
 1. **Design templates** for data-driven content
-2. **Use iterate property** for dynamic scene generation
+2. **Pre-process data arrays** in n8n for dynamic scene generation
 3. **Implement A/B testing** with variant variables
 4. **Consider multi-language** support from the start

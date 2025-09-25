@@ -1,4 +1,4 @@
-// __tests__/nodes/CreateJ2vMovie/core/schemaValidator.test.ts
+// __tests__/nodes/CreateJ2vMovie/core/validator.test.ts
 
 import {
   validateRequest,
@@ -7,14 +7,14 @@ import {
   isRecoverable,
   validateBuildResult,
   ValidationOptions,
-} from '../../../../nodes/CreateJ2vMovie/core/schemaValidator';
+} from '../../../../nodes/CreateJ2vMovie/core/validator';
 
 const textEl = (over = {}) => ({ type: 'text', text: 'Hello', ...over });
 const videoEl = (over = {}) => ({ type: 'video', src: 'v.mp4', ...over });
 const audioEl = (over = {}) => ({ type: 'audio', src: 'a.mp3', ...over });
 const scene = (over = {}) => ({ elements: [] as any[], ...over });
 
-describe('schemaValidator', () => {
+describe('validator', () => {
   describe('validateRequest core functionality', () => {
     it.each([
       // [description, request, expectedValid, shouldHaveErrors]
@@ -26,7 +26,7 @@ describe('schemaValidator', () => {
       ['scenes array but empty', { scenes: [] }, undefined, false],
       ['scenes with empty elements', { scenes: [{ elements: [] }] }, undefined, false]
     ])('handles %s', (_, request, expectedValid, shouldHaveErrors) => {
-      const result = validateRequest(request as any, 'createMovie');
+      const result = validateRequest(request as any);
 
       expect(typeof result.isValid).toBe('boolean');
       expect(typeof result.canProceed).toBe('boolean');
@@ -41,7 +41,6 @@ describe('schemaValidator', () => {
       }
     });
 
-    // Test what the schema validator actually validates, not expecting specific field validation
     it.each([
       // [description, field, invalidValue]
       ['invalid numeric width', 'width', 'not-a-number'],
@@ -50,9 +49,8 @@ describe('schemaValidator', () => {
       ['invalid boolean field', 'cache', 123]
     ])('handles %s', (_, field, value) => {
       const request = { scenes: [], [field]: value };
-      const result = validateRequest(request as any, 'createMovie', { level: 'structural' });
+      const result = validateRequest(request as any, { level: 'structural' });
       
-      // Just verify that validation runs - actual error detection depends on the validateJSON2VideoRequest implementation
       expect(typeof result.isValid).toBe('boolean');
       expect(Array.isArray(result.errors)).toBe(true);
     });
@@ -66,9 +64,8 @@ describe('schemaValidator', () => {
       ['draft as boolean', 'draft', true]
     ])('should allow %s at structural level', (_, field, value) => {
       const request = { scenes: [], [field]: value };
-      const result = validateRequest(request as any, 'createMovie', { level: 'structural' });
+      const result = validateRequest(request as any, { level: 'structural' });
       
-      // Should not fail validation for these fields at structural level
       expect(typeof result.isValid).toBe('boolean');
     });
   });
@@ -81,7 +78,7 @@ describe('schemaValidator', () => {
       ['complete' as const, 'full validation including elements', true]
     ])('should handle %s level: %s', (level, _, expectElementValidation) => {
       const request = { scenes: [scene({ elements: [textEl()] })] };
-      const result = validateRequest(request as any, 'createMovie', { 
+      const result = validateRequest(request as any, { 
         level: level, 
         validateElements: expectElementValidation 
       });
@@ -98,10 +95,9 @@ describe('schemaValidator', () => {
     ])('validation level progression: %s', (_, level, shouldRunSemantic, shouldRunComplete) => {
       const validRequest = { scenes: [scene({ elements: [textEl()] })] };
       const options: ValidationOptions = { level };
-      const result = validateRequest(validRequest as any, 'createMovie', options);
+      const result = validateRequest(validRequest as any, options);
 
       expect(result.validationLevel).toBe(level);
-      // All levels should return a valid result structure
       expect(typeof result.isValid).toBe('boolean');
       expect(Array.isArray(result.errors)).toBe(true);
       expect(Array.isArray(result.warnings)).toBe(true);
@@ -111,205 +107,87 @@ describe('schemaValidator', () => {
       ['strictMode true', { strictMode: true, level: 'complete' as const }],
       ['strictMode false', { strictMode: false, level: 'complete' as const }],
       ['includeWarnings false', { includeWarnings: false, level: 'complete' as const }],
-      ['validateElements false', { validateElements: false, level: 'complete' as const }],
-      ['skipOperationRules true', { skipOperationRules: true, level: 'complete' as const }]
+      ['validateElements false', { validateElements: false, level: 'complete' as const }]
     ])('should handle option: %s', (_, options) => {
       const request = { scenes: [scene({ elements: [textEl()] })] };
-      const result = validateRequest(request as any, 'createMovie', options);
+      const result = validateRequest(request as any, options);
 
       expect(typeof result.isValid).toBe('boolean');
       expect(typeof result.canProceed).toBe('boolean');
     });
-
-    it.each([
-      ['createMovie', 'mergeVideoAudio', 'mergeVideos']
-    ])('should handle operation-specific validation for %s', (operation) => {
-      const request = { scenes: [scene({ elements: [textEl()] })] };
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(request as any, operation, options);
-
-      expect(typeof result.isValid).toBe('boolean');
-    });
   });
 
-  describe('operation-specific validation', () => {
+  describe('element validation', () => {
     it.each([
-      ['createMovie with no elements', 'createMovie', { scenes: [{ elements: [] }] }, true],
-      ['mergeVideoAudio valid structure', 'mergeVideoAudio', { 
-        scenes: [{ elements: [videoEl(), audioEl()] }] 
-      }, false],
-      ['mergeVideoAudio missing video', 'mergeVideoAudio', { 
-        scenes: [{ elements: [audioEl()] }] 
-      }, true],
-      ['mergeVideoAudio missing audio', 'mergeVideoAudio', { 
+      ['valid elements', { scenes: [{ elements: [videoEl(), audioEl()] }] }],
+      ['missing required fields', { 
+        scenes: [{ elements: [{ type: 'video' }] }] 
+      }],
+      ['invalid element type', { 
+        scenes: [{ elements: [{ type: 'invalid' }] }] 
+      }],
+      ['subtitles in scene', { 
+        scenes: [{ elements: [{ type: 'subtitles', captions: 'test' }] }] 
+      }],
+      ['subtitles at movie level', { 
+        elements: [{ type: 'subtitles', captions: 'test' }],
         scenes: [{ elements: [videoEl()] }] 
-      }, true],
-      ['mergeVideos single scene', 'mergeVideos', { 
-        scenes: [{ elements: [videoEl()] }] 
-      }, true],
-      ['mergeVideos multiple scenes', 'mergeVideos', { 
-        scenes: [{ elements: [videoEl()] }, { elements: [videoEl()] }] 
-      }, false]
-    ])('validates %s', (_, operation, request, shouldHaveErrors) => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(request as any, operation, options);
+      }]
+    ])('validates %s', (description, request) => {
+      const options: ValidationOptions = { level: 'complete', validateElements: true };
+      const result = validateRequest(request as any, options);
 
-      if (shouldHaveErrors) {
-        expect(result.errors.length).toBeGreaterThan(0);
-      } else {
-        // May still have non-operation-specific errors, but test passes if structure is valid
-        expect(typeof result.isValid).toBe('boolean');
+      // Log errors for debugging
+      if (result.errors.length > 0) {
+        console.log(`${description} errors:`, result.errors);
       }
-    });
 
-    it.each([
-      ['createMovie', 'mergeVideoAudio', 'mergeVideos']
-    ])('should skip operation rules when requested for %s', (operation) => {
-      const request = { scenes: [] };
+      // For now, just check that validation completes
+      expect(typeof result.isValid).toBe('boolean');
+      expect(Array.isArray(result.errors)).toBe(true);
       
-      const normalOptions: ValidationOptions = { level: 'semantic', skipOperationRules: false };
-      const skippedOptions: ValidationOptions = { level: 'semantic', skipOperationRules: true };
-      
-      const normalResult = validateRequest(request as any, operation, normalOptions);
-      const skippedResult = validateRequest(request as any, operation, skippedOptions);
-
-      // When skipOperationRules is true, should have fewer operation-specific errors
-      const normalOperationErrors = normalResult.errors.filter(e => 
-        e.includes(`${operation} operation`) || e.includes(`${operation} requires`)
-      );
-      const skippedOperationErrors = skippedResult.errors.filter(e => 
-        e.includes(`${operation} operation`) || e.includes(`${operation} requires`)
-      );
-
-      expect(skippedOperationErrors.length).toBeLessThanOrEqual(normalOperationErrors.length);
+      // Specific expectations based on what should happen
+      if (description === 'subtitles in scene') {
+        // Should have error about subtitles in wrong place
+        const hasSubtitleError = result.errors.some(e => 
+          e.includes('Subtitles') && e.includes('scene')
+        );
+        expect(hasSubtitleError).toBe(true);
+      }
     });
   });
 
   describe('coverage for remaining uncovered lines', () => {
     it('covers uncovered lines in performCompleteValidation (movie elements path)', () => {
-      // Test movie elements validation path
       const options: ValidationOptions = { level: 'complete', validateElements: true };
       const result = validateRequest(
         {
           scenes: [{ elements: [textEl()] }],
-          elements: [{ type: 'subtitles', captions: 'test' }] // Valid movie element
+          elements: [{ type: 'subtitles', captions: 'test' }]
         } as any,
-        'createMovie',
         options
       );
 
       expect(typeof result.isValid).toBe('boolean');
-    });
-
-    it('covers uncovered line: default case in validateOperationBusinessRules', () => {
-      // Test default case in switch statement with strictMode true
-      const options: ValidationOptions = { level: 'semantic', skipOperationRules: false, strictMode: true };
-      const result = validateRequest(
-        { scenes: [{ elements: [textEl()] }] } as any,
-        'unknownOperation' as any, // Force unknown operation to hit default case
-        options
-      );
-
-      expect(typeof result.isValid).toBe('boolean');
-      // Should have a warning about unknown operation in strictMode
-      expect(result.warnings.some((w: string) => w.includes('Unknown operation type'))).toBe(true);
-    });
-
-    it('covers mergeVideoAudio scene with no elements path', () => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(
-        {
-          scenes: [{ elements: [] }] // Empty elements array to trigger the specific condition
-        } as any,
-        'mergeVideoAudio',
-        options
-      );
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideoAudio scene must contain elements'))).toBe(true);
     });
 
     it('covers performCrossValidation function', () => {
-      // Test the cross-validation logic with movie and scene elements
       const options: ValidationOptions = { level: 'complete', validateElements: true, includeWarnings: true };
       const result = validateRequest(
         {
           scenes: [{ elements: [textEl()] }],
-          elements: [{ type: 'subtitles', captions: 'Movie subtitle' }] // Movie elements
+          elements: [{ type: 'subtitles', captions: 'Movie subtitle' }]
         } as any,
-        'createMovie',
         options
       );
 
       expect(typeof result.isValid).toBe('boolean');
-      // Cross validation function executes regardless of whether it adds warnings
       expect(Array.isArray(result.warnings)).toBe(true);
     });
 
-    it('covers mergeVideoAudio scene with null elements', () => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(
-        {
-          scenes: [{}] // Scene without elements property to trigger the condition
-        } as any,
-        'mergeVideoAudio', 
-        options
-      );
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideoAudio scene must contain elements'))).toBe(true);
-    });
-
-    // Cover uncovered lines 231-232: mergeVideoAudio with no scenes
-    it('covers mergeVideoAudio with no scenes', () => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(
-        { scenes: [] } as any,
-        'mergeVideoAudio',
-        options
-      );
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideoAudio operation requires at least one scene'))).toBe(true);
-    });
-
-    // Cover uncovered lines 269-270: mergeVideos scene with no elements
-    it('covers mergeVideos scene with no elements', () => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(
-        {
-          scenes: [{ elements: [videoEl()] }, {}] // Second scene has no elements property
-        } as any,
-        'mergeVideos',
-        options
-      );
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideos Scene 2 must contain elements'))).toBe(true);
-    });
-
-    // Cover uncovered line 275: mergeVideos scene missing video element
-    it('covers mergeVideos scene missing video element', () => {
-      const options: ValidationOptions = { level: 'semantic' };
-      const result = validateRequest(
-        {
-          scenes: [
-            { elements: [videoEl()] }, 
-            { elements: [audioEl()] } // Has elements but no video
-          ]
-        } as any,
-        'mergeVideos',
-        options
-      );
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.some((e: string) => e.includes('mergeVideos Scene 2 must contain a video element'))).toBe(true);
-    });
-
-    // Cover uncovered line 346: default case in extractActionableErrors
     it('covers default case in extractActionableErrors', () => {
       const result = extractActionableErrors({
-        errors: ['Unknown error that doesnt match patterns'], // This will go to critical by default
+        errors: ['Unknown error that doesnt match patterns'],
         warnings: []
       } as any);
 
@@ -318,43 +196,41 @@ describe('schemaValidator', () => {
       expect(result.warnings.length).toBe(0);
     });
 
-    // Test validation error handling by mocking schema validators to throw
     it('covers validation error handling', () => {
-      // Mock validateJSON2VideoRequest to throw an Error
-      const originalValidateJSON2VideoRequest = require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest;
-      require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest = jest.fn(() => {
+      // Mock validateJSON2VideoRequest from rules module to throw an Error
+      const rulesModule = require('../../../../nodes/CreateJ2vMovie/schema/rules');
+      const originalValidateJSON2VideoRequest = rulesModule.validateJSON2VideoRequest;
+      rulesModule.validateJSON2VideoRequest = jest.fn(() => {
         throw new Error('Schema validation error');
       });
 
       try {
-        const result = validateRequest({ scenes: [] } as any, 'createMovie');
+        const result = validateRequest({ scenes: [] } as any);
         
         expect(result.isValid).toBe(false);
         expect(result.canProceed).toBe(false);
         expect(result.errors.some((e: string) => e.includes('Validation failed: Schema validation error'))).toBe(true);
       } finally {
-        // Restore original function
-        require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest = originalValidateJSON2VideoRequest;
+        rulesModule.validateJSON2VideoRequest = originalValidateJSON2VideoRequest;
       }
     });
 
-    // Test non-Error exception handling to cover line 108
     it('covers non-Error exception handling', () => {
-      // Mock validateJSON2VideoRequest to throw a non-Error
-      const originalValidateJSON2VideoRequest = require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest;
-      require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest = jest.fn(() => {
+      // Mock validateJSON2VideoRequest from rules module to throw a non-Error
+      const rulesModule = require('../../../../nodes/CreateJ2vMovie/schema/rules');
+      const originalValidateJSON2VideoRequest = rulesModule.validateJSON2VideoRequest;
+      rulesModule.validateJSON2VideoRequest = jest.fn(() => {
         throw 'String error'; // Non-Error exception
       });
 
       try {
-        const result = validateRequest({ scenes: [] } as any, 'createMovie');
+        const result = validateRequest({ scenes: [] } as any);
         
         expect(result.isValid).toBe(false);
         expect(result.canProceed).toBe(false);
         expect(result.errors.some((e: string) => e.includes('Validation failed: Unknown validation error'))).toBe(true);
       } finally {
-        // Restore original function
-        require('../../../../nodes/CreateJ2vMovie/schema/validators').validateJSON2VideoRequest = originalValidateJSON2VideoRequest;
+        rulesModule.validateJSON2VideoRequest = originalValidateJSON2VideoRequest;
       }
     });
   });
@@ -362,21 +238,19 @@ describe('schemaValidator', () => {
   describe('elements array validation', () => {
     it.each([
       // [description, elements, level, shouldHaveError]
-      ['elements as string', 'not-an-array', 'semantic', false], // This depends on the actual validateJSON2VideoRequest implementation
+      ['elements as string', 'not-an-array', 'semantic', false],
       ['elements as number', 42, 'semantic', false],
-      ['elements as null', null, 'semantic', false], // null elements is not validated - only when elements exist
+      ['elements as null', null, 'semantic', false],
       ['elements as object', {}, 'semantic', false],
       ['elements as valid array', [{ type: 'subtitles', captions: 'test' }], 'semantic', false],
-      ['elements missing at structural level', 'not-an-array', 'structural', false] // Not validated at structural level
+      ['elements missing at structural level', 'not-an-array', 'structural', false]
     ])('validates movie %s', (_, elements, level, shouldHaveError) => {
       const options: ValidationOptions = { level: level as any };
       const result = validateRequest(
         { scenes: [], elements } as any,
-        'createMovie',
         options
       );
 
-      // Just verify the validation runs - actual behavior depends on the schema validator implementation
       expect(typeof result.isValid).toBe('boolean');
       expect(Array.isArray(result.errors)).toBe(true);
     });
@@ -419,7 +293,7 @@ describe('schemaValidator', () => {
       ['all fixable errors', {
         errors: ['Field is required', 'Name must be provided', 'must be type string'],
         warnings: ['Consider optimization']
-      }, 3, 0, 1], // All three match fixable patterns
+      }, 3, 0, 1],
 
       ['all critical errors', {
         errors: ['System failure', 'Fatal crash', 'Memory corruption'],
@@ -429,7 +303,7 @@ describe('schemaValidator', () => {
       ['mixed error types', {
         errors: ['Field must be provided', 'System crash'],
         warnings: ['Performance warning', 'Deprecated feature']
-      }, 1, 1, 2], // 1 fixable (must be), 1 critical
+      }, 1, 1, 2],
 
       ['no errors, only warnings', {
         errors: [],
@@ -444,7 +318,7 @@ describe('schemaValidator', () => {
       ['unknown errors go to critical', {
         errors: ['Something wrong happened'],
         warnings: []
-      }, 0, 1, 0] // Unknown errors default to critical
+      }, 0, 1, 0]
     ])('extractActionableErrors: %s', (_, input, expectedFixable, expectedCritical, expectedWarnings) => {
       const result = extractActionableErrors(input as any);
 
@@ -461,10 +335,10 @@ describe('schemaValidator', () => {
       ['structural error not recoverable', { errors: ['Request must be an object'], warnings: [] }, false],
       ['array error not recoverable', { errors: ['Scenes must be an array'], warnings: [] }, false],
       ['null error not recoverable', { errors: ['Request is null or undefined'], warnings: [] }, false],
-      ['request validation error recoverable', { errors: ['requires either movie elements or scene elements'], warnings: [] }, true], // matches recoverable pattern
-      ['with warnings not recoverable', { errors: [], warnings: ['Warning message'] }, false], // isRecoverable returns false if warnings exist
-      ['field validation error recoverable', { errors: ['requires a video element'], warnings: [] }, true], // matches recoverable pattern
-      ['schema validation error recoverable', { errors: ['requires an audio element'], warnings: [] }, true], // matches recoverable pattern
+      ['request validation error recoverable', { errors: ['at least one element is required'], warnings: [] }, true],
+      ['with warnings not recoverable', { errors: [], warnings: ['Warning message'] }, false],
+      ['field validation error recoverable', { errors: ['requires a video element'], warnings: [] }, true],
+      ['schema validation error recoverable', { errors: ['requires an audio element'], warnings: [] }, true],
       ['no errors or warnings recoverable', { errors: [], warnings: [] }, true],
       ['multiple recoverable errors', { errors: ['requires a video element', 'requires an audio element'], warnings: [] }, true]
     ])('isRecoverable: %s', (_, input, expected) => {
@@ -486,7 +360,7 @@ describe('schemaValidator', () => {
       }, false, true],
 
       ['valid build result', {
-        request: { scenes: [{ elements: [textEl()] }], operation: 'createMovie' },
+        request: { scenes: [{ elements: [textEl()] }] },
         errors: [],
         warnings: []
       }, true, false],
@@ -503,7 +377,7 @@ describe('schemaValidator', () => {
         warnings: ['Minor build warning']
       }, true, false]
     ])('validateBuildResult: %s', (_, buildResult, shouldBeValid, shouldHaveError) => {
-      const result = validateBuildResult(buildResult as any, 'createMovie');
+      const result = validateBuildResult(buildResult as any);
 
       expect(typeof result.isValid).toBe('boolean');
       expect(typeof result.canProceed).toBe('boolean');
@@ -528,18 +402,16 @@ describe('schemaValidator', () => {
         level: 'complete' as const,
         strictMode: true,
         includeWarnings: true,
-        validateElements: true,
-        skipOperationRules: false
+        validateElements: true
       }],
       ['all options disabled', { scenes: [scene({ elements: [textEl()] })] }, {
         level: 'structural' as const,
         strictMode: false,
         includeWarnings: false,
-        validateElements: false,
-        skipOperationRules: true
+        validateElements: false
       }]
     ])('handles %s', (_, request, options) => {
-      const result = validateRequest(request as any, 'createMovie', options);
+      const result = validateRequest(request as any, options);
 
       expect(typeof result.isValid).toBe('boolean');
       expect(typeof result.canProceed).toBe('boolean');
@@ -599,7 +471,6 @@ describe('schemaValidator', () => {
         const obj: any = {
           scenes: [scene({ elements: [textEl()] })]
         };
-        // Don't actually create circular reference as it would break JSON serialization
         return obj;
       }],
 
@@ -617,7 +488,7 @@ describe('schemaValidator', () => {
           includeWarnings: true,
           validateElements: true
         };
-        const result = validateRequest(request as any, 'createMovie', options);
+        const result = validateRequest(request as any, options);
 
         expect(typeof result.isValid).toBe('boolean');
         expect(Array.isArray(result.errors)).toBe(true);

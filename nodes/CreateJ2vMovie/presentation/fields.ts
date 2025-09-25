@@ -1,15 +1,13 @@
-// nodes/CreateJ2vMovie/shared/elementFields.ts
-// COMPLETE REFACTOR: Fixed field ordering, image logic, JSON objects, and missing parameters
+// nodes/CreateJ2vMovie/presentation/fields.ts
 
 import { INodeProperties } from 'n8n-workflow';
 
 /**
  * Complete unified element fields with proper ordering and full API coverage
+ * Used for all element types across different operations
  */
 export const elementFields: INodeProperties[] = [
-  // =============================================================================
-  // ELEMENT TYPE (ALWAYS FIRST)
-  // =============================================================================
+  // Element type selection
   {
     displayName: 'Element Type',
     name: 'type',
@@ -25,14 +23,10 @@ export const elementFields: INodeProperties[] = [
       { name: 'Audiogram', value: 'audiogram' },
     ],
     default: 'video',
-    description: 'Type of element to add to the video',
+    description: 'Type of element to add to the video.',
   },
 
-  // =============================================================================
-  // SOURCE/CONTENT FIELDS (TYPE-SPECIFIC, ALWAYS VISIBLE)
-  // =============================================================================
-  
-  // Video Source
+  // Source/content fields
   {
     displayName: 'Video Source URL',
     name: 'src',
@@ -44,8 +38,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['video'] }
     },
   },
-
-  // Audio Source
   {
     displayName: 'Audio Source URL',
     name: 'src',
@@ -57,21 +49,17 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['audio'] }
     },
   },
-
-  // Image Source (NOT required when using AI generation)
   {
     displayName: 'Image Source URL',
     name: 'src',
     type: 'string',
     default: '',
-    required: false, // FIXED: Not required when using AI prompt
+    required: false,
     description: 'URL of the image file (leave empty if using AI generation)',
     displayOptions: {
       show: { type: ['image'] }
     },
   },
-
-  // Image AI Prompt (alternative to src)
   {
     displayName: 'AI Prompt',
     name: 'prompt',
@@ -84,8 +72,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['image'] }
     },
   },
-
-  // Text Content
   {
     displayName: 'Text Content',
     name: 'text',
@@ -98,8 +84,49 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['text', 'voice'] }
     },
   },
-
-  // Component ID
+  {
+    displayName: 'Text Style',
+    name: 'textStyle',
+    type: 'options',
+    options: [
+      { name: 'Style 001', value: '001' },
+      { name: 'Style 002', value: '002' },
+      { name: 'Style 003', value: '003' },
+      { name: 'Style 004', value: '004' },
+      { name: 'Style 005', value: '005' },
+      { name: 'Style 006', value: '006' },
+      { name: 'Style 007', value: '007' },
+      { name: 'Style 008', value: '008' },
+      { name: 'Style 009', value: '009' },
+      { name: 'Style 010', value: '010' },
+    ],
+    default: '001',
+    description: 'Text animation style [<a href="https://json2video.com/docs/resources/text/" target="_blank">Doc</a>]',
+    displayOptions: {
+      show: { type: ['text'] }
+    },
+  },
+  {
+    displayName: 'Text Settings',
+    name: 'textSettings',
+    type: 'json',
+    typeOptions: {
+      alwaysOpenEditWindow: true,
+    },
+    default: `{
+  "font-size": "4vw",
+  "font-family": "Inter",
+  "font-weight": "700",
+  "text-align": "center",
+  "vertical-align": "center",
+  "text-shadow": "2px 2px rgba(33,33,33,0.5)",
+  "color": "#FFFFFF"
+}`,
+    description: 'Text styling settings as JSON object with kebab-case properties. Properties available depend on selected text style.',
+    displayOptions: {
+      show: { type: ['text'] }
+    },
+  },
   {
     displayName: 'Component ID',
     name: 'component',
@@ -111,8 +138,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['component'] }
     },
   },
-
-  // HTML Source
   {
     displayName: 'HTML Source URL',
     name: 'src',
@@ -123,8 +148,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['html'] }
     },
   },
-
-  // HTML Code (alternative to src)
   {
     displayName: 'HTML Code',
     name: 'html',
@@ -136,8 +159,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['html'] }
     },
   },
-
-  // Audiogram Source
   {
     displayName: 'Audio Source URL',
     name: 'src',
@@ -150,9 +171,17 @@ export const elementFields: INodeProperties[] = [
     },
   },
 
-  // =============================================================================
-  // BASIC TIMING (ALWAYS VISIBLE)
-  // =============================================================================
+  // Timing
+  {
+    displayName: 'Timing',
+    name: 'timingDivider',
+    type: 'notice',
+    default: '',
+    description: 'iming divider',
+    displayOptions: {
+      show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
+    },
+  },
   {
     displayName: 'Start Time (seconds)',
     name: 'start',
@@ -169,22 +198,42 @@ export const elementFields: INodeProperties[] = [
     default: -1,
     description: 'Element duration (-1=auto-detect, -2=match scene duration)',
   },
-
-  // =============================================================================
-  // SECTION 1: POSITIONING TOGGLE → POSITIONING FIELDS
-  // =============================================================================
   {
-    displayName: 'Position & Size',
-    name: 'showPositioning',
-    type: 'boolean',
-    default: false,
-    description: 'Configure element position and dimensions',
+    displayName: 'Extra Time (seconds)',
+    name: 'extraTime',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Additional time after duration',
+  },
+  {
+    displayName: 'Fade In (seconds)',
+    name: 'fadeIn',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Fade in duration in seconds',
+  },
+  {
+    displayName: 'Fade Out (seconds)',
+    name: 'fadeOut',
+    type: 'number',
+    typeOptions: { minValue: 0, numberPrecision: 2 },
+    default: 0,
+    description: 'Fade out duration in seconds',
+  },
+
+  // Layout
+  {
+    displayName: 'Layout',
+    name: 'layoutDivider',
+    type: 'notice',
+    default: '',
+    description: 'Layout divider',
     displayOptions: {
       show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
     },
   },
-
-  // Positioning fields appear immediately after toggle
   {
     displayName: 'Position',
     name: 'position',
@@ -204,10 +253,7 @@ export const elementFields: INodeProperties[] = [
     default: 'center-center',
     description: 'Element position preset or custom coordinates',
     displayOptions: {
-      show: { 
-        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
-        showPositioning: [true]
-      }
+      show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
     },
   },
   {
@@ -217,9 +263,8 @@ export const elementFields: INodeProperties[] = [
     default: 0,
     description: 'Horizontal position in pixels from left edge',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
-        showPositioning: [true],
         position: ['custom']
       }
     },
@@ -231,10 +276,22 @@ export const elementFields: INodeProperties[] = [
     default: 0,
     description: 'Vertical position in pixels from top edge',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
-        showPositioning: [true],
         position: ['custom']
+      }
+    },
+  },
+  {
+    displayName: 'Z-Index (Layer)',
+    name: 'zIndex',
+    type: 'number',
+    typeOptions: { minValue: -99, maxValue: 99 },
+    default: 0,
+    description: 'Layer order (higher numbers appear on top)',
+    displayOptions: {
+      show: {
+        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
       }
     },
   },
@@ -245,10 +302,7 @@ export const elementFields: INodeProperties[] = [
     default: -1,
     description: 'Element width in pixels (-1=auto)',
     displayOptions: {
-      show: { 
-        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
-        showPositioning: [true]
-      }
+      show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
     },
   },
   {
@@ -258,10 +312,7 @@ export const elementFields: INodeProperties[] = [
     default: -1,
     description: 'Element height in pixels (-1=auto)',
     displayOptions: {
-      show: { 
-        type: ['video', 'image', 'text', 'component', 'html', 'audiogram'],
-        showPositioning: [true]
-      }
+      show: { type: ['video', 'image', 'text', 'component', 'html', 'audiogram'] }
     },
   },
   {
@@ -269,6 +320,7 @@ export const elementFields: INodeProperties[] = [
     name: 'resize',
     type: 'options',
     options: [
+      { name: 'Natural Size (use width/height)', value: 'natural' },
       { name: 'Cover (fill and crop)', value: 'cover' },
       { name: 'Contain (fit inside)', value: 'contain' },
       { name: 'Fill (stretch to fit)', value: 'fill' },
@@ -277,18 +329,23 @@ export const elementFields: INodeProperties[] = [
     default: 'cover',
     description: 'How to resize element to fit dimensions',
     displayOptions: {
-      show: { 
-        type: ['video', 'image', 'component', 'html', 'audiogram'],
-        showPositioning: [true]
-      }
+      show: { type: ['video', 'image', 'component', 'html', 'audiogram'] }
     },
   },
 
-  // =============================================================================
-  // SECTION 2: AUDIO CONTROLS TOGGLE → AUDIO FIELDS
-  // =============================================================================
+  // Audio controls toggle and fields
   {
     displayName: 'Audio Controls',
+    name: 'audioControlsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Audio Controls divider',
+    displayOptions: {
+      show: { type: ['video', 'audio', 'voice'] }
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showAudioControls',
     type: 'boolean',
     default: false,
@@ -297,8 +354,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['video', 'audio', 'voice'] }
     },
   },
-
-  // Audio control fields appear immediately after toggle
   {
     displayName: 'Volume',
     name: 'volume',
@@ -307,7 +362,7 @@ export const elementFields: INodeProperties[] = [
     default: 1,
     description: 'Volume level (0=mute, 1=normal, 10=max)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'audio', 'voice'],
         showAudioControls: [true]
       }
@@ -320,7 +375,7 @@ export const elementFields: INodeProperties[] = [
     default: false,
     description: 'Mute audio track',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'audio', 'voice'],
         showAudioControls: [true]
       }
@@ -334,7 +389,7 @@ export const elementFields: INodeProperties[] = [
     default: 0,
     description: 'Start offset within file (seconds)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'audio'],
         showAudioControls: [true]
       }
@@ -348,274 +403,26 @@ export const elementFields: INodeProperties[] = [
     default: 0,
     description: 'Loop count (-1=infinite, 0=no loop, >0=repeat count)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'audio'],
         showAudioControls: [true]
       }
     },
   },
 
-  // =============================================================================
-  // SECTION 3: TEXT STYLING TOGGLE → TEXT FIELDS
-  // =============================================================================
-  {
-    displayName: 'Text Styling',
-    name: 'showTextStyling',
-    type: 'boolean',
-    default: false,
-    description: 'Configure font, color, and text appearance',
-    displayOptions: {
-      show: { type: ['text'] }
-    },
-  },
-
-  // Text styling fields appear immediately after toggle
-  {
-    displayName: 'Font Family',
-    name: 'fontFamily',
-    type: 'options',
-    options: [
-      { name: 'Arial', value: 'Arial' },
-      { name: 'Helvetica', value: 'Helvetica' },
-      { name: 'Times New Roman', value: 'Times New Roman' },
-      { name: 'Georgia', value: 'Georgia' },
-      { name: 'Verdana', value: 'Verdana' },
-      { name: 'Courier New', value: 'Courier New' },
-      { name: 'Roboto', value: 'Roboto' },
-      { name: 'Open Sans', value: 'Open Sans' },
-      { name: 'Lato', value: 'Lato' },
-      { name: 'Montserrat', value: 'Montserrat' },
-      { name: 'Source Sans Pro', value: 'Source Sans Pro' },
-    ],
-    default: 'Arial',
-    description: 'Font family name',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Font Size',
-    name: 'fontSize',
-    type: 'number',
-    typeOptions: { minValue: 8, maxValue: 500 },
-    default: 32,
-    description: 'Font size in pixels',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Font Weight',
-    name: 'fontWeight',
-    type: 'options',
-    options: [
-      { name: 'Light (300)', value: '300' },
-      { name: 'Normal (400)', value: '400' },
-      { name: 'Medium (500)', value: '500' },
-      { name: 'Semi-Bold (600)', value: '600' },
-      { name: 'Bold (700)', value: '700' },
-      { name: 'Extra Bold (800)', value: '800' },
-    ],
-    default: '400',
-    description: 'Font weight/thickness',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Color',
-    name: 'fontColor',
-    type: 'color',
-    default: '#ffffff',
-    description: 'Text color',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Background Color',
-    name: 'backgroundColor',
-    type: 'color',
-    default: 'transparent',
-    description: 'Text background color',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Align',
-    name: 'textAlign',
-    type: 'options',
-    options: [
-      { name: 'Left', value: 'left' },
-      { name: 'Center', value: 'center' },
-      { name: 'Right', value: 'right' },
-      { name: 'Justify', value: 'justify' },
-    ],
-    default: 'center',
-    description: 'Text alignment',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Style',
-    name: 'textStyle',
-    type: 'options',
-    options: [
-      { name: 'Style 001', value: '001' },
-      { name: 'Style 002', value: '002' },
-      { name: 'Style 003', value: '003' },
-      { name: 'Style 004', value: '004' },
-    ],
-    default: '001',
-    description: 'Text animation style',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Vertical Position',
-    name: 'verticalPosition',
-    type: 'options',
-    options: [
-      { name: 'Top', value: 'top' },
-      { name: 'Center', value: 'center' },
-      { name: 'Bottom', value: 'bottom' },
-    ],
-    default: 'center',
-    description: 'Vertical text alignment within textbox',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Horizontal Position',
-    name: 'horizontalPosition',
-    type: 'options',
-    options: [
-      { name: 'Left', value: 'left' },
-      { name: 'Center', value: 'center' },
-      { name: 'Right', value: 'right' },
-    ],
-    default: 'center',
-    description: 'Horizontal text alignment within textbox',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Line Height',
-    name: 'lineHeight',
-    type: 'number',
-    typeOptions: { minValue: 0.5, maxValue: 3.0, numberPrecision: 2 },
-    default: 1.2,
-    description: 'Line spacing multiplier',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Letter Spacing',
-    name: 'letterSpacing',
-    type: 'number',
-    default: 0,
-    description: 'Letter spacing in pixels',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Decoration',
-    name: 'textDecoration',
-    type: 'options',
-    options: [
-      { name: 'None', value: 'none' },
-      { name: 'Underline', value: 'underline' },
-      { name: 'Overline', value: 'overline' },
-      { name: 'Line Through', value: 'line-through' },
-    ],
-    default: 'none',
-    description: 'Text decoration style',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Transform',
-    name: 'textTransform',
-    type: 'options',
-    options: [
-      { name: 'None', value: 'none' },
-      { name: 'Uppercase', value: 'uppercase' },
-      { name: 'Lowercase', value: 'lowercase' },
-      { name: 'Capitalize', value: 'capitalize' },
-    ],
-    default: 'none',
-    description: 'Text case transformation',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-  {
-    displayName: 'Text Shadow',
-    name: 'textShadow',
-    type: 'string',
-    default: '',
-    placeholder: 'e.g., 2px 2px 4px rgba(0,0,0,0.5)',
-    description: 'CSS text shadow property',
-    displayOptions: {
-      show: { 
-        type: ['text'],
-        showTextStyling: [true]
-      }
-    },
-  },
-
-  // =============================================================================
-  // SECTION 4: VOICE SETTINGS TOGGLE → VOICE FIELDS
-  // =============================================================================
+  // Voice settings toggle and fields
   {
     displayName: 'Voice Settings',
+    name: 'voiceSettingsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Voice Settings divider',
+    displayOptions: {
+      show: { type: ['voice'] }
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showVoiceSettings',
     type: 'boolean',
     default: false,
@@ -624,8 +431,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['voice'] }
     },
   },
-
-  // Voice settings fields appear immediately after toggle
   {
     displayName: 'Voice ID',
     name: 'voice',
@@ -633,7 +438,7 @@ export const elementFields: INodeProperties[] = [
     default: 'en-US-AriaNeural',
     description: 'TTS voice identifier (e.g., en-US-AriaNeural)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['voice'],
         showVoiceSettings: [true]
       }
@@ -651,7 +456,7 @@ export const elementFields: INodeProperties[] = [
     default: 'azure',
     description: 'Text-to-speech model provider',
     displayOptions: {
-      show: { 
+      show: {
         type: ['voice'],
         showVoiceSettings: [true]
       }
@@ -664,18 +469,26 @@ export const elementFields: INodeProperties[] = [
     default: '',
     description: 'Connection ID for custom TTS API key',
     displayOptions: {
-      show: { 
+      show: {
         type: ['voice'],
         showVoiceSettings: [true]
       }
     },
   },
 
-  // =============================================================================
-  // SECTION 5: IMAGE GENERATION TOGGLE → AI FIELDS
-  // =============================================================================
+  // AI image settings toggle and fields
   {
     displayName: 'AI Image Settings',
+    name: 'aiImageSettingsDivider',
+    type: 'notice',
+    default: '',
+    description: 'AI Image Settings divider',
+    displayOptions: {
+      show: { type: ['image'] }
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showImageGeneration',
     type: 'boolean',
     default: false,
@@ -684,8 +497,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['image'] }
     },
   },
-
-  // AI generation fields appear immediately after toggle
   {
     displayName: 'AI Model',
     name: 'model',
@@ -698,7 +509,7 @@ export const elementFields: INodeProperties[] = [
     default: 'flux-pro',
     description: 'AI image generation model',
     displayOptions: {
-      show: { 
+      show: {
         type: ['image'],
         showImageGeneration: [true]
       }
@@ -716,7 +527,7 @@ export const elementFields: INodeProperties[] = [
     default: 'horizontal',
     description: 'AI image generation aspect ratio',
     displayOptions: {
-      show: { 
+      show: {
         type: ['image'],
         showImageGeneration: [true]
       }
@@ -729,7 +540,7 @@ export const elementFields: INodeProperties[] = [
     default: '',
     description: 'Connection ID for custom AI API key',
     displayOptions: {
-      show: { 
+      show: {
         type: ['image'],
         showImageGeneration: [true]
       }
@@ -742,18 +553,26 @@ export const elementFields: INodeProperties[] = [
     default: '{}',
     description: 'AI model-specific settings as JSON object',
     displayOptions: {
-      show: { 
+      show: {
         type: ['image'],
         showImageGeneration: [true]
       }
     },
   },
 
-  // =============================================================================
-  // SECTION 6: VISUAL EFFECTS TOGGLE → VISUAL EFFECTS FIELDS
-  // =============================================================================
+  // Visual effects toggle and fields
   {
     displayName: 'Visual Effects',
+    name: 'visualEffectsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Visual effects divider',
+    displayOptions: {
+      show: { type: ['video', 'image', 'component', 'html', 'audiogram'] }
+    },
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showVisualEffects',
     type: 'boolean',
     default: false,
@@ -762,8 +581,6 @@ export const elementFields: INodeProperties[] = [
       show: { type: ['video', 'image', 'component', 'html', 'audiogram'] }
     },
   },
-
-  // Basic visual effects appear immediately after toggle
   {
     displayName: 'Pan Direction',
     name: 'pan',
@@ -782,7 +599,7 @@ export const elementFields: INodeProperties[] = [
     default: '',
     description: 'Ken Burns pan effect direction',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -796,7 +613,7 @@ export const elementFields: INodeProperties[] = [
     default: 0.1,
     description: 'Pan distance (0.01-0.5)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -809,7 +626,7 @@ export const elementFields: INodeProperties[] = [
     default: true,
     description: 'Stretch during pan animation',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -823,7 +640,7 @@ export const elementFields: INodeProperties[] = [
     default: 0,
     description: 'Zoom level (-10 to 10)',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -836,7 +653,7 @@ export const elementFields: INodeProperties[] = [
     default: false,
     description: 'Flip element horizontally',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -849,7 +666,7 @@ export const elementFields: INodeProperties[] = [
     default: false,
     description: 'Flip element vertically',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
@@ -862,14 +679,12 @@ export const elementFields: INodeProperties[] = [
     default: '',
     description: 'Mask image URL for transparency effects',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
     },
   },
-
-  // FIXED: Crop as JSON textarea object
   {
     displayName: 'Crop Settings',
     name: 'crop',
@@ -878,14 +693,12 @@ export const elementFields: INodeProperties[] = [
     placeholder: 'e.g., {"width": 100, "height": 100, "x": 0, "y": 0}',
     description: 'Crop area settings as JSON object with width, height, x, y properties',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
     },
   },
-
-  // FIXED: Rotate as JSON textarea object  
   {
     displayName: 'Rotation Settings',
     name: 'rotate',
@@ -894,14 +707,12 @@ export const elementFields: INodeProperties[] = [
     placeholder: 'e.g., {"angle": 45, "speed": 1}',
     description: 'Rotation settings as JSON object with angle and speed properties',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
     },
   },
-
-  // FIXED: Chroma-key as JSON textarea object (with correct kebab-case name)
   {
     displayName: 'Chroma Key Settings',
     name: 'chromaKey',
@@ -910,14 +721,12 @@ export const elementFields: INodeProperties[] = [
     placeholder: 'e.g., {"color": "#00FF00", "tolerance": 25}',
     description: 'Green screen settings as JSON object with color and tolerance properties',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
     },
   },
-
-  // FIXED: Correction as JSON textarea object
   {
     displayName: 'Color Correction',
     name: 'correction',
@@ -926,25 +735,115 @@ export const elementFields: INodeProperties[] = [
     placeholder: 'e.g., {"brightness": 0.1, "contrast": 1.2, "gamma": 1.0, "saturation": 1.1}',
     description: 'Color correction settings as JSON object',
     displayOptions: {
-      show: { 
+      show: {
         type: ['video', 'image', 'component', 'html', 'audiogram'],
         showVisualEffects: [true]
       }
     },
   },
 
-  // =============================================================================
-  // SECTION 7: ADVANCED SETTINGS TOGGLE → ADVANCED FIELDS
-  // =============================================================================
+  // Type-specific fields
+  {
+    displayName: 'Component Settings',
+    name: 'settings',
+    type: 'json',
+    default: '{}',
+    description: 'Component configuration as JSON object',
+    displayOptions: {
+      show: { type: ['component'] }
+    },
+  },
+  {
+    displayName: 'Enable TailwindCSS',
+    name: 'tailwindcssDivider',
+    type: 'notice',
+    default: '',
+    description: 'TailwindCSS framework',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+  {
+    displayName: 'Show/Hide',
+    name: 'tailwindcss',
+    type: 'boolean',
+    default: false,
+    description: 'Enable TailwindCSS framework for HTML snippet',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+  {
+    displayName: 'Wait Time (seconds)',
+    name: 'wait',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 5, numberPrecision: 1 },
+    default: 2,
+    description: 'Time to wait before taking screenshot',
+    displayOptions: {
+      show: { type: ['html'] }
+    },
+  },
+
+  // Audiogram settings
+  {
+    displayName: 'Audiogram Settings',
+    name: 'audiogramSettingsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Audiogram Settings',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+  {
+    displayName: 'Wave Color',
+    name: 'color',
+    type: 'color',
+    default: '#ffffff',
+    description: 'Audio waveform color',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+  {
+    displayName: 'Wave Opacity',
+    name: 'opacity',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
+    default: 0.5,
+    description: 'Waveform opacity (0=transparent, 1=opaque)',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+  {
+    displayName: 'Wave Amplitude',
+    name: 'amplitude',
+    type: 'number',
+    typeOptions: { minValue: 0, maxValue: 10, numberPrecision: 1 },
+    default: 5,
+    description: 'Wave amplitude scaling (0-10)',
+    displayOptions: {
+      show: { type: ['audiogram'] }
+    },
+  },
+
+  // Advanced settings
   {
     displayName: 'Advanced Settings',
+    name: 'advancedSettingsDivider',
+    type: 'notice',
+    default: '',
+    description: 'Advanced Settings divider',
+  },
+  {
+    displayName: 'Show/Hide',
     name: 'showAdvancedSettings',
     type: 'boolean',
     default: false,
     description: 'Technical options like ID, conditions, variables, and cache',
   },
-
-  // Advanced fields appear immediately after toggle
   {
     displayName: 'Element ID',
     name: 'id',
@@ -995,121 +894,11 @@ export const elementFields: INodeProperties[] = [
       show: { showAdvancedSettings: [true] }
     },
   },
-  {
-    displayName: 'Extra Time (seconds)',
-    name: 'extraTime',
-    type: 'number',
-    typeOptions: { minValue: 0, numberPrecision: 2 },
-    default: 0,
-    description: 'Additional time after duration',
-    displayOptions: {
-      show: { showAdvancedSettings: [true] }
-    },
-  },
-  {
-    displayName: 'Z-Index (Layer)',
-    name: 'zIndex',
-    type: 'number',
-    typeOptions: { minValue: -99, maxValue: 99 },
-    default: 0,
-    description: 'Layer order (higher numbers appear on top)',
-    displayOptions: {
-      show: { showAdvancedSettings: [true] }
-    },
-  },
-  {
-    displayName: 'Fade In (seconds)',
-    name: 'fadeIn',
-    type: 'number',
-    typeOptions: { minValue: 0, numberPrecision: 2 },
-    default: 0,
-    description: 'Fade in duration in seconds',
-    displayOptions: {
-      show: { showAdvancedSettings: [true] }
-    },
-  },
-  {
-    displayName: 'Fade Out (seconds)',
-    name: 'fadeOut',
-    type: 'number',
-    typeOptions: { minValue: 0, numberPrecision: 2 },
-    default: 0,
-    description: 'Fade out duration in seconds',
-    displayOptions: {
-      show: { showAdvancedSettings: [true] }
-    },
-  },
-
-  // =============================================================================
-  // TYPE-SPECIFIC FIELDS (Component, HTML, Audiogram)
-  // =============================================================================
-  {
-    displayName: 'Component Settings',
-    name: 'settings',
-    type: 'json',
-    default: '{}',
-    description: 'Component configuration as JSON object',
-    displayOptions: {
-      show: { type: ['component'] }
-    },
-  },
-  {
-    displayName: 'Enable TailwindCSS',
-    name: 'tailwindcss',
-    type: 'boolean',
-    default: false,
-    description: 'Enable TailwindCSS framework for HTML snippet',
-    displayOptions: {
-      show: { type: ['html'] }
-    },
-  },
-  {
-    displayName: 'Wait Time (seconds)',
-    name: 'wait',
-    type: 'number',
-    typeOptions: { minValue: 0, maxValue: 5, numberPrecision: 1 },
-    default: 2,
-    description: 'Time to wait before taking screenshot',
-    displayOptions: {
-      show: { type: ['html'] }
-    },
-  },
-  {
-    displayName: 'Wave Color',
-    name: 'color',
-    type: 'color',
-    default: '#ffffff',
-    description: 'Audio waveform color',
-    displayOptions: {
-      show: { type: ['audiogram'] }
-    },
-  },
-  {
-    displayName: 'Wave Opacity',
-    name: 'opacity',
-    type: 'number',
-    typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
-    default: 0.5,
-    description: 'Waveform opacity (0=transparent, 1=opaque)',
-    displayOptions: {
-      show: { type: ['audiogram'] }
-    },
-  },
-  {
-    displayName: 'Wave Amplitude',
-    name: 'amplitude',
-    type: 'number',
-    typeOptions: { minValue: 0, maxValue: 10, numberPrecision: 1 },
-    default: 5,
-    description: 'Wave amplitude scaling (0-10)',
-    displayOptions: {
-      show: { type: ['audiogram'] }
-    },
-  },
 ];
 
 /**
- * Main element collection parameter
+ * Main element collection parameter for unified element handling
+ * Used across all operations with consistent field structure
  */
 export const elementCollection: INodeProperties = {
   displayName: 'Elements',
@@ -1120,7 +909,7 @@ export const elementCollection: INodeProperties = {
     sortable: true,
   },
   placeholder: 'Add Element',
-  description: 'Video elements (videos, images, text, audio, etc.)',
+  description: 'Video elements [<a href="https://json2video.com/docs/v2/api-reference/json-syntax/element" target="_blank">DocDoc</a>]',
   default: {},
   options: [
     {

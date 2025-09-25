@@ -1,17 +1,13 @@
-// nodes/CreateJ2vMovie/core/schemaValidator.ts
+// nodes/CreateJ2vMovie/core/validator.ts
 
 import { 
   ValidationResult,
   validateJSON2VideoRequest,
   validateMovieElements,
   validateSceneElements
-} from '../schema/validators';
-import { JSON2VideoRequest, Scene, SceneElement, MovieElement } from '../schema/json2videoSchema';
-import { RequestBuildResult } from './requestBuilder';
-
-// =============================================================================
-// INTERFACES
-// =============================================================================
+} from '../schema/rules';
+import { JSON2VideoRequest, Scene, SceneElement, MovieElement } from '../schema/schema';
+import { RequestBuildResult } from './buildRequest';
 
 /**
  * Extended validation result with request context
@@ -30,7 +26,6 @@ export interface ValidationOptions {
   strictMode?: boolean;
   includeWarnings?: boolean;
   validateElements?: boolean;
-  skipOperationRules?: boolean;
 }
 
 /**
@@ -42,27 +37,19 @@ export interface ActionableErrors {
   warnings: string[];
 }
 
-// =============================================================================
-// MAIN VALIDATION FUNCTION
-// =============================================================================
-
 /**
- * Comprehensive request validation with operation-specific rules
- * Updated to work with unified element collections from refactor
+ * Comprehensive request validation
  */
 export function validateRequest(
   request: JSON2VideoRequest,
-  operation: string,
   options: ValidationOptions = {}
 ): RequestValidationResult {
 
-  // Set default options
   const opts: Required<ValidationOptions> = {
     level: options.level || 'complete',
     strictMode: options.strictMode !== false,
     includeWarnings: options.includeWarnings !== false,
     validateElements: options.validateElements !== false,
-    skipOperationRules: options.skipOperationRules || false
   };
 
   const result: RequestValidationResult = {
@@ -75,7 +62,6 @@ export function validateRequest(
   };
 
   try {
-    // Step 1: Basic structural validation
     if (!request || typeof request !== 'object') {
       result.errors.push('Request must be a valid object');
       result.isValid = false;
@@ -83,22 +69,16 @@ export function validateRequest(
       return result;
     }
 
-    // Step 2: Schema validation (structural and semantic)
+    // Schema validation (structural and semantic)
     if (opts.level === 'structural' || opts.level === 'semantic' || opts.level === 'complete') {
       performSchemaValidation(request, result, opts);
     }
 
-    // Step 3: Operation-specific business rules validation
-    if (opts.level === 'semantic' || opts.level === 'complete') {
-      validateOperationBusinessRules(request, operation, result, opts);
-    }
-
-    // Step 4: Complete element validation
+    // Complete element validation
     if (opts.level === 'complete') {
       performCompleteValidation(request, result, opts);
     }
 
-    // Determine final status
     result.isValid = result.errors.length === 0;
     result.canProceed = result.isValid || !opts.strictMode;
 
@@ -112,10 +92,6 @@ export function validateRequest(
     return result;
   }
 }
-
-// =============================================================================
-// VALIDATION PHASES
-// =============================================================================
 
 /**
  * Perform basic schema validation using the validators
@@ -161,120 +137,27 @@ function performCompleteValidation(
     });
   }
 
-  performCrossValidation(request, result, options);
-}
-
-// =============================================================================
-// UNIFIED ACTION-SPECIFIC VALIDATION
-// =============================================================================
-
-/**
- * Unified operation-specific business rules validation
- * Updated to work with unified JSON2VideoRequest structure after refactor
- */
-function validateOperationBusinessRules(
-  request: JSON2VideoRequest,
-  operation: string,
-  result: RequestValidationResult,
-  options: Required<ValidationOptions>
-): void {
+  // Check that request has at least one element somewhere
+  let hasAnyElements = false;
   
-  if (options.skipOperationRules) {
-    return;
+  if (request.elements && request.elements.length > 0) {
+    hasAnyElements = true;
   }
   
-  switch (operation) {
-    case 'createMovie':
-      validateCreateMovieRequiredStructure(request, result);
-      break;
-    case 'mergeVideoAudio':
-      validateMergeVideoAudioRequiredStructure(request, result);
-      break;
-    case 'mergeVideos':
-      validateMergeVideosRequiredStructure(request, result);
-      break;
-    default:
-      if (options.strictMode) {
-        result.warnings.push(`Unknown operation type: ${operation}`);
+  if (request.scenes && Array.isArray(request.scenes)) {
+    for (const scene of request.scenes) {
+      if (scene.elements && Array.isArray(scene.elements) && scene.elements.length > 0) {
+        hasAnyElements = true;
+        break;
       }
-      break;
-  }
-}
-
-/**
- * Validate createMovie required structure
- * Updated: Now validates the final JSON2VideoRequest after unified processing
- */
-function validateCreateMovieRequiredStructure(
-  request: JSON2VideoRequest,
-  result: RequestValidationResult
-): void {
-
-  const hasMovieElements = request.elements && request.elements.length > 0;
-  const hasSceneElements = request.scenes && request.scenes.some(scene => scene.elements && scene.elements.length > 0);
-
-  if (!hasMovieElements && !hasSceneElements) {
-    result.errors.push('createMovie operation requires either movie elements or scene elements');
-  }
-}
-
-/**
- * Validate mergeVideoAudio required structure
- * Should have exactly one scene with video and audio elements
- */
-function validateMergeVideoAudioRequiredStructure(
-  request: JSON2VideoRequest,
-  result: RequestValidationResult
-): void {
-
-  if (!request.scenes || request.scenes.length === 0) {
-    result.errors.push('mergeVideoAudio operation requires at least one scene');
-    return;
-  }
-
-  const mainScene = request.scenes[0];
-  if (!mainScene.elements || mainScene.elements.length === 0) {
-    result.errors.push('mergeVideoAudio scene must contain elements');
-    return;
-  }
-
-  const hasVideo = mainScene.elements.some(element => 'type' in element && element.type === 'video');
-  const hasAudio = mainScene.elements.some(element => 'type' in element && element.type === 'audio');
-
-  if (!hasVideo) {
-    result.errors.push('mergeVideoAudio operation requires a video element');
-  }
-
-  if (!hasAudio) {
-    result.errors.push('mergeVideoAudio operation requires an audio element');
-  }
-}
-
-/**
- * Validate mergeVideos required structure
- * Should have multiple scenes with video elements
- */
-function validateMergeVideosRequiredStructure(
-  request: JSON2VideoRequest,
-  result: RequestValidationResult
-): void {
-
-  if (!request.scenes || request.scenes.length < 2) {
-    result.errors.push('mergeVideos operation requires at least two scenes');
-    return;
-  }
-
-  request.scenes.forEach((scene: Scene, index: number) => {
-    if (!scene.elements || scene.elements.length === 0) {
-      result.errors.push(`mergeVideos Scene ${index + 1} must contain elements`);
-      return;
     }
+  }
+  
+  if (!hasAnyElements) {
+    result.errors.push('Request must contain at least one element (either at movie level or in scenes) to create a valid video');
+  }
 
-    const hasVideo = scene.elements.some(element => 'type' in element && element.type === 'video');
-    if (!hasVideo) {
-      result.errors.push(`mergeVideos Scene ${index + 1} must contain a video element`);
-    }
-  });
+  performCrossValidation(request, result, options);
 }
 
 /**
@@ -285,16 +168,9 @@ function performCrossValidation(
   result: RequestValidationResult,
   options: Required<ValidationOptions>
 ): void {
-  // Additional cross-validation logic can be added here
-  // For example, checking compatibility between elements, duration constraints, etc.
-  
-  // Note: Subtitle conflicts are prevented by TypeScript types - 
-  // subtitles can only exist in MovieElement, not SceneElement
+  // Cross-validation logic for element compatibility, duration constraints, etc.
+  // Subtitle conflicts are prevented by TypeScript types
 }
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
 
 /**
  * Create a human-readable validation summary
@@ -309,10 +185,10 @@ export function createValidationSummary(result: RequestValidationResult): string
 }
 
 /**
- * Extract operationable errors categorized by fixability
+ * Extract actionable errors categorized by fixability
  */
 export function extractActionableErrors(result: RequestValidationResult): ActionableErrors {
-  const operationableErrors: ActionableErrors = {
+  const actionableErrors: ActionableErrors = {
     fixable: [],
     critical: [],
     warnings: [...result.warnings]
@@ -338,23 +214,21 @@ export function extractActionableErrors(result: RequestValidationResult): Action
     const isCritical = criticalPatterns.some(pattern => pattern.test(error));
 
     if (isFixable) {
-      operationableErrors.fixable.push(error);
+      actionableErrors.fixable.push(error);
     } else if (isCritical) {
-      operationableErrors.critical.push(error);
+      actionableErrors.critical.push(error);
     } else {
-      // Default to critical if we can't categorize
-      operationableErrors.critical.push(error);
+      actionableErrors.critical.push(error);
     }
   });
 
-  return operationableErrors;
+  return actionableErrors;
 }
 
 /**
  * Determine if validation errors are recoverable
  */
 export function isRecoverable(result: RequestValidationResult): boolean {
-  // If there are warnings but no errors, it's recoverable only if no warnings
   if (result.errors.length === 0) {
     return result.warnings.length === 0;
   }
@@ -374,9 +248,9 @@ export function isRecoverable(result: RequestValidationResult): boolean {
     return false;
   }
 
-  // Operation-specific business rule errors might be recoverable
+  // Business rule errors might be recoverable
   const recoverablePatterns = [
-    /requires either movie elements or scene elements/i,
+    /at least one element is required/i,
     /requires a video element/i,
     /requires an audio element/i,
     /subtitles can only be at movie level/i
@@ -392,7 +266,6 @@ export function isRecoverable(result: RequestValidationResult): boolean {
  */
 export function validateBuildResult(
   buildResult: RequestBuildResult,
-  operation: string,
   options: ValidationOptions = {}
 ): RequestValidationResult {
 
@@ -407,7 +280,7 @@ export function validateBuildResult(
     };
   }
 
-  const validationResult = validateRequest(buildResult.request, operation, options);
+  const validationResult = validateRequest(buildResult.request, options);
   
   // Merge build errors with validation errors
   if (buildResult.errors && buildResult.errors.length > 0) {
