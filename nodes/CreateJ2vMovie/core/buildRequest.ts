@@ -32,7 +32,7 @@ export function buildRequest(parameters: CollectedParameters): RequestBuildResul
 
     if (result.request) {
       applyCommonRequestProperties(result.request, parameters);
-      
+
       if (!result.request.scenes || result.request.scenes.length === 0) {
         result.warnings.push('Request has no scenes - video will be empty');
       }
@@ -114,7 +114,7 @@ function applyOutputSettings(
 
   if (parameters.outputSettings) {
     const output = parameters.outputSettings;
-    
+
     if (output.width !== undefined) request.width = output.width;
     if (output.height !== undefined) request.height = output.height;
     if (output.quality !== undefined) request.quality = output.quality as any;
@@ -174,11 +174,11 @@ function applyCommonRequestProperties(
   request: JSON2VideoRequest,
   parameters: CollectedParameters
 ): void {
-  
+
   // Apply exports configuration with v2 API format
   if (parameters.exportConfigs && parameters.exportConfigs.length > 0) {
     request.exports = parameters.exportConfigs;
-    
+
     // Warning for multiple export configs (API limitation)
     if (parameters.exportConfigs.length > 1) {
       // This warning will be shown in validation, so we don't duplicate it here
@@ -206,12 +206,12 @@ export function isEmptyRequest(request: JSON2VideoRequest): boolean {
   if (request.elements && request.elements.length > 0) {
     return false;
   }
-  
+
   if (request.scenes && request.scenes.length > 0) {
-    return !request.scenes.some(scene => 
+    return !request.scenes.some(scene =>
       scene.elements && scene.elements.length > 0
     );
   }
-  
+
   return true;
 }

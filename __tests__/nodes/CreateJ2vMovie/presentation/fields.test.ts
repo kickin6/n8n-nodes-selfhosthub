@@ -154,7 +154,7 @@ describe('fields', () => {
     test.each(optionsFieldTests)('should validate $name options field', ({ name, values, default: defaultVal }) => {
       const field = elementFields.find(f => f.name === name);
       expect(field).toBeDefined();
-      
+
       if (values) {
         expect(field!.type).toBe('options');
         expect(field!.default).toBe(defaultVal);

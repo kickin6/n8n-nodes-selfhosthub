@@ -2,7 +2,6 @@
 
 import { INodeProperties } from 'n8n-workflow';
 import { elementCollection } from './fields';
-import { templateSelectorParameter } from './templates';
 
 /**
  * Parameters collection for video creation

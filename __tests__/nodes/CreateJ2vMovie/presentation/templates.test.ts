@@ -14,7 +14,7 @@ describe('CreateJ2vMovie Templates', () => {
 
     it('should have all 9 template options', () => {
       expect(templateSelectorParameter.options).toHaveLength(9);
-      
+
       const optionValues = (templateSelectorParameter.options as INodePropertyOptions[])?.map(opt => opt.value);
       expect(optionValues).toEqual([
         'blank',
@@ -31,7 +31,7 @@ describe('CreateJ2vMovie Templates', () => {
 
     it('should have proper option names and descriptions', () => {
       const options = templateSelectorParameter.options as INodePropertyOptions[] || [];
-      
+
       expect(options[0]).toEqual({
         name: 'Blank Template',
         value: 'blank',
@@ -142,12 +142,12 @@ describe('CreateJ2vMovie Templates', () => {
   describe('Template Descriptions', () => {
     it('should have user-friendly descriptions', () => {
       const options = templateSelectorParameter.options as INodePropertyOptions[] || [];
-      
+
       options.forEach(option => {
         // Verify each description is non-empty and descriptive
         expect(option.description).toBeTruthy();
         expect(option.description!.length).toBeGreaterThan(10);
-        
+
         // Verify descriptions don't contain technical jargon
         expect(option.description).not.toContain('JSON');
         expect(option.description).not.toContain('API');
@@ -160,7 +160,7 @@ describe('CreateJ2vMovie Templates', () => {
       const socialStoryOption = options.find(
         opt => opt.value === 'socialStory'
       );
-      
+
       expect(socialStoryOption).toBeDefined();
       expect(socialStoryOption!.name).toContain('9:16');
       expect(socialStoryOption!.description).toContain('Instagram');
@@ -172,7 +172,7 @@ describe('CreateJ2vMovie Templates', () => {
       const facelessOption = options.find(
         opt => opt.value === 'faceless'
       );
-      
+
       expect(facelessOption).toBeDefined();
       expect(facelessOption!.name).toContain('TTS');
       expect(facelessOption!.description).toContain('voice');

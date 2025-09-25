@@ -156,10 +156,10 @@ describe('parameters', () => {
     it('should have output configuration fields', () => {
       const outputParam = unifiedParameters.find(p => p.name === 'outputSettings');
       const option = outputParam!.options![0] as INodePropertyCollection;
-      
+
       expect(option.name).toBe('outputValues');
       expect(option.displayName).toBe('Output Configuration');
-      
+
       const fieldNames = option.values.map(f => f.name);
       expect(fieldNames).toContain('width');
       expect(fieldNames).toContain('height');
@@ -180,17 +180,17 @@ describe('parameters', () => {
     it('should have export configuration fields', () => {
       const exportParam = unifiedParameters.find(p => p.name === 'exportSettings');
       const option = exportParam!.options![0] as INodePropertyCollection;
-      
+
       expect(option.name).toBe('exportValues');
       expect(option.displayName).toBe('Export Destination');
-      
+
       const fieldNames = option.values.map(f => f.name);
       const expectedFields = [
-        'exportType', 'webhookUrl', 'ftpHost', 'ftpPort', 'ftpUsername', 
-        'ftpPassword', 'ftpPath', 'ftpFile', 'ftpSecure', 'emailTo', 
+        'exportType', 'webhookUrl', 'ftpHost', 'ftpPort', 'ftpUsername',
+        'ftpPassword', 'ftpPath', 'ftpFile', 'ftpSecure', 'emailTo',
         'emailFrom', 'emailSubject', 'emailMessage'
       ];
-      
+
       // Check each expected field individually
       expectedFields.forEach(fieldName => {
         expect(fieldNames).toContain(fieldName);
@@ -201,12 +201,12 @@ describe('parameters', () => {
       const exportParam = unifiedParameters.find(p => p.name === 'exportSettings');
       const option = exportParam!.options![0] as INodePropertyCollection;
       const exportTypeField = option.values.find(f => f.name === 'exportType');
-      
+
       expect(exportTypeField).toBeDefined();
       expect(exportTypeField!.type).toBe('options');
       expect(exportTypeField!.required).toBe(true);
       expect(exportTypeField!.default).toBe('webhook');
-      
+
       const optionValues = exportTypeField!.options!.map((opt: any) => opt.value);
       expect(optionValues).toContain('webhook');
       expect(optionValues).toContain('ftp');
@@ -217,7 +217,7 @@ describe('parameters', () => {
       const exportParam = unifiedParameters.find(p => p.name === 'exportSettings');
       const option = exportParam!.options![0] as INodePropertyCollection;
       const webhookField = option.values.find(f => f.name === 'webhookUrl');
-      
+
       expect(webhookField).toBeDefined();
       expect(webhookField!.type).toBe('string');
       expect(webhookField!.required).toBe(true);
@@ -228,7 +228,7 @@ describe('parameters', () => {
     it('should have FTP fields with correct configuration', () => {
       const exportParam = unifiedParameters.find(p => p.name === 'exportSettings');
       const option = exportParam!.options![0] as INodePropertyCollection;
-      
+
       const ftpHost = option.values.find(f => f.name === 'ftpHost');
       expect(ftpHost).toBeDefined();
       expect(ftpHost!.required).toBe(true);
@@ -270,7 +270,7 @@ describe('parameters', () => {
     it('should have email fields with correct configuration', () => {
       const exportParam = unifiedParameters.find(p => p.name === 'exportSettings');
       const option = exportParam!.options![0] as INodePropertyCollection;
-      
+
       const emailTo = option.values.find(f => f.name === 'emailTo');
       expect(emailTo).toBeDefined();
       expect(emailTo!.required).toBe(true);
@@ -308,7 +308,7 @@ describe('parameters', () => {
       expect(jsonTemplateBlank.type).toBe('json');
       expect(jsonTemplateBlank.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateBlank.displayOptions?.show?.templateType).toEqual(['blank']);
-      
+
       const defaultTemplate = jsonTemplateBlank.default as string;
       expect(defaultTemplate).toContain('"width"');
       expect(defaultTemplate).toContain('"height"');
@@ -320,7 +320,7 @@ describe('parameters', () => {
       expect(jsonTemplateVideoImage.type).toBe('json');
       expect(jsonTemplateVideoImage.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateVideoImage.displayOptions?.show?.templateType).toEqual(['videoImage']);
-      
+
       const defaultTemplate = jsonTemplateVideoImage.default as string;
       expect(defaultTemplate).toContain('"type": "image"');
     });
@@ -330,7 +330,7 @@ describe('parameters', () => {
       expect(jsonTemplateVideoAudio.type).toBe('json');
       expect(jsonTemplateVideoAudio.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateVideoAudio.displayOptions?.show?.templateType).toEqual(['videoAudio']);
-      
+
       const defaultTemplate = jsonTemplateVideoAudio.default as string;
       expect(defaultTemplate).toContain('"type": "video"');
       expect(defaultTemplate).toContain('"type": "audio"');
@@ -341,7 +341,7 @@ describe('parameters', () => {
       expect(jsonTemplateVideoSequence.type).toBe('json');
       expect(jsonTemplateVideoSequence.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateVideoSequence.displayOptions?.show?.templateType).toEqual(['videoSequence']);
-      
+
       const defaultTemplate = jsonTemplateVideoSequence.default as string;
       expect(defaultTemplate).toContain('video0Url');
     });
@@ -365,7 +365,7 @@ describe('parameters', () => {
       expect(jsonTemplateFaceless.type).toBe('json');
       expect(jsonTemplateFaceless.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateFaceless.displayOptions?.show?.templateType).toEqual(['faceless']);
-      
+
       const defaultTemplate = jsonTemplateFaceless.default as string;
       expect(defaultTemplate).toContain('"type": "voice"');
     });
@@ -375,7 +375,7 @@ describe('parameters', () => {
       expect(jsonTemplateSocialStory.type).toBe('json');
       expect(jsonTemplateSocialStory.displayOptions?.show?.advancedMode).toEqual([true]);
       expect(jsonTemplateSocialStory.displayOptions?.show?.templateType).toEqual(['socialStory']);
-      
+
       const defaultTemplate = jsonTemplateSocialStory.default as string;
       const parsed = JSON.parse(defaultTemplate);
       expect(parsed.width).toBe(1080);
@@ -392,12 +392,12 @@ describe('parameters', () => {
 
   describe('display options', () => {
     it('should hide form parameters when advanced mode is enabled', () => {
-      const formParams = unifiedParameters.filter(p => 
+      const formParams = unifiedParameters.filter(p =>
         p.displayOptions?.hide?.advancedMode?.includes(true)
       );
-      
+
       expect(formParams.length).toBeGreaterThan(0);
-      
+
       // Check key form params are hidden in advanced mode
       const expectedHidden = ['showMovieSettings', 'enableSubtitles', 'elements', 'outputSettings', 'exportSettings'];
       expectedHidden.forEach(paramName => {
@@ -422,7 +422,7 @@ describe('parameter structure validation', () => {
 
   it('should have valid types for all parameters', () => {
     const validTypes = ['string', 'number', 'boolean', 'options', 'json', 'fixedCollection', 'color', 'notice'];
-    
+
     unifiedParameters.forEach(param => {
       expect(validTypes).toContain(param.type);
     });
@@ -430,12 +430,12 @@ describe('parameter structure validation', () => {
 
   it('should have proper structure for collection parameters', () => {
     const collectionParams = unifiedParameters.filter(p => p.type === 'fixedCollection');
-    
+
     collectionParams.forEach(param => {
       expect(param.options).toBeDefined();
       expect(Array.isArray(param.options)).toBe(true);
       expect(param.options!.length).toBeGreaterThan(0);
-      
+
       param.options!.forEach((option: any) => {
         expect(option.name).toBeDefined();
         expect(option.displayName).toBeDefined();
@@ -447,12 +447,12 @@ describe('parameter structure validation', () => {
 
   it('should have proper structure for options parameters', () => {
     const optionParams = unifiedParameters.filter(p => p.type === 'options');
-    
+
     optionParams.forEach(param => {
       expect(param.options).toBeDefined();
       expect(Array.isArray(param.options)).toBe(true);
       expect(param.options!.length).toBeGreaterThan(0);
-      
+
       param.options!.forEach((option: any) => {
         expect(option.name).toBeDefined();
         expect(option.value).toBeDefined();

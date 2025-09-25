@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import { getAllNodeProperties } from './presentation/properties';
-import { collectParameters, validateCollectedParameters, CollectedParameters } from './core/collector';
-import { buildRequest, RequestBuildResult } from './core/buildRequest';
+import { collectParameters, validateCollectedParameters } from './core/collector';
+import { buildRequest } from './core/buildRequest';
 import { validateBuildResult, RequestValidationResult } from './core/validator';
 
 /**

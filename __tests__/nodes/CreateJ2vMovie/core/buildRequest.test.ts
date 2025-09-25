@@ -4,7 +4,7 @@ import { buildRequest, RequestBuildResult, isEmptyRequest } from '../../../../no
 import { CollectedParameters } from '../../../../nodes/CreateJ2vMovie/core/collector';
 
 describe('buildRequest', () => {
-  
+
   /**
    * Creates base test parameters with optional overrides
    */
@@ -17,7 +17,7 @@ describe('buildRequest', () => {
   }
 
   describe('buildRequest', () => {
-    
+
     describe('basic request building', () => {
       it.each([
         [
@@ -286,7 +286,7 @@ describe('buildRequest', () => {
           { destinations: [{ type: 'webhook', endpoint: 'https://example.com/webhook' }] },
           { destinations: [{ type: 'email', to: 'user@example.com' }] }
         ] as any[];
-        
+
         const parameters = createBaseParameters({
           elements: [{ type: 'text', text: 'test' }],
           exportConfigs

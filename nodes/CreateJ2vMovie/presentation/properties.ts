@@ -1,7 +1,7 @@
 // nodes/CreateJ2vMovie/presentation/properties.ts
 
 import { INodeProperties } from 'n8n-workflow';
-import { 
+import {
   unifiedParameters,
   unifiedAdvancedModeParameter,
   jsonTemplateBlank,
