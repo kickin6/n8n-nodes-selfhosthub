@@ -21,7 +21,7 @@ import { validateBuildResult, RequestValidationResult } from './core/validator';
  */
 export class CreateJ2vMovie implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'Create JSON2Video Movie',
+    displayName: 'Self-Host Hub (JSON2Video)',
     name: 'createJ2vMovie',
     icon: 'file:createJ2vMovie.png',
     group: ['transform'],
