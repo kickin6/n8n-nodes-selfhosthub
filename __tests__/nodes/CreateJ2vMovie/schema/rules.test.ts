@@ -8,8 +8,7 @@ import {
   validateJSON2VideoRequest,
   validateImageElement,
   validateExportConfig,
-  validateExportDestination,
-  ValidationResult
+  validateExportDestination
 } from '../../../../nodes/CreateJ2vMovie/schema/rules';
 
 import {

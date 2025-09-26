@@ -1,6 +1,6 @@
 // nodes/CreateJ2vMovie/core/collector.ts
 
-import { INodeExecutionData, IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-workflow';
 import { ExportConfig } from '../schema/schema';
 
 /**
@@ -500,7 +500,7 @@ export function collectParameters(this: IExecuteFunctions, itemIndex: number): C
   if (collected.isAdvancedMode) {
     // Get the template type to determine which JSON field to read
     const templateType = this.getNodeParameter('templateType', itemIndex, 'blank') as string;
-    
+
     // Map template type to parameter name
     const templateFieldMap: Record<string, string> = {
       'blank': 'jsonTemplateBlank',
@@ -513,7 +513,7 @@ export function collectParameters(this: IExecuteFunctions, itemIndex: number): C
       'socialStory': 'jsonTemplateSocialStory',
       'presentation': 'jsonTemplatePresentation',
     };
-    
+
     const jsonFieldName = templateFieldMap[templateType] || 'jsonTemplateBlank';
     collected.jsonTemplate = this.getNodeParameter(jsonFieldName, itemIndex, '') as string;
   } else {

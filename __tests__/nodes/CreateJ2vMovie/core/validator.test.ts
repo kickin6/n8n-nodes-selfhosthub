@@ -50,11 +50,11 @@ describe('validator', () => {
     ])('handles %s', (_, field, value) => {
       const request = { scenes: [], [field]: value };
       const result = validateRequest(request as any, { level: 'structural' });
-      
+
       expect(typeof result.isValid).toBe('boolean');
       expect(Array.isArray(result.errors)).toBe(true);
     });
-    
+
     it.each([
       // Fields that are NOT validated for type in structural validation
       ['id as number', 'id', 123],
@@ -65,7 +65,7 @@ describe('validator', () => {
     ])('should allow %s at structural level', (_, field, value) => {
       const request = { scenes: [], [field]: value };
       const result = validateRequest(request as any, { level: 'structural' });
-      
+
       expect(typeof result.isValid).toBe('boolean');
     });
   });
@@ -78,9 +78,9 @@ describe('validator', () => {
       ['complete' as const, 'full validation including elements', true]
     ])('should handle %s level: %s', (level, _, expectElementValidation) => {
       const request = { scenes: [scene({ elements: [textEl()] })] };
-      const result = validateRequest(request as any, { 
-        level: level, 
-        validateElements: expectElementValidation 
+      const result = validateRequest(request as any, {
+        level: level,
+        validateElements: expectElementValidation
       });
 
       expect(result.validationLevel).toBe(level);
@@ -120,18 +120,18 @@ describe('validator', () => {
   describe('element validation', () => {
     it.each([
       ['valid elements', { scenes: [{ elements: [videoEl(), audioEl()] }] }],
-      ['missing required fields', { 
-        scenes: [{ elements: [{ type: 'video' }] }] 
+      ['missing required fields', {
+        scenes: [{ elements: [{ type: 'video' }] }]
       }],
-      ['invalid element type', { 
-        scenes: [{ elements: [{ type: 'invalid' }] }] 
+      ['invalid element type', {
+        scenes: [{ elements: [{ type: 'invalid' }] }]
       }],
-      ['subtitles in scene', { 
-        scenes: [{ elements: [{ type: 'subtitles', captions: 'test' }] }] 
+      ['subtitles in scene', {
+        scenes: [{ elements: [{ type: 'subtitles', captions: 'test' }] }]
       }],
-      ['subtitles at movie level', { 
+      ['subtitles at movie level', {
         elements: [{ type: 'subtitles', captions: 'test' }],
-        scenes: [{ elements: [videoEl()] }] 
+        scenes: [{ elements: [videoEl()] }]
       }]
     ])('validates %s', (description, request) => {
       const options: ValidationOptions = { level: 'complete', validateElements: true };
@@ -145,11 +145,11 @@ describe('validator', () => {
       // For now, just check that validation completes
       expect(typeof result.isValid).toBe('boolean');
       expect(Array.isArray(result.errors)).toBe(true);
-      
+
       // Specific expectations based on what should happen
       if (description === 'subtitles in scene') {
         // Should have error about subtitles in wrong place
-        const hasSubtitleError = result.errors.some(e => 
+        const hasSubtitleError = result.errors.some(e =>
           e.includes('Subtitles') && e.includes('scene')
         );
         expect(hasSubtitleError).toBe(true);
@@ -206,7 +206,7 @@ describe('validator', () => {
 
       try {
         const result = validateRequest({ scenes: [] } as any);
-        
+
         expect(result.isValid).toBe(false);
         expect(result.canProceed).toBe(false);
         expect(result.errors.some((e: string) => e.includes('Validation failed: Schema validation error'))).toBe(true);
@@ -225,7 +225,7 @@ describe('validator', () => {
 
       try {
         const result = validateRequest({ scenes: [] } as any);
-        
+
         expect(result.isValid).toBe(false);
         expect(result.canProceed).toBe(false);
         expect(result.errors.some((e: string) => e.includes('Validation failed: Unknown validation error'))).toBe(true);
@@ -423,13 +423,13 @@ describe('validator', () => {
       // [description, requestBuilder]
       ['complex nested structure', () => ({
         scenes: [
-          scene({ 
+          scene({
             elements: [
-              textEl({ text: 'Scene 1 Text' }), 
+              textEl({ text: 'Scene 1 Text' }),
               videoEl({ src: 'video1.mp4' })
-            ] 
+            ]
           }),
-          scene({ 
+          scene({
             elements: [
               audioEl({ src: 'audio.mp3' }),
               textEl({ text: 'Scene 2 Text' })
@@ -467,7 +467,7 @@ describe('validator', () => {
         height: null
       })],
 
-      ['circular reference potential', function() {
+      ['circular reference potential', function () {
         const obj: any = {
           scenes: [scene({ elements: [textEl()] })]
         };

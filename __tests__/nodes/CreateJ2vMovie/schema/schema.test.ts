@@ -453,11 +453,11 @@ describe('schema', () => {
     });
 
     it('should validate FTP destinations correctly', () => {
-      expect(hasRequiredExportFields({ 
-        type: 'ftp', 
-        host: 'ftp.example.com', 
-        username: 'user', 
-        password: 'pass' 
+      expect(hasRequiredExportFields({
+        type: 'ftp',
+        host: 'ftp.example.com',
+        username: 'user',
+        password: 'pass'
       })).toBe(true);
       expect(hasRequiredExportFields({ type: 'ftp' })).toBe(false);
       expect(hasRequiredExportFields({ type: 'ftp', host: 'example.com' })).toBe(false);

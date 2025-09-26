@@ -1,12 +1,12 @@
 // nodes/CreateJ2vMovie/core/validator.ts
 
-import { 
+import {
   ValidationResult,
   validateJSON2VideoRequest,
   validateMovieElements,
   validateSceneElements
 } from '../schema/rules';
-import { JSON2VideoRequest, Scene, SceneElement, MovieElement } from '../schema/schema';
+import { JSON2VideoRequest } from '../schema/schema';
 import { RequestBuildResult } from './buildRequest';
 
 /**
@@ -104,7 +104,7 @@ function performSchemaValidation(
 
   const schemaResult = validateJSON2VideoRequest(request);
   result.errors.push(...schemaResult.errors);
-  
+
   if (options.includeWarnings) {
     result.warnings.push(...schemaResult.warnings);
   }
@@ -139,11 +139,11 @@ function performCompleteValidation(
 
   // Check that request has at least one element somewhere
   let hasAnyElements = false;
-  
+
   if (request.elements && request.elements.length > 0) {
     hasAnyElements = true;
   }
-  
+
   if (request.scenes && Array.isArray(request.scenes)) {
     for (const scene of request.scenes) {
       if (scene.elements && Array.isArray(scene.elements) && scene.elements.length > 0) {
@@ -152,7 +152,7 @@ function performCompleteValidation(
       }
     }
   }
-  
+
   if (!hasAnyElements) {
     result.errors.push('Request must contain at least one element (either at movie level or in scenes) to create a valid video');
   }
@@ -180,7 +180,7 @@ export function createValidationSummary(result: RequestValidationResult): string
   const level = result.validationLevel.toUpperCase();
   const errorCount = result.errors.length;
   const warningCount = result.warnings.length;
-  
+
   return `${status} - ${level} validation - Errors: ${errorCount}, Warnings: ${warningCount}`;
 }
 
@@ -256,7 +256,7 @@ export function isRecoverable(result: RequestValidationResult): boolean {
     /subtitles can only be at movie level/i
   ];
 
-  return result.errors.some(error => 
+  return result.errors.some(error =>
     recoverablePatterns.some(pattern => pattern.test(error))
   );
 }
@@ -281,7 +281,7 @@ export function validateBuildResult(
   }
 
   const validationResult = validateRequest(buildResult.request, options);
-  
+
   // Merge build errors with validation errors
   if (buildResult.errors && buildResult.errors.length > 0) {
     validationResult.errors.unshift(...buildResult.errors);

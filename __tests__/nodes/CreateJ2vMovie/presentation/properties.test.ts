@@ -119,7 +119,7 @@ describe('CreateJ2vMovie Properties', () => {
       expect(properties[0].name).toBe('advancedMode'); // unifiedAdvancedModeParameter
       expect(properties[1].name).toBe('templateType'); // templateSelectorParameter
       expect(properties[2].name).toBe('recordId'); // First item in unifiedParameters
-      
+
       // Last items should be the JSON templates
       const lastItems = properties.slice(-9);
       const jsonTemplateNames = [
@@ -133,7 +133,7 @@ describe('CreateJ2vMovie Properties', () => {
         'jsonTemplateSocialStory',
         'jsonTemplatePresentation'
       ];
-      
+
       lastItems.forEach((item, index) => {
         expect(item.name).toBe(jsonTemplateNames[index]);
       });
@@ -203,10 +203,10 @@ describe('CreateJ2vMovie Properties', () => {
 
     it('should have valid JSON in all template defaults', () => {
       const jsonTemplates = properties.filter(p => p.name.startsWith('jsonTemplate'));
-      
+
       jsonTemplates.forEach(template => {
         expect(() => JSON.parse(template.default as string)).not.toThrow();
-        
+
         const parsed = JSON.parse(template.default as string);
         expect(parsed).toHaveProperty('width');
         expect(parsed).toHaveProperty('height');
@@ -218,7 +218,7 @@ describe('CreateJ2vMovie Properties', () => {
     it('should have appropriate content in video+audio template', () => {
       const template = properties.find(p => p.name === 'jsonTemplateVideoAudio');
       const parsed = JSON.parse(template?.default as string);
-      
+
       expect(parsed.scenes[0].elements).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: 'video' }),
@@ -230,7 +230,7 @@ describe('CreateJ2vMovie Properties', () => {
     it('should have vertical dimensions in social story template', () => {
       const template = properties.find(p => p.name === 'jsonTemplateSocialStory');
       const parsed = JSON.parse(template?.default as string);
-      
+
       expect(parsed.width).toBe(1080);
       expect(parsed.height).toBe(1920);
     });
@@ -238,13 +238,13 @@ describe('CreateJ2vMovie Properties', () => {
     it('should have AI elements in faceless template', () => {
       const template = properties.find(p => p.name === 'jsonTemplateFaceless');
       const parsed = JSON.parse(template?.default as string);
-      
+
       // Check for voice elements
-      const hasVoice = parsed.scenes.some((scene: any) => 
+      const hasVoice = parsed.scenes.some((scene: any) =>
         scene.elements?.some((el: any) => el.type === 'voice')
       );
       expect(hasVoice).toBe(true);
-      
+
       // Check for AI image generation
       const hasAIImage = parsed.scenes.some((scene: any) =>
         scene.elements?.some((el: any) => el.type === 'image' && el.prompt)

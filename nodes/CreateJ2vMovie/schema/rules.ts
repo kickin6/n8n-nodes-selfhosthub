@@ -1,17 +1,11 @@
 // nodes/CreateJ2vMovie/schema/rules.ts
 
 import {
-  JSON2VideoRequest,
   API_RULES,
   TextElementParams,
   SubtitleElementParams,
-  MovieElement,
-  SceneElement,
   ExportConfig,
   ExportDestination,
-  isMovieElement,
-  isSceneElement,
-  isSubtitleElement,
   hasRequiredFields,
   hasRequiredExportFields,
   isValidDuration,
@@ -37,7 +31,7 @@ export interface ValidationResult {
  */
 export function validateImageElement(element: any, context: string = ''): string[] {
   const errors: string[] = [];
-  
+
   if (!element || element.type !== 'image') {
     return errors;
   }
@@ -438,7 +432,7 @@ export function validateSceneElements(elements: any[], sceneContext: string = ''
     if (element.type === 'html') {
       const hasHtmlSrc = element.src && element.src.trim() !== '';
       const hasHtmlContent = element.html && element.html.trim() !== '';
-      
+
       if (!hasHtmlSrc && !hasHtmlContent) {
         errors.push(`${elementContext}: HTML elements require either source URL or HTML content`);
       } else if (hasHtmlSrc && !isValidUrl(element.src)) {
